@@ -233,5 +233,23 @@ std::string dump(const VendorManifest &vm) {
     return oss.str();
 }
 
+std::string dump(const KernelInfo &ki) {
+    std::ostringstream oss;
+
+    oss << "kernel = "
+        << ki.osName() << "/"
+        << ki.nodeName() << "/"
+        << ki.osRelease() << "/"
+        << ki.osVersion() << "/"
+        << ki.hardwareId() << ";"
+        << "kernelSepolicyVersion = " << ki.kernelSepolicyVersion() << ";"
+        << "#CONFIG's loaded = " << ki.kernelConfigs.size() << ";\n";
+    for (const auto &pair : ki.kernelConfigs) {
+        oss << pair.first << "=" << pair.second << "\n";
+    }
+
+    return oss.str();
+}
+
 } // namespace vintf
 } // namespace android

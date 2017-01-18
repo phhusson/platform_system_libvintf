@@ -21,8 +21,10 @@ cc_library {
     shared_libs: [
         "libbase",
         "liblog",
+        "libselinux",
         "libtinyxml2",
         "libutils",
+        "libz",
     ],
     export_include_dirs: ["include"],
     local_include_dirs: ["include/vintf"],
@@ -31,6 +33,7 @@ cc_library {
         "parse_string.cpp",
         "parse_xml.cpp",
         "CompatibilityMatrix.cpp",
+        "KernelInfo.cpp",
         "ManifestHal.cpp",
         "MatrixHal.cpp",
         "MatrixKernel.cpp",
@@ -42,6 +45,7 @@ cc_binary {
     name: "vintf",
     shared_libs: [
         "libvintf",
+        "libselinux",
     ],
     srcs: [
         "main.cpp"
