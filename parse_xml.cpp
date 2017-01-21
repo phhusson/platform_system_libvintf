@@ -84,11 +84,11 @@ inline void appendTextElement(NodeType *parent, const std::string &name,
 }
 
 inline std::string nameOf(NodeType *root) {
-    return root->Name();
+    return root->Name() == NULL ? "" : root->Name();
 }
 
 inline std::string getText(NodeType *root) {
-    return root->GetText();
+    return root->GetText() == NULL ? "" : root->GetText();
 }
 
 inline NodeType *getChild(NodeType *parent, const std::string &name) {
