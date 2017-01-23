@@ -14,7 +14,19 @@
  * limitations under the License.
  */
 
+#define LOG_TAG "libvintf"
+
 #include "VendorManifest.h"
+#include "parse_xml.h"
+
+#include <android-base/logging.h>
+#include <dirent.h>
+#include <fstream>
+#include <iostream>
+#include <sstream>
+
+#define MANIFEST_PATH "/vendor/manifest/"
+#define MANIFEST_FILE "/vendor/manifest.xml"
 
 namespace android {
 namespace vintf {
@@ -48,8 +60,48 @@ std::vector<std::string> VendorManifest::checkIncompatiblity(const Compatibility
     return std::vector<std::string>();
 }
 
-// TODO Need to grab all fragments here.
 status_t VendorManifest::fetchAllInformation() {
+#if 0
+    // TODO: b/33755377 Uncomment this if we use a directory of fragments instead.
+    status_t err = OK;
+    DIR *dir = NULL;
+    struct dirent *e;
+    std::ifstream in;
+    std::string buf;
+    if ((dir = opendir(MANIFEST_PATH))) {
+        while ((e = readdir(dir))) {
+            if (strcmp(e->d_name, ".") == 0 || strcmp(e->d_name, "..") == 0) {
+                continue;
+            }
+            in.open(e->d_name);
+            in >> buf;
+
+            err = handleFragment(this, buf); // And we will need to define this
+            if (err != OK) {
+                break;
+            }
+        }
+    }
+    if (dir != NULL) {
+        closedir(dir);
+    }
+    return err;
+#endif
+
+    std::ifstream in;
+    in.open(MANIFEST_FILE);
+    if (!in.is_open()) {
+        LOG(ERROR) << "Cannot open " MANIFEST_FILE;
+        return INVALID_OPERATION;
+    }
+    std::stringstream ss;
+    ss << in.rdbuf();
+    bool success = gVendorManifestConverter(this, ss.str());
+    if (!success) {
+        LOG(ERROR) << "Illformed vendor manifest: " MANIFEST_FILE << ": "
+                   << gVendorManifestConverter.lastError();
+        return BAD_VALUE;
+    }
     return OK;
 }
 
