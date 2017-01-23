@@ -223,8 +223,7 @@ bool parse(const std::string &s, KernelConfig *kc) {
 std::string dump(const VendorManifest &vm) {
     std::ostringstream oss;
     bool first = true;
-    for (const auto &pair : vm.hals) {
-        const auto &hal = pair.second;
+    for (const auto &hal : vm.getHals()) {
         if (!first) {
             oss << ":";
         }

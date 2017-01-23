@@ -406,8 +406,8 @@ class VendorManifestConverter : public XmlNodeConverter<VendorManifest> {
     std::string elementName() const override { return "manifest"; }
     void mutateNode(const VendorManifest &m, NodeType *root, DocType *d) const override {
         appendAttr(root, "version", VendorManifest::kVersion);
-        for (const auto &pair : m.hals) {
-            appendChild(root, manifestHalConverter(pair.second, d));
+        for (const auto &hal : m.getHals()) {
+            appendChild(root, manifestHalConverter(hal, d));
         }
     }
     bool buildObject(VendorManifest *object, NodeType *root) const override {
