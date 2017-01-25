@@ -68,11 +68,11 @@ ConstMapValueIterable<std::string, ManifestHal> VendorManifest::getHals() const 
 
 const std::vector<Version> &VendorManifest::getSupportedVersions(const std::string &name) const {
     static const std::vector<Version> empty{};
-    auto it = hals.find(name);
-    if (it != hals.end()) {
-        return it->second.versions;
+    const ManifestHal *hal = getHal(name);
+    if (hal == nullptr) {
+        return empty;
     }
-    return empty;
+    return hal->versions;
 }
 
 std::vector<std::string> VendorManifest::checkIncompatiblity(const CompatibilityMatrix &/*mat*/) const {
