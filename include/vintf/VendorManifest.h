@@ -23,8 +23,9 @@
 #include <utils/Errors.h>
 #include <vector>
 
-#include "Version.h"
 #include "ManifestHal.h"
+#include "MapValueIterator.h"
+#include "Version.h"
 
 namespace android {
 namespace vintf {
@@ -41,8 +42,23 @@ public:
 
     VendorManifest() {}
 
+    // Add an hal to this manifest.
     bool add(ManifestHal &&hal);
+
+    // clear this manifest.
     inline void clear() { hals.clear(); }
+
+    // Get an HAL entry based on the component name. Return nullptr
+    // if the entry does not exist. The component name looks like:
+    // android.hardware.foo
+    const ManifestHal *getHal(const std::string &name) const;
+
+    // return getHal(name)->transport if the entry exist, else EMPTY.
+    Transport getTransport(const std::string &name) const;
+
+    // Return an iterable to all ManifestHal objects. Call it as follows:
+    // for (const ManifestHal &e : vm.getHals()) { }
+    ConstMapValueIterable<std::string, ManifestHal> getHals() const;
 
     // Whether this manifest is a valid one. Note that an empty VendorManifest
     // (constructed via VendorManifest()) is valid.
@@ -62,6 +78,7 @@ public:
     // Note: this is not thread-safe.
     static const VendorManifest *Get();
 
+private:
     // sorted map from component name to the entry.
     std::map<std::string, ManifestHal> hals;
 
