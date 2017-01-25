@@ -46,6 +46,26 @@ bool VendorManifest::add(ManifestHal &&hal) {
     return hals.emplace(hal.name, std::move(hal)).second;
 }
 
+const ManifestHal *VendorManifest::getHal(const std::string &name) const {
+    const auto it = hals.find(name);
+    if (it == hals.end()) {
+        return nullptr;
+    }
+    return &(it->second);
+}
+
+Transport VendorManifest::getTransport(const std::string &name) const {
+    const ManifestHal *hal = getHal(name);
+    if (hal == nullptr) {
+        return Transport::EMPTY;
+    }
+    return hal->transport;
+}
+
+ConstMapValueIterable<std::string, ManifestHal> VendorManifest::getHals() const {
+    return ConstMapValueIterable<std::string, ManifestHal>(hals);
+}
+
 const std::vector<Version> &VendorManifest::getSupportedVersions(const std::string &name) const {
     static const std::vector<Version> empty{};
     auto it = hals.find(name);
