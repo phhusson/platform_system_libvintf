@@ -34,14 +34,20 @@ public:
     }
 };
 
-TEST_F(LibVintfTest, Stringify) {
+static VendorManifest testVendorManifest() {
     VendorManifest vm;
-    vm.add(ManifestHal::hal("camera", ImplLevel::SOC, "msm8892",
+    vm.add(ManifestHal::hal("android.hardware.camera", ImplLevel::SOC, "msm8892",
             Version(2,0), Transport::HWBINDER));
-    vm.add(ManifestHal::hal("nfc", ImplLevel::GENERIC, "generic",
+    vm.add(ManifestHal::hal("android.hardware.nfc", ImplLevel::GENERIC, "generic",
             Version(1,0), Transport::PASSTHROUGH));
-    EXPECT_EQ(dump(vm), "hidl/camera/hwbinder/soc/msm8892/2.0:"
-                        "hidl/nfc/passthrough/generic/generic/1.0");
+
+    return vm;
+}
+
+TEST_F(LibVintfTest, Stringify) {
+    VendorManifest vm = testVendorManifest();
+    EXPECT_EQ(dump(vm), "hidl/android.hardware.camera/hwbinder/soc/msm8892/2.0:"
+                        "hidl/android.hardware.nfc/passthrough/generic/generic/1.0");
 
     EXPECT_EQ(to_string(HalFormat::HIDL), "hidl");
     EXPECT_EQ(to_string(HalFormat::NATIVE), "native");
@@ -54,22 +60,18 @@ TEST_F(LibVintfTest, Stringify) {
 }
 
 TEST_F(LibVintfTest, VendorManifestConverter) {
-    VendorManifest vm;
-    vm.add(ManifestHal::hal("camera", ImplLevel::SOC, "msm8892",
-            Version(2,0), Transport::HWBINDER));
-    vm.add(ManifestHal::hal("nfc", ImplLevel::GENERIC, "generic",
-            Version(1,0), Transport::PASSTHROUGH));
+    VendorManifest vm = testVendorManifest();
     std::string xml = gVendorManifestConverter(vm);
     EXPECT_EQ(xml,
         "<manifest version=\"1.0\">\n"
         "    <hal format=\"hidl\">\n"
-        "        <name>camera</name>\n"
+        "        <name>android.hardware.camera</name>\n"
         "        <transport>hwbinder</transport>\n"
         "        <impl level=\"soc\">msm8892</impl>\n"
         "        <version>2.0</version>\n"
         "    </hal>\n"
         "    <hal format=\"hidl\">\n"
-        "        <name>nfc</name>\n"
+        "        <name>android.hardware.nfc</name>\n"
         "        <transport>passthrough</transport>\n"
         "        <impl level=\"generic\">generic</impl>\n"
         "        <version>1.0</version>\n"
@@ -97,13 +99,13 @@ TEST_F(LibVintfTest, HalImplementationConverter) {
 }
 
 TEST_F(LibVintfTest, MatrixHalConverter) {
-    MatrixHal mh{HalFormat::NATIVE, "camera",
+    MatrixHal mh{HalFormat::NATIVE, "android.hardware.camera",
             {{VersionRange(1,2,3), VersionRange(4,5,6)}},
             false /* optional */};
     std::string xml = gMatrixHalConverter(mh);
     EXPECT_EQ(xml,
         "<hal format=\"native\" optional=\"false\">\n"
-        "    <name>camera</name>\n"
+        "    <name>android.hardware.camera</name>\n"
         "    <version>1.2-3</version>\n"
         "    <version>4.5-6</version>\n"
         "</hal>\n");
@@ -114,10 +116,10 @@ TEST_F(LibVintfTest, MatrixHalConverter) {
 
 TEST_F(LibVintfTest, CompatibilityMatrixCoverter) {
     CompatibilityMatrix cm;
-    cm.add(MatrixHal{HalFormat::NATIVE, "camera",
+    cm.add(MatrixHal{HalFormat::NATIVE, "android.hardware.camera",
             {{VersionRange(1,2,3), VersionRange(4,5,6)}},
             false /* optional */});
-    cm.add(MatrixHal{HalFormat::NATIVE, "nfc",
+    cm.add(MatrixHal{HalFormat::NATIVE, "android.hardware.nfc",
             {{VersionRange(4,5,6), VersionRange(10,11,12)}},
             true /* optional */});
     cm.add(MatrixKernel{Version(3, 18),
@@ -128,12 +130,12 @@ TEST_F(LibVintfTest, CompatibilityMatrixCoverter) {
     EXPECT_EQ(xml,
         "<compatibility-matrix version=\"1.0\">\n"
         "    <hal format=\"native\" optional=\"false\">\n"
-        "        <name>camera</name>\n"
+        "        <name>android.hardware.camera</name>\n"
         "        <version>1.2-3</version>\n"
         "        <version>4.5-6</version>\n"
         "    </hal>\n"
         "    <hal format=\"native\" optional=\"true\">\n"
-        "        <name>nfc</name>\n"
+        "        <name>android.hardware.nfc</name>\n"
         "        <version>4.5-6</version>\n"
         "        <version>10.11-12</version>\n"
         "    </hal>\n"
@@ -157,19 +159,27 @@ TEST_F(LibVintfTest, IsValid) {
     EXPECT_TRUE(ManifestHal().isValid());
     EXPECT_TRUE(VendorManifest().isValid());
 
-    VendorManifest vm;
-    vm.add(ManifestHal::hal("camera", ImplLevel::SOC, "msm8892",
-            Version(2,0), Transport::HWBINDER));
-    vm.add(ManifestHal::hal("nfc", ImplLevel::GENERIC, "generic",
-            Version(1,0), Transport::PASSTHROUGH));
+    VendorManifest vm = testVendorManifest();
     EXPECT_TRUE(vm.isValid());
 
-    ManifestHal invalidHal = ManifestHal::hal("camera", ImplLevel::SOC, "msm8892",
+    ManifestHal invalidHal = ManifestHal::hal("android.hardware.camera", ImplLevel::SOC, "msm8892",
             {{Version(2,0), Version(2,1)}}, Transport::PASSTHROUGH);
     EXPECT_FALSE(invalidHal.isValid());
     VendorManifest vm2;
     vm2.add(std::move(invalidHal));
     EXPECT_FALSE(vm2.isValid());
+}
+
+TEST_F(LibVintfTest, VendorManifestGetHal) {
+    VendorManifest vm = testVendorManifest();
+    EXPECT_NE(vm.getHal("android.hardware.camera"), nullptr);
+    EXPECT_EQ(vm.getHal("non-existent"), nullptr);
+
+    std::vector<std::string> arr{"android.hardware.camera", "android.hardware.nfc"};
+    size_t i = 0;
+    for (const auto &hal : vm.getHals()) {
+        EXPECT_EQ(hal.name, arr[i++]);
+    }
 }
 
 int main(int argc, char **argv) {
