@@ -51,6 +51,9 @@ public:
     bool isEqual(const CompatibilityMatrix &cm1, const CompatibilityMatrix &cm2) {
         return cm1.hals == cm2.hals && cm1.kernels == cm2.kernels;
     }
+    bool isValid(const ManifestHal &mh) {
+        return mh.isValid();
+    }
     VendorManifest testVendorManifest() {
         VendorManifest vm;
         vm.add(ManifestHal::hal("android.hardware.camera", ImplLevel::SOC, "msm8892",
@@ -174,18 +177,13 @@ TEST_F(LibVintfTest, CompatibilityMatrixCoverter) {
 }
 
 TEST_F(LibVintfTest, IsValid) {
-    EXPECT_TRUE(ManifestHal().isValid());
-    EXPECT_TRUE(VendorManifest().isValid());
-
-    VendorManifest vm = testVendorManifest();
-    EXPECT_TRUE(vm.isValid());
+    EXPECT_TRUE(isValid(ManifestHal()));
 
     ManifestHal invalidHal = ManifestHal::hal("android.hardware.camera", ImplLevel::SOC, "msm8892",
             {{Version(2,0), Version(2,1)}}, Transport::PASSTHROUGH);
-    EXPECT_FALSE(invalidHal.isValid());
+    EXPECT_FALSE(isValid(invalidHal));
     VendorManifest vm2;
-    add(vm2, std::move(invalidHal));
-    EXPECT_FALSE(vm2.isValid());
+    EXPECT_FALSE(add(vm2, std::move(invalidHal)));
 }
 
 TEST_F(LibVintfTest, VendorManifestGetHal) {

@@ -47,6 +47,7 @@ bool parse(const std::string &s, ImplLevel *il);
 bool parse(const std::string &s, Transport *tr);
 bool parse(const std::string &s, Version *ver);
 bool parse(const std::string &s, VersionRange *vr);
+// if return true, hal->isValid() must be true.
 bool parse(const std::string &s, ManifestHal *hal);
 bool parse(const std::string &s, MatrixHal *req);
 bool parse(const std::string &s, KernelConfig *kc);

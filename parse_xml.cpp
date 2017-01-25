@@ -382,7 +382,7 @@ struct ManifestHalConverter : public XmlNodeConverter<ManifestHal> {
             || !parseChildren(root, versionConverter, &object->versions)) {
             return false;
         }
-        return true;
+        return object->isValid();
     }
 };
 
