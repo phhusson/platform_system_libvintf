@@ -47,8 +47,9 @@ public:
     // android.hardware.foo
     const ManifestHal *getHal(const std::string &name) const;
 
-    // return getHal(name)->transport if the entry exist, else EMPTY.
-    Transport getTransport(const std::string &name) const;
+    // return getHal(name)->transport if the entry exist and v exactly matches
+    // one of the versions in that entry, else EMPTY
+    Transport getTransport(const std::string &name, const Version &v) const;
 
     // Return an iterable to all ManifestHal objects. Call it as follows:
     // for (const ManifestHal &e : vm.getHals()) { }
