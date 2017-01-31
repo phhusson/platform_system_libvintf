@@ -42,12 +42,6 @@ public:
 
     VendorManifest() {}
 
-    // Add an hal to this manifest.
-    bool add(ManifestHal &&hal);
-
-    // clear this manifest.
-    inline void clear() { hals.clear(); }
-
     // Get an HAL entry based on the component name. Return nullptr
     // if the entry does not exist. The component name looks like:
     // android.hardware.foo
@@ -59,10 +53,6 @@ public:
     // Return an iterable to all ManifestHal objects. Call it as follows:
     // for (const ManifestHal &e : vm.getHals()) { }
     ConstMapValueIterable<std::string, ManifestHal> getHals() const;
-
-    // Whether this manifest is a valid one. Note that an empty VendorManifest
-    // (constructed via VendorManifest()) is valid.
-    bool isValid() const;
 
     // Given a component name (e.g. "camera"), return a list of version numbers
     // that are supported by the hardware. If the entry is not found, empty list
@@ -79,11 +69,21 @@ public:
     static const VendorManifest *Get();
 
 private:
-    // sorted map from component name to the entry.
-    std::map<std::string, ManifestHal> hals;
+    friend struct VendorManifestConverter;
+    friend struct LibVintfTest;
+    friend std::string dump(const VendorManifest &vm);
 
-private:
+    // Add an hal to this manifest.
+    bool add(ManifestHal &&hal);
+
+    // clear this manifest.
+    inline void clear() { hals.clear(); }
+
     status_t fetchAllInformation();
+
+    // sorted map from component name to the entry.
+    // The component name looks like: android.hardware.foo
+    std::map<std::string, ManifestHal> hals;
 };
 
 

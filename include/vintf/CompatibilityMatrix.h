@@ -29,12 +29,16 @@ namespace vintf {
 
 // Compatibility matrix defines what hardware does the framework requires.
 struct CompatibilityMatrix {
-
     constexpr static Version kVersion{1, 0};
 
+private:
     bool add(MatrixHal &&hal);
     bool add(MatrixKernel &&kernel);
     void clear();
+
+    friend struct CompatibilityMatrixConverter;
+    friend struct LibVintfTest;
+    friend struct VendorManifest;
 
     // sorted map from component name to the entry.
     std::map<std::string, MatrixHal> hals;
