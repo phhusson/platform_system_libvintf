@@ -52,15 +52,21 @@ struct ManifestHal {
 
     bool operator==(const ManifestHal &other) const;
 
-    // Whether this hal is a valid one. Note that an empty ManifestHal
-    // (constructed via ManifestHal()) is valid.
-    bool isValid() const;
-
     HalFormat format = HalFormat::HIDL;
     std::string name;
     std::vector<Version> versions;
     HalImplementation impl;
     Transport transport = Transport::EMPTY;
+
+private:
+    friend struct LibVintfTest;
+    friend struct ManifestHalConverter;
+    friend struct VendorManifest;
+    friend bool parse(const std::string &s, ManifestHal *hal);
+
+    // Whether this hal is a valid one. Note that an empty ManifestHal
+    // (constructed via ManifestHal()) is valid.
+    bool isValid() const;
 };
 
 } // namespace vintf
