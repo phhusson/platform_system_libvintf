@@ -300,7 +300,7 @@ const XmlConverter<KernelConfig> &gKernelConfigConverter = kernelConfigConverter
 const XmlTextConverter<Transport> transportConverter{"transport"};
 const XmlConverter<Transport> &gTransportConverter = transportConverter;
 
-class MatrixHalConverter : public XmlNodeConverter<MatrixHal> {
+struct MatrixHalConverter : public XmlNodeConverter<MatrixHal> {
     std::string elementName() const override { return "hal"; }
     void mutateNode(const MatrixHal &hal, NodeType *root, DocType *d) const override {
         appendAttr(root, "format", hal.format);
@@ -324,7 +324,7 @@ class MatrixHalConverter : public XmlNodeConverter<MatrixHal> {
 const MatrixHalConverter matrixHalConverter{};
 const XmlConverter<MatrixHal> &gMatrixHalConverter = matrixHalConverter;
 
-class MatrixKernelConverter : public XmlNodeConverter<MatrixKernel> {
+struct MatrixKernelConverter : public XmlNodeConverter<MatrixKernel> {
     std::string elementName() const override { return "kernel"; }
     void mutateNode(const MatrixKernel &kernel, NodeType *root, DocType *d) const override {
         appendAttr(root, "version", kernel.version);
@@ -344,7 +344,7 @@ class MatrixKernelConverter : public XmlNodeConverter<MatrixKernel> {
 const MatrixKernelConverter matrixKernelConverter{};
 const XmlConverter<MatrixKernel> &gMatrixKernelConverter = matrixKernelConverter;
 
-class HalImplementationConverter : public XmlNodeConverter<HalImplementation> {
+struct HalImplementationConverter : public XmlNodeConverter<HalImplementation> {
     std::string elementName() const override { return "impl"; }
     void mutateNode(const HalImplementation &impl, NodeType *root, DocType *d) const override {
         appendAttr(root, "level", impl.implLevel);
@@ -362,7 +362,7 @@ class HalImplementationConverter : public XmlNodeConverter<HalImplementation> {
 const HalImplementationConverter halImplementationConverter{};
 const XmlConverter<HalImplementation> &gHalImplementationConverter = halImplementationConverter;
 
-class ManifestHalConverter : public XmlNodeConverter<ManifestHal> {
+struct ManifestHalConverter : public XmlNodeConverter<ManifestHal> {
     std::string elementName() const override { return "hal"; }
     void mutateNode(const ManifestHal &hal, NodeType *root, DocType *d) const override {
         appendAttr(root, "format", hal.format);
@@ -389,7 +389,7 @@ class ManifestHalConverter : public XmlNodeConverter<ManifestHal> {
 const ManifestHalConverter manifestHalConverter{};
 const XmlConverter<ManifestHal> &gManifestHalConverter = manifestHalConverter;
 
-class SepolicyConverter : public XmlNodeConverter<Sepolicy> {
+struct SepolicyConverter : public XmlNodeConverter<Sepolicy> {
     std::string elementName() const override { return "sepolicy"; }
     void mutateNode(const Sepolicy &, NodeType *, DocType *) const override {
         // TODO after writing sepolicy
@@ -402,7 +402,7 @@ class SepolicyConverter : public XmlNodeConverter<Sepolicy> {
 const SepolicyConverter sepolicyConverter{};
 const XmlConverter<Sepolicy> &gSepolicyConverter = sepolicyConverter;
 
-class VendorManifestConverter : public XmlNodeConverter<VendorManifest> {
+struct VendorManifestConverter : public XmlNodeConverter<VendorManifest> {
     std::string elementName() const override { return "manifest"; }
     void mutateNode(const VendorManifest &m, NodeType *root, DocType *d) const override {
         appendAttr(root, "version", VendorManifest::kVersion);
@@ -425,7 +425,7 @@ class VendorManifestConverter : public XmlNodeConverter<VendorManifest> {
 const VendorManifestConverter vendorManifestConverter{};
 const XmlConverter<VendorManifest> &gVendorManifestConverter = vendorManifestConverter;
 
-class CompatibilityMatrixConverter : public XmlNodeConverter<CompatibilityMatrix> {
+struct CompatibilityMatrixConverter : public XmlNodeConverter<CompatibilityMatrix> {
     std::string elementName() const override { return "compatibility-matrix"; }
     void mutateNode(const CompatibilityMatrix &m, NodeType *root, DocType *d) const override {
         appendAttr(root, "version", CompatibilityMatrix::kVersion);
