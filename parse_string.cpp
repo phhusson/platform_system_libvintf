@@ -174,7 +174,7 @@ bool parse(const std::string &s, ManifestHal *hal) {
     if (!parse(v[5], &hal->versions)) {
         return false;
     }
-    return true;
+    return hal->isValid();
 }
 
 std::ostream &operator<<(std::ostream &os, const ManifestHal &hal) {

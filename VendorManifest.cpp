@@ -33,17 +33,8 @@ namespace vintf {
 
 constexpr Version VendorManifest::kVersion;
 
-bool VendorManifest::isValid() const {
-    for (const auto &pair : hals) {
-        if (!pair.second.isValid()) {
-            return false;
-        }
-    }
-    return true;
-}
-
 bool VendorManifest::add(ManifestHal &&hal) {
-    return hals.emplace(hal.name, std::move(hal)).second;
+    return hal.isValid() && hals.emplace(hal.name, std::move(hal)).second;
 }
 
 const ManifestHal *VendorManifest::getHal(const std::string &name) const {
