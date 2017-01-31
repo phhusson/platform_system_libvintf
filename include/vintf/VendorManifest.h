@@ -42,12 +42,6 @@ public:
 
     VendorManifest() {}
 
-    // Add an hal to this manifest.
-    bool add(ManifestHal &&hal);
-
-    // clear this manifest.
-    inline void clear() { hals.clear(); }
-
     // Get an HAL entry based on the component name. Return nullptr
     // if the entry does not exist. The component name looks like:
     // android.hardware.foo
@@ -79,11 +73,21 @@ public:
     static const VendorManifest *Get();
 
 private:
-    // sorted map from component name to the entry.
-    std::map<std::string, ManifestHal> hals;
+    friend struct VendorManifestConverter;
+    friend struct LibVintfTest;
+    friend std::string dump(const VendorManifest &vm);
 
-private:
+    // Add an hal to this manifest.
+    bool add(ManifestHal &&hal);
+
+    // clear this manifest.
+    inline void clear() { hals.clear(); }
+
     status_t fetchAllInformation();
+
+    // sorted map from component name to the entry.
+    // The component name looks like: android.hardware.foo
+    std::map<std::string, ManifestHal> hals;
 };
 
 
