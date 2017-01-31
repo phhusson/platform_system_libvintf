@@ -46,14 +46,12 @@ extern const XmlConverter<MatrixKernel> &gMatrixKernelConverter;
 
 extern const XmlConverter<HalImplementation> &gHalImplementationConverter;
 
-// Convert ManifestHal from and to XML. Returned object is not guaranteed to have
+// Convert ManifestHal from and to XML. Returned object is guaranteed to have
 // .isValid() == true.
 extern const XmlConverter<ManifestHal> &gManifestHalConverter;
 
 extern const XmlConverter<Sepolicy> &gSepolicyConverter;
 
-// Convert VendorManifest from and to XML. Returned object is not guaranteed to have
-// .isValid() == true.
 extern const XmlConverter<VendorManifest> &gVendorManifestConverter;
 
 extern const XmlConverter<CompatibilityMatrix> &gCompatibilityMatrixConverter;

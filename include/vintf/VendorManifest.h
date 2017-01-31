@@ -54,10 +54,6 @@ public:
     // for (const ManifestHal &e : vm.getHals()) { }
     ConstMapValueIterable<std::string, ManifestHal> getHals() const;
 
-    // Whether this manifest is a valid one. Note that an empty VendorManifest
-    // (constructed via VendorManifest()) is valid.
-    bool isValid() const;
-
     // Given a component name (e.g. "camera"), return a list of version numbers
     // that are supported by the hardware. If the entry is not found, empty list
     // is returned.
