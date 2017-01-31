@@ -24,25 +24,44 @@
 #include <android-base/logging.h>
 #include <gtest/gtest.h>
 
-using namespace android::vintf;
+namespace android {
+namespace vintf {
 
-class LibVintfTest : public ::testing::Test {
+struct LibVintfTest : public ::testing::Test {
 public:
     virtual void SetUp() override {
     }
     virtual void TearDown() override {
     }
+    bool add(CompatibilityMatrix &cm, MatrixHal &&hal) {
+        return cm.add(std::move(hal));
+    }
+    bool add(CompatibilityMatrix &cm, MatrixKernel &&kernel) {
+        return cm.add(std::move(kernel));
+    }
+    bool add(VendorManifest &vm, ManifestHal &&hal) {
+        return vm.add(std::move(hal));
+    }
+    const ManifestHal *getHal(VendorManifest &vm, const std::string &name) {
+        return vm.getHal(name);
+    }
+    ConstMapValueIterable<std::string, ManifestHal> getHals(VendorManifest &vm) {
+        return vm.getHals();
+    }
+    bool isEqual(const CompatibilityMatrix &cm1, const CompatibilityMatrix &cm2) {
+        return cm1.hals == cm2.hals && cm1.kernels == cm2.kernels;
+    }
+    VendorManifest testVendorManifest() {
+        VendorManifest vm;
+        vm.add(ManifestHal::hal("android.hardware.camera", ImplLevel::SOC, "msm8892",
+                Version(2,0), Transport::HWBINDER));
+        vm.add(ManifestHal::hal("android.hardware.nfc", ImplLevel::GENERIC, "generic",
+                Version(1,0), Transport::PASSTHROUGH));
+
+        return vm;
+    }
 };
 
-static VendorManifest testVendorManifest() {
-    VendorManifest vm;
-    vm.add(ManifestHal::hal("android.hardware.camera", ImplLevel::SOC, "msm8892",
-            Version(2,0), Transport::HWBINDER));
-    vm.add(ManifestHal::hal("android.hardware.nfc", ImplLevel::GENERIC, "generic",
-            Version(1,0), Transport::PASSTHROUGH));
-
-    return vm;
-}
 
 TEST_F(LibVintfTest, Stringify) {
     VendorManifest vm = testVendorManifest();
@@ -116,16 +135,16 @@ TEST_F(LibVintfTest, MatrixHalConverter) {
 
 TEST_F(LibVintfTest, CompatibilityMatrixCoverter) {
     CompatibilityMatrix cm;
-    cm.add(MatrixHal{HalFormat::NATIVE, "android.hardware.camera",
+    EXPECT_TRUE(add(cm, MatrixHal{HalFormat::NATIVE, "android.hardware.camera",
             {{VersionRange(1,2,3), VersionRange(4,5,6)}},
-            false /* optional */});
-    cm.add(MatrixHal{HalFormat::NATIVE, "android.hardware.nfc",
+            false /* optional */}));
+    EXPECT_TRUE(add(cm, MatrixHal{HalFormat::NATIVE, "android.hardware.nfc",
             {{VersionRange(4,5,6), VersionRange(10,11,12)}},
-            true /* optional */});
-    cm.add(MatrixKernel{Version(3, 18),
-            {{{"CONFIG_FOO"}, {"CONFIG_BAR"}}}});
-    cm.add(MatrixKernel{Version(4, 4),
-            {{{"CONFIG_BAZ"}, {"CONFIG_BAR"}}}});
+            true /* optional */}));
+    EXPECT_TRUE(add(cm, MatrixKernel{Version(3, 18),
+            {{{"CONFIG_FOO"}, {"CONFIG_BAR"}}}}));
+    EXPECT_TRUE(add(cm, MatrixKernel{Version(4, 4),
+            {{{"CONFIG_BAZ"}, {"CONFIG_BAR"}}}}));
     std::string xml = gCompatibilityMatrixConverter(cm);
     EXPECT_EQ(xml,
         "<compatibility-matrix version=\"1.0\">\n"
@@ -151,8 +170,7 @@ TEST_F(LibVintfTest, CompatibilityMatrixCoverter) {
         "</compatibility-matrix>\n");
     CompatibilityMatrix cm2;
     EXPECT_TRUE(gCompatibilityMatrixConverter(&cm2, xml));
-    EXPECT_EQ(cm.hals, cm2.hals);
-    EXPECT_EQ(cm.kernels, cm2.kernels);
+    EXPECT_TRUE(isEqual(cm, cm2));
 }
 
 TEST_F(LibVintfTest, IsValid) {
@@ -166,21 +184,24 @@ TEST_F(LibVintfTest, IsValid) {
             {{Version(2,0), Version(2,1)}}, Transport::PASSTHROUGH);
     EXPECT_FALSE(invalidHal.isValid());
     VendorManifest vm2;
-    vm2.add(std::move(invalidHal));
+    add(vm2, std::move(invalidHal));
     EXPECT_FALSE(vm2.isValid());
 }
 
 TEST_F(LibVintfTest, VendorManifestGetHal) {
     VendorManifest vm = testVendorManifest();
-    EXPECT_NE(vm.getHal("android.hardware.camera"), nullptr);
-    EXPECT_EQ(vm.getHal("non-existent"), nullptr);
+    EXPECT_NE(getHal(vm, "android.hardware.camera"), nullptr);
+    EXPECT_EQ(getHal(vm, "non-existent"), nullptr);
 
     std::vector<std::string> arr{"android.hardware.camera", "android.hardware.nfc"};
     size_t i = 0;
-    for (const auto &hal : vm.getHals()) {
+    for (const auto &hal : getHals(vm)) {
         EXPECT_EQ(hal.name, arr[i++]);
     }
 }
+
+} // namespace vintf
+} // namespace android
 
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
