@@ -64,8 +64,11 @@ public:
     std::vector<std::string> checkIncompatiblity(const CompatibilityMatrix &mat) const;
 
     // Gather all Vendor Manifest fragments, and encapsulate in a VendorManifest.
-    // If any error, nullptr is returned.
-    // Note: this is not thread-safe.
+    // If no error, it return the same singleton object in the future, and the HAL manifest
+    // file won't be touched again.
+    // If any error, nullptr is returned, and Get will try to parse the HAL manifest
+    // again when it is called again.
+    // This operation is thread-safe.
     static const VendorManifest *Get();
 
 private:
