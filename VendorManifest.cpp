@@ -24,6 +24,7 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
+#include <mutex>
 
 #define MANIFEST_PATH "/vendor/manifest/"
 #define MANIFEST_FILE "/vendor/manifest.xml"
@@ -118,9 +119,13 @@ status_t VendorManifest::fetchAllInformation() {
 
 // static
 const VendorManifest *VendorManifest::Get() {
-    static VendorManifest vm;
-    static VendorManifest *vmp;
+    static VendorManifest vm{};
+    static VendorManifest *vmp = nullptr;
+    static std::mutex mutex{};
+
+    std::lock_guard<std::mutex> lock(mutex);
     if (vmp == nullptr) {
+        vm.clear();
         if (vm.fetchAllInformation() == OK) {
             vmp = &vm;
         }
@@ -128,6 +133,7 @@ const VendorManifest *VendorManifest::Get() {
 
     return vmp;
 }
+
 
 } // namespace vintf
 } // namespace android
