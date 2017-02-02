@@ -46,9 +46,14 @@ const ManifestHal *VendorManifest::getHal(const std::string &name) const {
     return &(it->second);
 }
 
-Transport VendorManifest::getTransport(const std::string &name) const {
+Transport VendorManifest::getTransport(const std::string &name, const Version &v) const {
     const ManifestHal *hal = getHal(name);
     if (hal == nullptr) {
+        return Transport::EMPTY;
+    }
+    if (std::find(hal->versions.begin(), hal->versions.end(), v) == hal->versions.end()) {
+        LOG(WARNING) << "VendorManifest::getTransport: Cannot find "
+                     << v.majorVer << "." << v.minorVer << " in supported versions of " << name;
         return Transport::EMPTY;
     }
     return hal->transport;

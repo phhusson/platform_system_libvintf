@@ -55,8 +55,6 @@ struct Version {
     inline bool operator>=(const Version &other) const {
         return !((*this) < other);
     }
-
-    static constexpr size_t INFINITY = SIZE_MAX;
 };
 
 } // namespace vintf
