@@ -108,7 +108,7 @@ status_t VendorManifest::fetchAllInformation() {
     std::ifstream in;
     in.open(MANIFEST_FILE);
     if (!in.is_open()) {
-        LOG(ERROR) << "Cannot open " MANIFEST_FILE;
+        LOG(WARNING) << "Cannot open " MANIFEST_FILE;
         return INVALID_OPERATION;
     }
     std::stringstream ss;
