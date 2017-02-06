@@ -130,9 +130,11 @@ const VendorManifest *VendorManifest::Get() {
 
     std::lock_guard<std::mutex> lock(mutex);
     if (vmp == nullptr) {
-        vm.clear();
         if (vm.fetchAllInformation() == OK) {
             vmp = &vm;
+        } else {
+            vm.clear();
+            return nullptr;
         }
     }
 
