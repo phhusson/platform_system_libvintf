@@ -22,6 +22,7 @@
 #include <string>
 
 #include "CompatibilityMatrix.h"
+#include "KernelInfo.h"
 #include "VendorManifest.h"
 
 namespace android {
@@ -56,6 +57,8 @@ bool parse(const std::string &s, KernelConfig *kc);
 // its components. For debugging and testing purposes only. This is not
 // the XML string.
 std::string dump(const VendorManifest &vm);
+
+std::string dump(const KernelInfo &ki);
 
 } // namespace vintf
 } // namespace android
