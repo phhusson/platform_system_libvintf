@@ -294,11 +294,49 @@ const XmlConverter<Version> &gVersionConverter = versionConverter;
 const XmlTextConverter<VersionRange> versionRangeConverter{"version"};
 const XmlConverter<VersionRange> &gVersionRangeConverter = versionRangeConverter;
 
-const XmlTextConverter<KernelConfig> kernelConfigConverter{"config"};
-const XmlConverter<KernelConfig> &gKernelConfigConverter = kernelConfigConverter;
-
 const XmlTextConverter<Transport> transportConverter{"transport"};
 const XmlConverter<Transport> &gTransportConverter = transportConverter;
+
+const XmlTextConverter<KernelConfigKey> kernelConfigKeyConverter{"key"};
+
+struct KernelConfigTypedValueConverter : public XmlNodeConverter<KernelConfigTypedValue> {
+    std::string elementName() const override { return "value"; }
+    void mutateNode(const KernelConfigTypedValue &object, NodeType *root, DocType *d) const override {
+        appendAttr(root, "type", object.mType);
+        appendText(root, ::android::vintf::to_string(object), d);
+    }
+    bool buildObject(KernelConfigTypedValue *object, NodeType *root) const override {
+        std::string stringValue;
+        if (!parseAttr(root, "type", &object->mType) ||
+            !parseText(root, &stringValue)) {
+            return false;
+        }
+        if (!::android::vintf::parseKernelConfigValue(stringValue, object)) {
+            return false;
+        }
+        return true;
+    }
+};
+
+const KernelConfigTypedValueConverter kernelConfigTypedValueConverter{};
+const XmlConverter<KernelConfigTypedValue> &gKernelConfigTypedValueConverter = kernelConfigTypedValueConverter;
+
+struct KernelConfigConverter : public XmlNodeConverter<KernelConfig> {
+    std::string elementName() const override { return "config"; }
+    void mutateNode(const KernelConfig &object, NodeType *root, DocType *d) const override {
+        appendChild(root, kernelConfigKeyConverter(object.first, d));
+        appendChild(root, kernelConfigTypedValueConverter(object.second, d));
+    }
+    bool buildObject(KernelConfig *object, NodeType *root) const override {
+        if (   !parseChild(root, kernelConfigKeyConverter, &object->first)
+            || !parseChild(root, kernelConfigTypedValueConverter, &object->second)) {
+            return false;
+        }
+        return true;
+    }
+};
+
+const KernelConfigConverter kernelConfigConverter{};
 
 struct MatrixHalConverter : public XmlNodeConverter<MatrixHal> {
     std::string elementName() const override { return "hal"; }
@@ -327,14 +365,20 @@ const XmlConverter<MatrixHal> &gMatrixHalConverter = matrixHalConverter;
 struct MatrixKernelConverter : public XmlNodeConverter<MatrixKernel> {
     std::string elementName() const override { return "kernel"; }
     void mutateNode(const MatrixKernel &kernel, NodeType *root, DocType *d) const override {
-        appendAttr(root, "version", kernel.version);
-        for (const auto &config : kernel.configs) {
+        appendAttr(root, "version", Version{kernel.mMinLts.version, kernel.mMinLts.majorRev});
+        appendAttr(root, "minlts", kernel.mMinLts);
+        for (const KernelConfig &config : kernel.mConfigs) {
             appendChild(root, kernelConfigConverter(config, d));
         }
     }
     bool buildObject(MatrixKernel *object, NodeType *root) const override {
-        if (   !parseAttr(root, "version", &object->version)
-            || !parseChildren(root, kernelConfigConverter, &object->configs)) {
+        Version v;
+        if (   !parseAttr(root, "minlts", &object->mMinLts)
+            || !parseAttr(root, "version", &v)
+            || !parseChildren(root, kernelConfigConverter, &object->mConfigs)) {
+            return false;
+        }
+        if (v != Version{object->mMinLts.version, object->mMinLts.majorRev}) {
             return false;
         }
         return true;
