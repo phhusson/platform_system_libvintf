@@ -40,6 +40,8 @@ extern const XmlConverter<VersionRange> &gVersionRangeConverter;
 
 extern const XmlConverter<MatrixHal> &gMatrixHalConverter;
 
+extern const XmlConverter<KernelConfigTypedValue> &gKernelConfigTypedValueConverter;
+
 extern const XmlConverter<KernelConfig> &gKernelConfigConverter;
 
 extern const XmlConverter<MatrixKernel> &gMatrixKernelConverter;
