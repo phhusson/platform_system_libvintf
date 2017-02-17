@@ -347,7 +347,7 @@ bool parse(const std::string &s, SepolicyVersion *sv){
     return true;
 }
 
-std::string dump(const VendorManifest &vm) {
+std::string dump(const HalManifest &vm) {
     std::ostringstream oss;
     bool first = true;
     for (const auto &hal : vm.getHals()) {

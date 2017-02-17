@@ -18,7 +18,7 @@
 #define ANDROID_VINTF_PARSE_XML_H
 
 #include "CompatibilityMatrix.h"
-#include "VendorManifest.h"
+#include "HalManifest.h"
 
 namespace android {
 namespace vintf {
@@ -34,7 +34,7 @@ struct XmlConverter {
     virtual bool operator()(Object *o, const std::string &xml) const = 0;
 };
 
-extern const XmlConverter<VendorManifest> &gVendorManifestConverter;
+extern const XmlConverter<HalManifest> &gHalManifestConverter;
 
 extern const XmlConverter<CompatibilityMatrix> &gCompatibilityMatrixConverter;
 

@@ -446,15 +446,15 @@ struct SepolicyConverter : public XmlNodeConverter<Sepolicy> {
 };
 const SepolicyConverter sepolicyConverter{};
 
-struct VendorManifestConverter : public XmlNodeConverter<VendorManifest> {
+struct HalManifestConverter : public XmlNodeConverter<HalManifest> {
     std::string elementName() const override { return "manifest"; }
-    void mutateNode(const VendorManifest &m, NodeType *root, DocType *d) const override {
-        appendAttr(root, "version", VendorManifest::kVersion);
+    void mutateNode(const HalManifest &m, NodeType *root, DocType *d) const override {
+        appendAttr(root, "version", HalManifest::kVersion);
         for (const auto &hal : m.getHals()) {
             appendChild(root, manifestHalConverter(hal, d));
         }
     }
-    bool buildObject(VendorManifest *object, NodeType *root) const override {
+    bool buildObject(HalManifest *object, NodeType *root) const override {
         std::vector<ManifestHal> hals;
         if (!parseChildren(root, manifestHalConverter, &hals)) {
             return false;
@@ -466,7 +466,7 @@ struct VendorManifestConverter : public XmlNodeConverter<VendorManifest> {
     }
 };
 
-const VendorManifestConverter vendorManifestConverter{};
+const HalManifestConverter halManifestConverter{};
 
 struct CompatibilityMatrixConverter : public XmlNodeConverter<CompatibilityMatrix> {
     std::string elementName() const override { return "compatibility-matrix"; }
@@ -497,7 +497,7 @@ struct CompatibilityMatrixConverter : public XmlNodeConverter<CompatibilityMatri
 const CompatibilityMatrixConverter compatibilityMatrixConverter{};
 
 // Publicly available as in parse_xml.h
-const XmlConverter<VendorManifest> &gVendorManifestConverter = vendorManifestConverter;
+const XmlConverter<HalManifest> &gHalManifestConverter = halManifestConverter;
 const XmlConverter<CompatibilityMatrix> &gCompatibilityMatrixConverter
         = compatibilityMatrixConverter;
 

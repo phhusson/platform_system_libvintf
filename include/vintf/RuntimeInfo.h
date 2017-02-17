@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_VINTF_KERNEL_INFO_H
-#define ANDROID_VINTF_KERNEL_INFO_H
+#ifndef ANDROID_VINTF_RUNTIME_INFO_H
+#define ANDROID_VINTF_RUNTIME_INFO_H
 
 #include "Version.h"
 
@@ -29,7 +29,7 @@ namespace vintf {
 
 struct CompatibilityMatrix;
 
-// Kernel Info sent to OTA server
+// Runtime Info sent to OTA server
 struct RuntimeInfo {
 
     RuntimeInfo() {}
@@ -83,4 +83,4 @@ private:
 } // namespace vintf
 } // namespace android
 
-#endif // ANDROID_VINTF_KERNEL_INFO_H
+#endif // ANDROID_VINTF_RUNTIME_INFO_H
