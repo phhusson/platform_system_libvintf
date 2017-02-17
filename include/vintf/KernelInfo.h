@@ -68,7 +68,7 @@ private:
 
     // /proc/config.gz
     // Key: CONFIG_xxx; Value: the value after = sign.
-    std::map<std::string, std::string> kernelConfigs;
+    std::map<std::string, std::string> mKernelConfigs;
     std::string mOsName;
     std::string mNodeName;
     std::string mOsRelease;
