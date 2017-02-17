@@ -34,26 +34,6 @@ struct XmlConverter {
     virtual bool operator()(Object *o, const std::string &xml) const = 0;
 };
 
-extern const XmlConverter<Version> &gVersionConverter;
-
-extern const XmlConverter<VersionRange> &gVersionRangeConverter;
-
-extern const XmlConverter<MatrixHal> &gMatrixHalConverter;
-
-extern const XmlConverter<KernelConfigTypedValue> &gKernelConfigTypedValueConverter;
-
-extern const XmlConverter<KernelConfig> &gKernelConfigConverter;
-
-extern const XmlConverter<MatrixKernel> &gMatrixKernelConverter;
-
-extern const XmlConverter<HalImplementation> &gHalImplementationConverter;
-
-// Convert ManifestHal from and to XML. Returned object is guaranteed to have
-// .isValid() == true.
-extern const XmlConverter<ManifestHal> &gManifestHalConverter;
-
-extern const XmlConverter<Sepolicy> &gSepolicyConverter;
-
 extern const XmlConverter<VendorManifest> &gVendorManifestConverter;
 
 extern const XmlConverter<CompatibilityMatrix> &gCompatibilityMatrixConverter;
