@@ -50,11 +50,11 @@ private:
     friend struct LibVintfTest;
 
     // sorted map from component name to the entry.
-    std::map<std::string, MatrixHal> hals;
+    std::map<std::string, MatrixHal> mHals;
 
-    std::vector<MatrixKernel> kernels;
+    std::vector<MatrixKernel> mKernels;
 
-    Sepolicy sepolicy;
+    Sepolicy mSepolicy;
 };
 
 } // namespace vintf
