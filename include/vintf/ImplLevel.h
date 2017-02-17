@@ -32,12 +32,14 @@ enum class ImplLevel : size_t {
     GENERIC
 };
 
-static const std::array<std::string, 4> gImplLevelStrings = { {
-    "",
-    "target",
-    "soc",
-    "generic",
-} };
+static const std::array<std::string, 4> gImplLevelStrings = {
+    {
+        "",
+        "target",
+        "soc",
+        "generic",
+    }
+};
 
 } // namespace vintf
 } // namespace android

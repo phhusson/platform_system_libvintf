@@ -349,10 +349,10 @@ struct MatrixHalConverter : public XmlNodeConverter<MatrixHal> {
         }
     }
     bool buildObject(MatrixHal *object, NodeType *root) const override {
-        if (   !parseAttr(root, "format", &object->format)
-            || !parseAttr(root, "optional", &object->optional)
-            || !parseTextElement(root, "name", &object->name)
-            || !parseChildren(root, versionRangeConverter, &object->versionRanges)) {
+        if (!parseAttr(root, "format", &object->format) ||
+            !parseAttr(root, "optional", &object->optional) ||
+            !parseTextElement(root, "name", &object->name) ||
+            !parseChildren(root, versionRangeConverter, &object->versionRanges)) {
             return false;
         }
         return true;
@@ -373,9 +373,9 @@ struct MatrixKernelConverter : public XmlNodeConverter<MatrixKernel> {
     }
     bool buildObject(MatrixKernel *object, NodeType *root) const override {
         Version v;
-        if (   !parseAttr(root, "minlts", &object->mMinLts)
-            || !parseAttr(root, "version", &v)
-            || !parseChildren(root, kernelConfigConverter, &object->mConfigs)) {
+        if (!parseAttr(root, "minlts", &object->mMinLts) ||
+            !parseAttr(root, "version", &v) ||
+            !parseChildren(root, kernelConfigConverter, &object->mConfigs)) {
             return false;
         }
         if (v != Version{object->mMinLts.version, object->mMinLts.majorRev}) {
@@ -395,8 +395,8 @@ struct HalImplementationConverter : public XmlNodeConverter<HalImplementation> {
         appendText(root, impl.impl, d);
     }
     bool buildObject(HalImplementation *object, NodeType *root) const override {
-        if (   !parseAttr(root, "level", &object->implLevel)
-            || !parseText(root, &object->impl)) {
+        if (!parseAttr(root, "level", &object->implLevel) ||
+            !parseText(root, &object->impl)) {
             return false;
         }
         return true;
@@ -419,11 +419,11 @@ struct ManifestHalConverter : public XmlNodeConverter<ManifestHal> {
         }
     }
     bool buildObject(ManifestHal *object, NodeType *root) const override {
-        if (   !parseAttr(root, "format", &object->format)
-            || !parseTextElement(root, "name", &object->name)
-            || !parseChild(root, transportConverter, &object->transport)
-            || !parseChild(root, halImplementationConverter, &object->impl)
-            || !parseChildren(root, versionConverter, &object->versions)) {
+        if (!parseAttr(root, "format", &object->format) ||
+            !parseTextElement(root, "name", &object->name) ||
+            !parseChild(root, transportConverter, &object->transport) ||
+            !parseChild(root, halImplementationConverter, &object->impl) ||
+            !parseChildren(root, versionConverter, &object->versions)) {
             return false;
         }
         return object->isValid();
@@ -490,9 +490,9 @@ struct CompatibilityMatrixConverter : public XmlNodeConverter<CompatibilityMatri
     }
     bool buildObject(CompatibilityMatrix *object, NodeType *root) const override {
         std::vector<MatrixHal> hals;
-        if (   !parseChildren(root, matrixHalConverter, &hals)
-            || !parseChildren(root, matrixKernelConverter, &object->kernels)
-            || !parseChild(root, sepolicyConverter, &object->sepolicy)) {
+        if (!parseChildren(root, matrixHalConverter, &hals) ||
+            !parseChildren(root, matrixKernelConverter, &object->kernels) ||
+            !parseChild(root, sepolicyConverter, &object->sepolicy)) {
             return false;
         }
         for (auto &&hal : hals) {

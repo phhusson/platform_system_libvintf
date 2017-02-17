@@ -32,12 +32,14 @@ enum class Transport : size_t {
     TOGGLED,
 };
 
-static const std::array<std::string, 4> gTransportStrings = { {
-    "",
-    "passthrough",
-    "hwbinder",
-    "toggled",
-} };
+static const std::array<std::string, 4> gTransportStrings = {
+    {
+        "",
+        "passthrough",
+        "hwbinder",
+        "toggled",
+    }
+};
 
 } // namespace vintf
 } // namespace android
