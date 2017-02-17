@@ -29,6 +29,13 @@
 namespace android {
 namespace vintf {
 
+extern const XmlConverter<Version> &gVersionConverter;
+extern const XmlConverter<MatrixHal> &gMatrixHalConverter;
+extern const XmlConverter<KernelConfigTypedValue> &gKernelConfigTypedValueConverter;
+extern const XmlConverter<HalImplementation> &gHalImplementationConverter;
+extern const XmlConverter<VendorManifest> &gVendorManifestConverter;
+extern const XmlConverter<CompatibilityMatrix> &gCompatibilityMatrixConverter;
+
 struct LibVintfTest : public ::testing::Test {
 public:
     virtual void SetUp() override {
