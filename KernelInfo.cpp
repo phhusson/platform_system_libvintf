@@ -19,6 +19,9 @@
 
 #include "KernelInfo.h"
 
+#include "CompatibilityMatrix.h"
+#include "parse_string.h"
+
 #include <errno.h>
 #include <sys/utsname.h>
 #include <unistd.h>
@@ -59,6 +62,7 @@ private:
     status_t fetchCpuInfo();
     status_t fetchKernelSepolicyVers();
     status_t fetchSepolicyFiles();
+    status_t parseKernelVersion();
     KernelInfo *mKernelInfo;
     std::string mRemaining;
 };
@@ -150,6 +154,29 @@ status_t KernelInfoFetcher::fetchVersion() {
     mKernelInfo->mOsRelease = buf.release;
     mKernelInfo->mOsVersion = buf.version;
     mKernelInfo->mHardwareId = buf.machine;
+
+    status_t err = parseKernelVersion();
+    if (err != OK) {
+        LOG(ERROR) << "Could not parse kernel version from \""
+                   << mKernelInfo->mOsRelease << "\"";
+    }
+    return err;
+}
+
+status_t KernelInfoFetcher::parseKernelVersion() {
+    auto pos = mKernelInfo->mOsRelease.find('.');
+    if (pos == std::string::npos) {
+        return UNKNOWN_ERROR;
+    }
+    pos = mKernelInfo->mOsRelease.find('.', pos + 1);
+    if (pos == std::string::npos) {
+        return UNKNOWN_ERROR;
+    }
+    pos = mKernelInfo->mOsRelease.find_first_not_of("0123456789", pos + 1);
+    // no need to check pos == std::string::npos, because substr will handle this
+    if (!parse(mKernelInfo->mOsRelease.substr(0, pos), &mKernelInfo->mKernelVersion)) {
+        return UNKNOWN_ERROR;
+    }
     return OK;
 }
 
@@ -211,6 +238,50 @@ void KernelInfo::clear() {
     mOsRelease.clear();
     mOsVersion.clear();
     mHardwareId.clear();
+}
+
+bool KernelInfo::checkCompatibility(const CompatibilityMatrix &mat,
+            std::string *error) const {
+    if (kernelSepolicyVersion() != mat.getSepolicy().kernelSepolicyVersion()) {
+        if (error != nullptr) {
+            *error = "kernelSepolicyVersion = " + to_string(kernelSepolicyVersion())
+                     + " but required " + to_string(mat.getSepolicy().kernelSepolicyVersion());
+        }
+        return false;
+    }
+
+    // TODO(b/35217573): check sepolicy version against mat.getSepolicy().sepolicyVersion() here.
+
+    const MatrixKernel *matrixKernel = mat.findKernel(this->mKernelVersion);
+    if (matrixKernel == nullptr) {
+        if (error != nullptr) {
+            *error = "Cannot find suitable kernel entry for " + to_string(mKernelVersion);
+        }
+        return false;
+    }
+    for (const KernelConfig &matrixConfig : matrixKernel->configs()) {
+        const std::string &key = matrixConfig.first;
+        auto it = this->kernelConfigs.find(key);
+        if (it == this->kernelConfigs.end()) {
+            // special case: <value type="tristate">n</value> matches if the config doesn't exist.
+            if (matrixConfig.second == KernelConfigTypedValue::gMissingConfig) {
+                continue;
+            }
+            if (error != nullptr) {
+                *error = "Missing config " + key;
+            }
+            return false;
+        }
+        const std::string &kernelValue = it->second;
+        if (!matrixConfig.second.matchValue(kernelValue)) {
+            if (error != nullptr) {
+                *error = "For config " + key + ", value = " + kernelValue
+                        + " but required " + to_string(matrixConfig.second);
+            }
+            return false;
+        }
+    }
+    return true;
 }
 
 const KernelInfo *KernelInfo::Get() {

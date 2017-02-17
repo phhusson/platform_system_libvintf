@@ -35,5 +35,23 @@ void CompatibilityMatrix::clear() {
     kernels.clear();
 }
 
+ConstMapValueIterable<std::string, MatrixHal> CompatibilityMatrix::getHals() const {
+    return ConstMapValueIterable<std::string, MatrixHal>(hals);
+}
+
+const MatrixKernel *CompatibilityMatrix::findKernel(const KernelVersion &v) const {
+    for (const MatrixKernel &matrixKernel : kernels) {
+        if (matrixKernel.minLts().version == v.version &&
+            matrixKernel.minLts().majorRev == v.majorRev) {
+            return matrixKernel.minLts().minorRev <= v.minorRev ? &matrixKernel : nullptr;
+        }
+    }
+    return nullptr;
+}
+
+const Sepolicy &CompatibilityMatrix::getSepolicy() const {
+    return sepolicy;
+}
+
 } // namespace vintf
 } // namespace android
