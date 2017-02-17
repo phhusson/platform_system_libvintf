@@ -360,7 +360,7 @@ std::string dump(const VendorManifest &vm) {
     return oss.str();
 }
 
-std::string dump(const KernelInfo &ki) {
+std::string dump(const RuntimeInfo &ki) {
     std::ostringstream oss;
 
     oss << "kernel = "

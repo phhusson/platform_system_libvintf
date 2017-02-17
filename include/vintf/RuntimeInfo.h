@@ -30,14 +30,14 @@ namespace vintf {
 struct CompatibilityMatrix;
 
 // Kernel Info sent to OTA server
-struct KernelInfo {
+struct RuntimeInfo {
 
-    KernelInfo() {}
+    RuntimeInfo() {}
 
     // Get the object that contains all kernel information. If any error,
     // nullptr is returned.
     // Note: this is not thread-safe.
-    static const KernelInfo *Get();
+    static const RuntimeInfo *Get();
 
     // /proc/version
     // utsname.sysname
@@ -60,9 +60,9 @@ struct KernelInfo {
 
 private:
 
-    friend struct KernelInfoFetcher;
+    friend struct RuntimeInfoFetcher;
     friend struct LibVintfTest;
-    friend std::string dump(const KernelInfo &ki);
+    friend std::string dump(const RuntimeInfo &ki);
 
     void clear();
 
