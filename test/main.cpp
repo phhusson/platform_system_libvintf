@@ -77,7 +77,7 @@ public:
         info.mOsVersion = "#4 SMP PREEMPT Wed Feb 1 18:10:52 PST 2017";
         info.mHardwareId = "aarch64";
         info.mKernelSepolicyVersion = 30;
-        info.kernelConfigs = {
+        info.mKernelConfigs = {
             {"CONFIG_64BIT", "y"},
             {"CONFIG_ANDROID_BINDER_DEVICES", "\"binder,hwbinder\""},
             {"CONFIG_ARCH_MMAP_RND_BITS", "24"},

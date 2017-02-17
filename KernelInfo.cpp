@@ -108,7 +108,7 @@ void KernelInfoFetcher::parseConfig(std::string *s) {
     }
     std::string key = s->substr(0, equalPos);
     std::string value = s->substr(equalPos + 1);
-    if (!mKernelInfo->kernelConfigs.emplace(std::move(key), std::move(value)).second) {
+    if (!mKernelInfo->mKernelConfigs.emplace(std::move(key), std::move(value)).second) {
         LOG(WARNING) << "Duplicated key in /proc/config.gz: " << s->substr(0, equalPos);
         return;
     }
@@ -232,7 +232,7 @@ size_t KernelInfo::kernelSepolicyVersion() const {
 }
 
 void KernelInfo::clear() {
-    kernelConfigs.clear();
+    mKernelConfigs.clear();
     mOsName.clear();
     mNodeName.clear();
     mOsRelease.clear();
@@ -261,8 +261,8 @@ bool KernelInfo::checkCompatibility(const CompatibilityMatrix &mat,
     }
     for (const KernelConfig &matrixConfig : matrixKernel->configs()) {
         const std::string &key = matrixConfig.first;
-        auto it = this->kernelConfigs.find(key);
-        if (it == this->kernelConfigs.end()) {
+        auto it = this->mKernelConfigs.find(key);
+        if (it == this->mKernelConfigs.end()) {
             // special case: <value type="tristate">n</value> matches if the config doesn't exist.
             if (matrixConfig.second == KernelConfigTypedValue::gMissingConfig) {
                 continue;

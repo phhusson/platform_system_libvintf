@@ -370,8 +370,8 @@ std::string dump(const KernelInfo &ki) {
         << ki.osVersion() << "/"
         << ki.hardwareId() << ";"
         << "kernelSepolicyVersion = " << ki.kernelSepolicyVersion() << ";"
-        << "#CONFIG's loaded = " << ki.kernelConfigs.size() << ";\n";
-    for (const auto &pair : ki.kernelConfigs) {
+        << "#CONFIG's loaded = " << ki.mKernelConfigs.size() << ";\n";
+    for (const auto &pair : ki.mKernelConfigs) {
         oss << pair.first << "=" << pair.second << "\n";
     }
 
