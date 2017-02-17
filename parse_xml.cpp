@@ -289,13 +289,10 @@ private:
 // ---------------------- XmlNodeConverter definitions end
 
 const XmlTextConverter<Version> versionConverter{"version"};
-const XmlConverter<Version> &gVersionConverter = versionConverter;
 
 const XmlTextConverter<VersionRange> versionRangeConverter{"version"};
-const XmlConverter<VersionRange> &gVersionRangeConverter = versionRangeConverter;
 
 const XmlTextConverter<Transport> transportConverter{"transport"};
-const XmlConverter<Transport> &gTransportConverter = transportConverter;
 
 const XmlTextConverter<KernelConfigKey> kernelConfigKeyConverter{"key"};
 
@@ -319,7 +316,6 @@ struct KernelConfigTypedValueConverter : public XmlNodeConverter<KernelConfigTyp
 };
 
 const KernelConfigTypedValueConverter kernelConfigTypedValueConverter{};
-const XmlConverter<KernelConfigTypedValue> &gKernelConfigTypedValueConverter = kernelConfigTypedValueConverter;
 
 struct KernelConfigConverter : public XmlNodeConverter<KernelConfig> {
     std::string elementName() const override { return "config"; }
@@ -360,7 +356,6 @@ struct MatrixHalConverter : public XmlNodeConverter<MatrixHal> {
 };
 
 const MatrixHalConverter matrixHalConverter{};
-const XmlConverter<MatrixHal> &gMatrixHalConverter = matrixHalConverter;
 
 struct MatrixKernelConverter : public XmlNodeConverter<MatrixKernel> {
     std::string elementName() const override { return "kernel"; }
@@ -386,7 +381,6 @@ struct MatrixKernelConverter : public XmlNodeConverter<MatrixKernel> {
 };
 
 const MatrixKernelConverter matrixKernelConverter{};
-const XmlConverter<MatrixKernel> &gMatrixKernelConverter = matrixKernelConverter;
 
 struct HalImplementationConverter : public XmlNodeConverter<HalImplementation> {
     std::string elementName() const override { return "impl"; }
@@ -404,7 +398,6 @@ struct HalImplementationConverter : public XmlNodeConverter<HalImplementation> {
 };
 
 const HalImplementationConverter halImplementationConverter{};
-const XmlConverter<HalImplementation> &gHalImplementationConverter = halImplementationConverter;
 
 struct ManifestHalConverter : public XmlNodeConverter<ManifestHal> {
     std::string elementName() const override { return "hal"; }
@@ -430,8 +423,9 @@ struct ManifestHalConverter : public XmlNodeConverter<ManifestHal> {
     }
 };
 
+// Convert ManifestHal from and to XML. Returned object is guaranteed to have
+// .isValid() == true.
 const ManifestHalConverter manifestHalConverter{};
-const XmlConverter<ManifestHal> &gManifestHalConverter = manifestHalConverter;
 
 const XmlTextConverter<KernelSepolicyVersion> kernelSepolicyVersionConverter{"kernel-sepolicy-version"};
 const XmlTextConverter<SepolicyVersion> sepolicyVersionConverter{"sepolicy-version"};
@@ -451,7 +445,6 @@ struct SepolicyConverter : public XmlNodeConverter<Sepolicy> {
     }
 };
 const SepolicyConverter sepolicyConverter{};
-const XmlConverter<Sepolicy> &gSepolicyConverter = sepolicyConverter;
 
 struct VendorManifestConverter : public XmlNodeConverter<VendorManifest> {
     std::string elementName() const override { return "manifest"; }
@@ -474,7 +467,6 @@ struct VendorManifestConverter : public XmlNodeConverter<VendorManifest> {
 };
 
 const VendorManifestConverter vendorManifestConverter{};
-const XmlConverter<VendorManifest> &gVendorManifestConverter = vendorManifestConverter;
 
 struct CompatibilityMatrixConverter : public XmlNodeConverter<CompatibilityMatrix> {
     std::string elementName() const override { return "compatibility-matrix"; }
@@ -503,8 +495,18 @@ struct CompatibilityMatrixConverter : public XmlNodeConverter<CompatibilityMatri
 };
 
 const CompatibilityMatrixConverter compatibilityMatrixConverter{};
+
+// Publicly available as in parse_xml.h
+const XmlConverter<VendorManifest> &gVendorManifestConverter = vendorManifestConverter;
 const XmlConverter<CompatibilityMatrix> &gCompatibilityMatrixConverter
         = compatibilityMatrixConverter;
+
+// For testing in LibVintfTest
+const XmlConverter<Version> &gVersionConverter = versionConverter;
+const XmlConverter<KernelConfigTypedValue> &gKernelConfigTypedValueConverter
+        = kernelConfigTypedValueConverter;
+const XmlConverter<MatrixHal> &gMatrixHalConverter = matrixHalConverter;
+const XmlConverter<HalImplementation> &gHalImplementationConverter = halImplementationConverter;
 
 } // namespace vintf
 } // namespace android
