@@ -17,14 +17,18 @@
 #define LOG_TAG "libvintf"
 
 #include "VendorManifest.h"
-#include "parse_xml.h"
 
-#include <android-base/logging.h>
+#include "parse_xml.h"
+#include "CompatibilityMatrix.h"
+
 #include <dirent.h>
+
 #include <fstream>
 #include <iostream>
 #include <sstream>
 #include <mutex>
+
+#include <android-base/logging.h>
 
 #define MANIFEST_PATH "/vendor/manifest/"
 #define MANIFEST_FILE "/vendor/manifest.xml"
@@ -72,9 +76,42 @@ const std::vector<Version> &VendorManifest::getSupportedVersions(const std::stri
     return hal->versions;
 }
 
-std::vector<std::string> VendorManifest::checkIncompatiblity(const CompatibilityMatrix &/*mat*/) const {
-    // TODO implement this
-    return std::vector<std::string>();
+static bool isCompatible(const MatrixHal &matrixHal, const ManifestHal &manifestHal) {
+    if (matrixHal.format != manifestHal.format) {
+        return false;
+    }
+    // don't check optional
+
+    for (const Version &manifestVersion : manifestHal.versions) {
+        for (const VersionRange &matrixVersionRange : matrixHal.versionRanges) {
+            // If Compatibility Matrix says 2.5-2.7, the "2.7" is purely informational;
+            // the framework can work with all 2.5-2.infinity.
+            if (manifestVersion.majorVer == matrixVersionRange.majorVer &&
+                manifestVersion.minorVer >= matrixVersionRange.minMinor) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+std::vector<std::string> VendorManifest::checkIncompatiblity(const CompatibilityMatrix &mat) const {
+    std::vector<std::string> incompatible;
+    for (const MatrixHal &matrixHal : mat.getHals()) {
+        // don't check optional; put it in the incompatibility list as well.
+        const std::string &name = matrixHal.name;
+        auto it = hals.find(name);
+        if (it == hals.end()) {
+            incompatible.push_back(name);
+            continue;
+        }
+        const ManifestHal &manifestHal = it->second;
+        if (!isCompatible(matrixHal, manifestHal)) {
+            incompatible.push_back(name);
+            continue;
+        }
+    }
+    return incompatible;
 }
 
 status_t VendorManifest::fetchAllInformation() {

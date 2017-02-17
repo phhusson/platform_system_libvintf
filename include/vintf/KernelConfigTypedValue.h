@@ -30,6 +30,9 @@ using KernelConfigRangeValue = std::pair<uint64_t, uint64_t>;
 
 // compatibility-matrix.kernel.config.value item.
 struct KernelConfigTypedValue {
+
+    const static KernelConfigTypedValue gMissingConfig;
+
     // Construct with empty string value
     KernelConfigTypedValue();
 
@@ -39,6 +42,8 @@ struct KernelConfigTypedValue {
     KernelConfigTypedValue(Tristate t);
 
     bool operator==(const KernelConfigTypedValue &other) const;
+
+    bool matchValue(const std::string &) const;
 
 private:
     friend struct KernelConfigTypedValueConverter;

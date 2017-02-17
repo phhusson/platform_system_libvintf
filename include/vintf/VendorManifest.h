@@ -61,7 +61,8 @@ public:
     const std::vector<Version> &getSupportedVersions(const std::string &name) const;
 
     // Return a list of component names that does NOT conform to
-    // the given compatibility matrix.
+    // the given compatibility matrix. It may contain components that are optional
+    // for the framework.
     std::vector<std::string> checkIncompatiblity(const CompatibilityMatrix &mat) const;
 
     // Gather all Vendor Manifest fragments, and encapsulate in a VendorManifest.
