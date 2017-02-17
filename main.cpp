@@ -17,7 +17,7 @@
 #include <iostream>
 #include <vintf/parse_xml.h>
 #include <vintf/parse_string.h>
-#include <vintf/KernelInfo.h>
+#include <vintf/RuntimeInfo.h>
 #include <vintf/VendorManifest.h>
 
 int main(int, char **) {
@@ -28,7 +28,7 @@ int main(int, char **) {
         std::cout << gVendorManifestConverter(*vm);
 
     std::cout << std::endl;
-    const KernelInfo *ki = KernelInfo::Get();
+    const RuntimeInfo *ki = RuntimeInfo::Get();
     if (ki != nullptr)
         std::cout << dump(*ki);
     std::cout << std::endl;
