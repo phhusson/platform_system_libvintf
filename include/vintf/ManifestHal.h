@@ -61,7 +61,7 @@ struct ManifestHal {
 private:
     friend struct LibVintfTest;
     friend struct ManifestHalConverter;
-    friend struct VendorManifest;
+    friend struct HalManifest;
     friend bool parse(const std::string &s, ManifestHal *hal);
 
     // Whether this hal is a valid one. Note that an empty ManifestHal

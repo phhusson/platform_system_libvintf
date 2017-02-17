@@ -23,7 +23,7 @@
 
 #include "CompatibilityMatrix.h"
 #include "RuntimeInfo.h"
-#include "VendorManifest.h"
+#include "HalManifest.h"
 
 namespace android {
 namespace vintf {
@@ -75,7 +75,7 @@ bool parseKernelConfigValue(const std::string &s, KernelConfigTypedValue *kctv);
 // A string that describes the whole object, with versions of all
 // its components. For debugging and testing purposes only. This is not
 // the XML string.
-std::string dump(const VendorManifest &vm);
+std::string dump(const HalManifest &vm);
 
 std::string dump(const RuntimeInfo &ki);
 

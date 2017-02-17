@@ -15,8 +15,8 @@
  */
 
 
-#ifndef ANDROID_VINTF_VENDOR_MANIFEST_H
-#define ANDROID_VINTF_VENDOR_MANIFEST_H
+#ifndef ANDROID_VINTF_HAL_MANIFEST_H
+#define ANDROID_VINTF_HAL_MANIFEST_H
 
 #include <map>
 #include <string>
@@ -34,13 +34,13 @@ struct CompatibilityMatrix;
 
 // A Vendor Interface Object is reported by the hardware and query-able from
 // framework code. This is the API for the framework.
-struct VendorManifest {
+struct HalManifest {
 public:
 
     // manifest.version
     constexpr static Version kVersion{1, 0};
 
-    VendorManifest() {}
+    HalManifest() {}
 
     // Get an HAL entry based on the component name. Return nullptr
     // if the entry does not exist. The component name looks like:
@@ -65,16 +65,16 @@ public:
     // for the framework.
     std::vector<std::string> checkIncompatiblity(const CompatibilityMatrix &mat) const;
 
-    // Gather all Vendor Manifest fragments, and encapsulate in a VendorManifest.
+    // Gather all Vendor Manifest fragments, and encapsulate in a HalManifest.
     // If no error, it return the same singleton object in the future, and the HAL manifest
     // file won't be touched again.
     // If any error, nullptr is returned, and Get will try to parse the HAL manifest
     // again when it is called again.
     // This operation is thread-safe.
-    static const VendorManifest *Get();
+    static const HalManifest *Get();
 
 private:
-    friend struct VendorManifestConverter;
+    friend struct HalManifestConverter;
     friend struct LibVintfTest;
 
     // Add an hal to this manifest.
@@ -94,4 +94,4 @@ private:
 } // namespace vintf
 } // namespace android
 
-#endif // ANDROID_VINTF_VENDOR_MANIFEST_H
+#endif // ANDROID_VINTF_HAL_MANIFEST_H
