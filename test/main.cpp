@@ -19,7 +19,7 @@
 #include <vintf/parse_string.h>
 #include <vintf/parse_xml.h>
 #include <vintf/CompatibilityMatrix.h>
-#include <vintf/KernelInfo.h>
+#include <vintf/RuntimeInfo.h>
 #include <vintf/VendorManifest.h>
 
 #include <android-base/logging.h>
@@ -75,8 +75,8 @@ public:
 
         return vm;
     }
-    KernelInfo testKernelInfo() {
-        KernelInfo info;
+    RuntimeInfo testRuntimeInfo() {
+        RuntimeInfo info;
         info.mOsName = "Linux";
         info.mNodeName = "localhost";
         info.mOsRelease = "3.18.31-g936f9a479d0f";
@@ -328,8 +328,8 @@ TEST_F(LibVintfTest, VendorManifestGetHal) {
     }
 }
 
-TEST_F(LibVintfTest, KernelInfo) {
-    KernelInfo ki = testKernelInfo();
+TEST_F(LibVintfTest, RuntimeInfo) {
+    RuntimeInfo ki = testRuntimeInfo();
     using KernelConfigs = std::vector<KernelConfig>;
     const KernelConfigs configs {
             KernelConfig{"CONFIG_64BIT", Tristate::YES},

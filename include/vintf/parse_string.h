@@ -22,7 +22,7 @@
 #include <string>
 
 #include "CompatibilityMatrix.h"
-#include "KernelInfo.h"
+#include "RuntimeInfo.h"
 #include "VendorManifest.h"
 
 namespace android {
@@ -77,7 +77,7 @@ bool parseKernelConfigValue(const std::string &s, KernelConfigTypedValue *kctv);
 // the XML string.
 std::string dump(const VendorManifest &vm);
 
-std::string dump(const KernelInfo &ki);
+std::string dump(const RuntimeInfo &ki);
 
 } // namespace vintf
 } // namespace android
