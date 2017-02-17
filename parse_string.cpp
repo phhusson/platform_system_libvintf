@@ -320,6 +320,33 @@ std::ostream &operator<<(std::ostream &os, const MatrixHal &req) {
               << (req.optional ? kOptional : kRequired);
 }
 
+
+std::ostream &operator<<(std::ostream &os, KernelSepolicyVersion ksv){
+    return os << ksv.value;
+}
+
+bool parse(const std::string &s, KernelSepolicyVersion *ksv){
+    return ParseUint(s, &ksv->value);
+}
+
+std::ostream &operator<<(std::ostream &os, const SepolicyVersion &sv){
+    return os << sv.minVer << "-" << sv.maxVer;
+}
+
+bool parse(const std::string &s, SepolicyVersion *sv){
+    std::vector<std::string> v = SplitString(s, '-');
+    if (v.size() != 2) {
+        return false;
+    }
+    if (!ParseUint(v[0], &sv->minVer)) {
+        return false;
+    }
+    if (!ParseUint(v[1], &sv->maxVer)) {
+        return false;
+    }
+    return true;
+}
+
 std::string dump(const VendorManifest &vm) {
     std::ostringstream oss;
     bool first = true;

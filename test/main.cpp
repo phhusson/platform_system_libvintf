@@ -43,6 +43,9 @@ public:
     bool add(VendorManifest &vm, ManifestHal &&hal) {
         return vm.add(std::move(hal));
     }
+    void set(CompatibilityMatrix &cm, Sepolicy &&sepolicy) {
+        cm.sepolicy = sepolicy;
+    }
     const ManifestHal *getHal(VendorManifest &vm, const std::string &name) {
         return vm.getHal(name);
     }
@@ -233,6 +236,7 @@ TEST_F(LibVintfTest, CompatibilityMatrixCoverter) {
             {KernelConfig{"CONFIG_FOO", Tristate::YES}, KernelConfig{"CONFIG_BAR", "stringvalue"}}}));
     EXPECT_TRUE(add(cm, MatrixKernel{KernelVersion(4, 4, 1),
             {KernelConfig{"CONFIG_BAZ", 20}, KernelConfig{"CONFIG_BAR", KernelConfigRangeValue{3, 5} }}}));
+    set(cm, Sepolicy(30, {1, 3}));
     std::string xml = gCompatibilityMatrixConverter(cm);
     EXPECT_EQ(xml,
             "<compatibility-matrix version=\"1.0\">\n"
@@ -266,7 +270,10 @@ TEST_F(LibVintfTest, CompatibilityMatrixCoverter) {
             "            <value type=\"range\">3-5</value>\n"
             "        </config>\n"
             "    </kernel>\n"
-            "    <sepolicy/>\n"
+            "    <sepolicy>\n"
+            "        <kernel-sepolicy-version>30</kernel-sepolicy-version>\n"
+            "        <sepolicy-version>1-3</sepolicy-version>\n"
+            "    </sepolicy>\n"
             "</compatibility-matrix>\n");
     CompatibilityMatrix cm2;
     EXPECT_TRUE(gCompatibilityMatrixConverter(&cm2, xml));
