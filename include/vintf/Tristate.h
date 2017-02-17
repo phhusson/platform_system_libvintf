@@ -14,18 +14,31 @@
  * limitations under the License.
  */
 
-#include "MatrixKernel.h"
+#ifndef ANDROID_VINTF_TRISTATE_H
+#define ANDROID_VINTF_TRISTATE_H
+
+#include <stdint.h>
+#include <string>
+#include <array>
 
 namespace android {
 namespace vintf {
 
-bool MatrixKernel::operator==(const MatrixKernel &other) const {
-    if (mMinLts != other.mMinLts)
-        return false;
-    if (mConfigs != other.mConfigs)
-        return false;
-    return true;
-}
+enum class Tristate : size_t {
+    NO = 0,
+    YES,
+    MODULE
+};
+
+static const std::array<std::string, 3> gTristateStrings = {
+    {
+        "n",
+        "y",
+        "m",
+    }
+};
 
 } // namespace vintf
 } // namespace android
+
+#endif // ANDROID_VINTF_TRISTATE_H

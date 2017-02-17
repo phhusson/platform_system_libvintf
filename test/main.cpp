@@ -22,6 +22,7 @@
 #include <vintf/VendorManifest.h>
 
 #include <android-base/logging.h>
+#include <android-base/parseint.h>
 #include <gtest/gtest.h>
 
 namespace android {
@@ -136,6 +137,90 @@ TEST_F(LibVintfTest, MatrixHalConverter) {
     EXPECT_EQ(mh, mh2);
 }
 
+TEST_F(LibVintfTest, KernelConfigTypedValueConverter) {
+
+    KernelConfigTypedValue converted;
+
+    auto testOne = [] (const KernelConfigTypedValue &original,
+                    const std::string &expectXml) {
+        std::string xml;
+        KernelConfigTypedValue converted;
+        xml = gKernelConfigTypedValueConverter(original);
+        EXPECT_EQ(xml, expectXml);
+        EXPECT_TRUE(gKernelConfigTypedValueConverter(&converted, xml));
+        EXPECT_EQ(original, converted);
+    };
+
+    auto testParse = [] (const KernelConfigTypedValue &original,
+                    const std::string &xml) {
+        KernelConfigTypedValue converted;
+        EXPECT_TRUE(gKernelConfigTypedValueConverter(&converted, xml));
+        EXPECT_EQ(original, converted);
+    };
+
+    testOne(KernelConfigTypedValue("stringvalue"),
+        "<value type=\"string\">stringvalue</value>\n");
+    testOne(KernelConfigTypedValue(""),
+        "<value type=\"string\"></value>\n");
+
+    testOne(KernelConfigTypedValue(Tristate::YES),
+        "<value type=\"tristate\">y</value>\n");
+    testOne(KernelConfigTypedValue(Tristate::NO),
+        "<value type=\"tristate\">n</value>\n");
+    testOne(KernelConfigTypedValue(Tristate::MODULE),
+        "<value type=\"tristate\">m</value>\n");
+    EXPECT_FALSE(gKernelConfigTypedValueConverter(&converted,
+        "<value type=\"tristate\">q</value>\n"));
+
+    testOne(KernelConfigTypedValue(KernelConfigRangeValue{4, 20}),
+        "<value type=\"range\">4-20</value>\n");
+    testOne(KernelConfigTypedValue(KernelConfigRangeValue{0, UINT64_MAX}),
+        "<value type=\"range\">0-18446744073709551615</value>\n");
+    testParse(KernelConfigTypedValue(KernelConfigRangeValue{0, UINT64_MAX}),
+            "<value type=\"range\">0x0-0xffffffffffffffff</value>\n");
+
+    EXPECT_FALSE(gKernelConfigTypedValueConverter(&converted,
+            "<value type=\"int\">-18446744073709551616</value>\n"));
+
+    testOne(KernelConfigTypedValue(INT64_MIN),
+         "<value type=\"int\">-9223372036854775808</value>\n");
+    testParse(KernelConfigTypedValue(INT64_MIN),
+            "<value type=\"int\">0x8000000000000000</value>\n");
+    testParse(KernelConfigTypedValue(INT64_MIN),
+            "<value type=\"int\">-0X8000000000000000</value>\n");
+
+    testParse(KernelConfigTypedValue(INT64_MIN + 1),
+            "<value type=\"int\">-0X7FFFFFFFFFFFFFFF</value>\n");
+
+    testParse(KernelConfigTypedValue(-0x50),
+            "<value type=\"int\">-0x50</value>\n");
+
+    testOne(KernelConfigTypedValue(0),
+         "<value type=\"int\">0</value>\n");
+
+    // Truncation for underflow.
+    testParse(KernelConfigTypedValue(1),
+            "<value type=\"int\">-0xffffffffffffffff</value>\n");
+    testParse(KernelConfigTypedValue(1),
+            "<value type=\"int\">-18446744073709551615</value>\n");
+
+    testOne(KernelConfigTypedValue(INT64_MAX),
+         "<value type=\"int\">9223372036854775807</value>\n");
+    testParse(KernelConfigTypedValue(INT64_MAX),
+            "<value type=\"int\">0x7FFFFFFFFFFFFFFF</value>\n");
+    // Truncation for underflow.
+    testParse(KernelConfigTypedValue(INT64_MAX),
+            "<value type=\"int\">-9223372036854775809</value>\n");
+
+    testParse(KernelConfigTypedValue(-1),
+            "<value type=\"int\">18446744073709551615</value>\n");
+    testParse(KernelConfigTypedValue(-1),
+            "<value type=\"int\">0xffffffffffffffff</value>\n");
+
+    EXPECT_FALSE(gKernelConfigTypedValueConverter(&converted,
+            "<value type=\"int\">18446744073709551616</value>\n"));
+}
+
 TEST_F(LibVintfTest, CompatibilityMatrixCoverter) {
     CompatibilityMatrix cm;
     EXPECT_TRUE(add(cm, MatrixHal{HalFormat::NATIVE, "android.hardware.camera",
@@ -144,33 +229,45 @@ TEST_F(LibVintfTest, CompatibilityMatrixCoverter) {
     EXPECT_TRUE(add(cm, MatrixHal{HalFormat::NATIVE, "android.hardware.nfc",
             {{VersionRange(4,5,6), VersionRange(10,11,12)}},
             true /* optional */}));
-    EXPECT_TRUE(add(cm, MatrixKernel{Version(3, 18),
-            {{{"CONFIG_FOO"}, {"CONFIG_BAR"}}}}));
-    EXPECT_TRUE(add(cm, MatrixKernel{Version(4, 4),
-            {{{"CONFIG_BAZ"}, {"CONFIG_BAR"}}}}));
+    EXPECT_TRUE(add(cm, MatrixKernel{KernelVersion(3, 18, 22),
+            {KernelConfig{"CONFIG_FOO", Tristate::YES}, KernelConfig{"CONFIG_BAR", "stringvalue"}}}));
+    EXPECT_TRUE(add(cm, MatrixKernel{KernelVersion(4, 4, 1),
+            {KernelConfig{"CONFIG_BAZ", 20}, KernelConfig{"CONFIG_BAR", KernelConfigRangeValue{3, 5} }}}));
     std::string xml = gCompatibilityMatrixConverter(cm);
     EXPECT_EQ(xml,
-        "<compatibility-matrix version=\"1.0\">\n"
-        "    <hal format=\"native\" optional=\"false\">\n"
-        "        <name>android.hardware.camera</name>\n"
-        "        <version>1.2-3</version>\n"
-        "        <version>4.5-6</version>\n"
-        "    </hal>\n"
-        "    <hal format=\"native\" optional=\"true\">\n"
-        "        <name>android.hardware.nfc</name>\n"
-        "        <version>4.5-6</version>\n"
-        "        <version>10.11-12</version>\n"
-        "    </hal>\n"
-        "    <kernel version=\"3.18\">\n"
-        "        <config>CONFIG_FOO</config>\n"
-        "        <config>CONFIG_BAR</config>\n"
-        "    </kernel>\n"
-        "    <kernel version=\"4.4\">\n"
-        "        <config>CONFIG_BAZ</config>\n"
-        "        <config>CONFIG_BAR</config>\n"
-        "    </kernel>\n"
-        "    <sepolicy/>\n"
-        "</compatibility-matrix>\n");
+            "<compatibility-matrix version=\"1.0\">\n"
+            "    <hal format=\"native\" optional=\"false\">\n"
+            "        <name>android.hardware.camera</name>\n"
+            "        <version>1.2-3</version>\n"
+            "        <version>4.5-6</version>\n"
+            "    </hal>\n"
+            "    <hal format=\"native\" optional=\"true\">\n"
+            "        <name>android.hardware.nfc</name>\n"
+            "        <version>4.5-6</version>\n"
+            "        <version>10.11-12</version>\n"
+            "    </hal>\n"
+            "    <kernel version=\"3.18\" minlts=\"3.18.22\">\n"
+            "        <config>\n"
+            "            <key>CONFIG_FOO</key>\n"
+            "            <value type=\"tristate\">y</value>\n"
+            "        </config>\n"
+            "        <config>\n"
+            "            <key>CONFIG_BAR</key>\n"
+            "            <value type=\"string\">stringvalue</value>\n"
+            "        </config>\n"
+            "    </kernel>\n"
+            "    <kernel version=\"4.4\" minlts=\"4.4.1\">\n"
+            "        <config>\n"
+            "            <key>CONFIG_BAZ</key>\n"
+            "            <value type=\"int\">20</value>\n"
+            "        </config>\n"
+            "        <config>\n"
+            "            <key>CONFIG_BAR</key>\n"
+            "            <value type=\"range\">3-5</value>\n"
+            "        </config>\n"
+            "    </kernel>\n"
+            "    <sepolicy/>\n"
+            "</compatibility-matrix>\n");
     CompatibilityMatrix cm2;
     EXPECT_TRUE(gCompatibilityMatrixConverter(&cm2, xml));
     EXPECT_TRUE(isEqual(cm, cm2));
