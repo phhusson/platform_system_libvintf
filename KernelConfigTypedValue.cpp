@@ -15,10 +15,16 @@
  */
 
 #include "KernelConfigTypedValue.h"
+
+#include "parse_string.h"
+
 #include <android-base/logging.h>
 
 namespace android {
 namespace vintf {
+
+// static
+const KernelConfigTypedValue KernelConfigTypedValue::gMissingConfig{Tristate::NO};
 
 KernelConfigTypedValue::KernelConfigTypedValue()
         : KernelConfigTypedValue("") {
@@ -57,6 +63,26 @@ bool KernelConfigTypedValue::operator==(const KernelConfigTypedValue &other) con
             return mRangeValue == other.mRangeValue;
         case KernelConfigType::TRISTATE:
             return mTristateValue == other.mTristateValue;
+    }
+}
+
+
+bool KernelConfigTypedValue::matchValue(const std::string &s) const {
+    switch(mType) {
+        case KernelConfigType::STRING:
+            return ("\"" + mStringValue + "\"") == s;
+        case KernelConfigType::INTEGER: {
+            KernelConfigIntValue iv;
+            return parseKernelConfigInt(s, &iv) && iv == mIntegerValue;
+        }
+        case KernelConfigType::RANGE: {
+            KernelConfigRangeValue range;
+            return parseRange(s, &range) && range == mRangeValue;
+        }
+        case KernelConfigType::TRISTATE: {
+            Tristate tristate;
+            return parse(s, &tristate) && tristate == mTristateValue;
+        }
     }
 }
 

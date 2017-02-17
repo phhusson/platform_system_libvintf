@@ -17,6 +17,8 @@
 #ifndef ANDROID_VINTF_KERNEL_INFO_H
 #define ANDROID_VINTF_KERNEL_INFO_H
 
+#include "Version.h"
+
 #include <map>
 #include <string>
 
@@ -25,8 +27,12 @@
 namespace android {
 namespace vintf {
 
+struct CompatibilityMatrix;
+
 // Kernel Info sent to OTA server
 struct KernelInfo {
+
+    KernelInfo() {}
 
     // Get the object that contains all kernel information. If any error,
     // nullptr is returned.
@@ -48,9 +54,14 @@ struct KernelInfo {
     // /sys/fs/selinux/policyvers
     size_t kernelSepolicyVersion() const;
 
+    // Return whether this kernel works with the given compatibility matrix.
+    bool checkCompatibility(const CompatibilityMatrix &mat,
+            std::string *error = nullptr) const;
+
 private:
 
     friend struct KernelInfoFetcher;
+    friend struct LibVintfTest;
     friend std::string dump(const KernelInfo &ki);
 
     void clear();
@@ -63,6 +74,7 @@ private:
     std::string mOsRelease;
     std::string mOsVersion;
     std::string mHardwareId;
+    KernelVersion mKernelVersion;
 
     size_t mKernelSepolicyVersion;
 
