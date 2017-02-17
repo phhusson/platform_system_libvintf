@@ -30,10 +30,12 @@ enum class HalFormat : size_t {
     NATIVE,
 };
 
-static const std::array<std::string, 2> gHalFormatStrings = { {
-    "hidl",
-    "native"
-} };
+static const std::array<std::string, 2> gHalFormatStrings = {
+    {
+        "hidl",
+        "native"
+    }
+};
 
 } // namespace vintf
 } // namespace android
