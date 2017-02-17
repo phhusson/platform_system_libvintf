@@ -22,25 +22,25 @@ namespace vintf {
 constexpr Version CompatibilityMatrix::kVersion;
 
 bool CompatibilityMatrix::add(MatrixHal &&hal) {
-    return hals.emplace(hal.name, std::move(hal)).second;
+    return mHals.emplace(hal.name, std::move(hal)).second;
 }
 
 bool CompatibilityMatrix::add(MatrixKernel &&kernel) {
-    kernels.push_back(std::move(kernel));
+    mKernels.push_back(std::move(kernel));
     return true;
 }
 
 void CompatibilityMatrix::clear() {
-    hals.clear();
-    kernels.clear();
+    mHals.clear();
+    mKernels.clear();
 }
 
 ConstMapValueIterable<std::string, MatrixHal> CompatibilityMatrix::getHals() const {
-    return ConstMapValueIterable<std::string, MatrixHal>(hals);
+    return ConstMapValueIterable<std::string, MatrixHal>(mHals);
 }
 
 const MatrixKernel *CompatibilityMatrix::findKernel(const KernelVersion &v) const {
-    for (const MatrixKernel &matrixKernel : kernels) {
+    for (const MatrixKernel &matrixKernel : mKernels) {
         if (matrixKernel.minLts().version == v.version &&
             matrixKernel.minLts().majorRev == v.majorRev) {
             return matrixKernel.minLts().minorRev <= v.minorRev ? &matrixKernel : nullptr;
@@ -50,7 +50,7 @@ const MatrixKernel *CompatibilityMatrix::findKernel(const KernelVersion &v) cons
 }
 
 const Sepolicy &CompatibilityMatrix::getSepolicy() const {
-    return sepolicy;
+    return mSepolicy;
 }
 
 } // namespace vintf

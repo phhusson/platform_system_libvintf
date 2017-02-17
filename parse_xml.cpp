@@ -480,19 +480,19 @@ struct CompatibilityMatrixConverter : public XmlNodeConverter<CompatibilityMatri
     std::string elementName() const override { return "compatibility-matrix"; }
     void mutateNode(const CompatibilityMatrix &m, NodeType *root, DocType *d) const override {
         appendAttr(root, "version", CompatibilityMatrix::kVersion);
-        for (const auto &pair : m.hals) {
+        for (const auto &pair : m.mHals) {
             appendChild(root, matrixHalConverter(pair.second, d));
         }
-        for (const auto &kernel : m.kernels) {
+        for (const auto &kernel : m.mKernels) {
             appendChild(root, matrixKernelConverter(kernel, d));
         }
-        appendChild(root, sepolicyConverter(m.sepolicy, d));
+        appendChild(root, sepolicyConverter(m.mSepolicy, d));
     }
     bool buildObject(CompatibilityMatrix *object, NodeType *root) const override {
         std::vector<MatrixHal> hals;
         if (!parseChildren(root, matrixHalConverter, &hals) ||
-            !parseChildren(root, matrixKernelConverter, &object->kernels) ||
-            !parseChild(root, sepolicyConverter, &object->sepolicy)) {
+            !parseChildren(root, matrixKernelConverter, &object->mKernels) ||
+            !parseChild(root, sepolicyConverter, &object->mSepolicy)) {
             return false;
         }
         for (auto &&hal : hals) {
