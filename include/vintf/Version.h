@@ -57,6 +57,26 @@ struct Version {
     }
 };
 
+struct KernelVersion {
+
+    constexpr KernelVersion() : KernelVersion(0u, 0u, 0u) {}
+    constexpr KernelVersion(size_t v, size_t mj, size_t mi) :
+            version(v), majorRev(mj), minorRev(mi) {}
+
+    size_t version;
+    size_t majorRev;
+    size_t minorRev;
+
+    inline bool operator==(const KernelVersion &other) const {
+        return version == other.version
+            && majorRev == other.majorRev
+            && minorRev == other.minorRev;
+    }
+    inline bool operator!=(const KernelVersion &other) const {
+        return !((*this) == other);
+    }
+};
+
 } // namespace vintf
 } // namespace android
 

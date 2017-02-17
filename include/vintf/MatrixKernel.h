@@ -17,21 +17,44 @@
 #ifndef ANDROID_VINTF_MATRIX_KERNEL_H
 #define ANDROID_VINTF_MATRIX_KERNEL_H
 
+#include <string>
 #include <vector>
+#include <utility>
 
-#include "KernelConfig.h"
+#include "KernelConfigTypedValue.h"
 #include "Version.h"
 
 namespace android {
 namespace vintf {
 
+struct KernelConfigKey : public std::string {
+    KernelConfigKey() : std::string() {}
+    KernelConfigKey(const std::string &other) : std::string(other) {}
+    KernelConfigKey(std::string &&other) : std::string(std::forward<std::string>(other)) {}
+};
+
+using KernelConfig = std::pair<KernelConfigKey, KernelConfigTypedValue>;
+
 // A kernel entry to a compatibility matrix
 struct MatrixKernel {
 
+    MatrixKernel() {}
+    MatrixKernel(KernelVersion &&minLts, std::vector<KernelConfig> &&configs)
+            : mMinLts(std::move(minLts)), mConfigs(std::move(configs)) {}
+
     bool operator==(const MatrixKernel &other) const;
 
-    Version version;
-    std::vector<KernelConfig> configs;
+    inline const KernelVersion &minLts() const { return mMinLts; }
+
+    // Return an iterable on all kernel configs. Use it as follows:
+    // for (const KernelConfig &config : kernel.configs()) {...}
+    const std::vector<KernelConfig> &configs() const { return mConfigs; }
+
+private:
+    friend struct MatrixKernelConverter;
+
+    KernelVersion mMinLts;
+    std::vector<KernelConfig> mConfigs;
 };
 
 } // namespace vintf

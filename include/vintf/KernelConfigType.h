@@ -13,24 +13,34 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#ifndef ANDROID_VINTF_KERNEL_CONFIG_TYPE_H
+#define ANDROID_VINTF_KERNEL_CONFIG_TYPE_H
 
-#ifndef ANDROID_VINTF_KERNEL_CONFIG_H
-#define ANDROID_VINTF_KERNEL_CONFIG_H
 
+#include <stdint.h>
 #include <string>
+#include <array>
 
 namespace android {
 namespace vintf {
 
-struct KernelConfig : public std::string {
-    KernelConfig() : std::string() {}
-    KernelConfig(const std::string &other)
-        : std::string(other) {}
-    KernelConfig(std::string &&other)
-        : std::string(std::move(other)) {}
+enum class KernelConfigType : size_t {
+    STRING,
+    INTEGER,
+    RANGE,
+    TRISTATE
+};
+
+static const std::array<std::string, 4> gKernelConfigTypeStrings = {
+    {
+        "string",
+        "int",
+        "range",
+        "tristate",
+    }
 };
 
 } // namespace vintf
 } // namespace android
 
-#endif // ANDROID_VINTF_KERNEL_CONFIG_H
+#endif // ANDROID_VINTF_KERNEL_CONFIG_TYPE_H

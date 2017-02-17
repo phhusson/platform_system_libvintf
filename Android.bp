@@ -33,6 +33,7 @@ cc_library {
         "parse_string.cpp",
         "parse_xml.cpp",
         "CompatibilityMatrix.cpp",
+        "KernelConfigTypedValue.cpp",
         "KernelInfo.cpp",
         "ManifestHal.cpp",
         "MatrixHal.cpp",
