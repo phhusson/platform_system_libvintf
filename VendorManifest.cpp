@@ -39,12 +39,12 @@ namespace vintf {
 constexpr Version VendorManifest::kVersion;
 
 bool VendorManifest::add(ManifestHal &&hal) {
-    return hal.isValid() && hals.emplace(hal.name, std::move(hal)).second;
+    return hal.isValid() && mHals.emplace(hal.name, std::move(hal)).second;
 }
 
 const ManifestHal *VendorManifest::getHal(const std::string &name) const {
-    const auto it = hals.find(name);
-    if (it == hals.end()) {
+    const auto it = mHals.find(name);
+    if (it == mHals.end()) {
         return nullptr;
     }
     return &(it->second);
@@ -64,7 +64,7 @@ Transport VendorManifest::getTransport(const std::string &name, const Version &v
 }
 
 ConstMapValueIterable<std::string, ManifestHal> VendorManifest::getHals() const {
-    return ConstMapValueIterable<std::string, ManifestHal>(hals);
+    return ConstMapValueIterable<std::string, ManifestHal>(mHals);
 }
 
 const std::vector<Version> &VendorManifest::getSupportedVersions(const std::string &name) const {
@@ -100,8 +100,8 @@ std::vector<std::string> VendorManifest::checkIncompatiblity(const Compatibility
     for (const MatrixHal &matrixHal : mat.getHals()) {
         // don't check optional; put it in the incompatibility list as well.
         const std::string &name = matrixHal.name;
-        auto it = hals.find(name);
-        if (it == hals.end()) {
+        auto it = mHals.find(name);
+        if (it == mHals.end()) {
             incompatible.push_back(name);
             continue;
         }
