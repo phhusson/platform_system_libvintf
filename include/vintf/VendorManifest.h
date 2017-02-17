@@ -76,19 +76,18 @@ public:
 private:
     friend struct VendorManifestConverter;
     friend struct LibVintfTest;
-    friend std::string dump(const VendorManifest &vm);
 
     // Add an hal to this manifest.
     bool add(ManifestHal &&hal);
 
     // clear this manifest.
-    inline void clear() { hals.clear(); }
+    inline void clear() { mHals.clear(); }
 
     status_t fetchAllInformation();
 
     // sorted map from component name to the entry.
     // The component name looks like: android.hardware.foo
-    std::map<std::string, ManifestHal> hals;
+    std::map<std::string, ManifestHal> mHals;
 };
 
 
