@@ -20,7 +20,7 @@
 #include <vintf/parse_xml.h>
 #include <vintf/CompatibilityMatrix.h>
 #include <vintf/RuntimeInfo.h>
-#include <vintf/VendorManifest.h>
+#include <vintf/HalManifest.h>
 
 #include <android-base/logging.h>
 #include <android-base/parseint.h>
@@ -33,7 +33,7 @@ extern const XmlConverter<Version> &gVersionConverter;
 extern const XmlConverter<MatrixHal> &gMatrixHalConverter;
 extern const XmlConverter<KernelConfigTypedValue> &gKernelConfigTypedValueConverter;
 extern const XmlConverter<HalImplementation> &gHalImplementationConverter;
-extern const XmlConverter<VendorManifest> &gVendorManifestConverter;
+extern const XmlConverter<HalManifest> &gHalManifestConverter;
 extern const XmlConverter<CompatibilityMatrix> &gCompatibilityMatrixConverter;
 
 struct LibVintfTest : public ::testing::Test {
@@ -48,16 +48,16 @@ public:
     bool add(CompatibilityMatrix &cm, MatrixKernel &&kernel) {
         return cm.add(std::move(kernel));
     }
-    bool add(VendorManifest &vm, ManifestHal &&hal) {
+    bool add(HalManifest &vm, ManifestHal &&hal) {
         return vm.add(std::move(hal));
     }
     void set(CompatibilityMatrix &cm, Sepolicy &&sepolicy) {
         cm.mSepolicy = sepolicy;
     }
-    const ManifestHal *getHal(VendorManifest &vm, const std::string &name) {
+    const ManifestHal *getHal(HalManifest &vm, const std::string &name) {
         return vm.getHal(name);
     }
-    ConstMapValueIterable<std::string, ManifestHal> getHals(VendorManifest &vm) {
+    ConstMapValueIterable<std::string, ManifestHal> getHals(HalManifest &vm) {
         return vm.getHals();
     }
     bool isEqual(const CompatibilityMatrix &cm1, const CompatibilityMatrix &cm2) {
@@ -66,8 +66,8 @@ public:
     bool isValid(const ManifestHal &mh) {
         return mh.isValid();
     }
-    VendorManifest testVendorManifest() {
-        VendorManifest vm;
+    HalManifest testHalManifest() {
+        HalManifest vm;
         vm.add(ManifestHal::hal("android.hardware.camera", ImplLevel::SOC, "msm8892",
                 Version(2,0), Transport::HWBINDER));
         vm.add(ManifestHal::hal("android.hardware.nfc", ImplLevel::GENERIC, "generic",
@@ -97,7 +97,7 @@ public:
 
 
 TEST_F(LibVintfTest, Stringify) {
-    VendorManifest vm = testVendorManifest();
+    HalManifest vm = testHalManifest();
     EXPECT_EQ(dump(vm), "hidl/android.hardware.camera/hwbinder/soc/msm8892/2.0:"
                         "hidl/android.hardware.nfc/passthrough/generic/generic/1.0");
 
@@ -111,9 +111,9 @@ TEST_F(LibVintfTest, Stringify) {
     EXPECT_EQ(v, v2);
 }
 
-TEST_F(LibVintfTest, VendorManifestConverter) {
-    VendorManifest vm = testVendorManifest();
-    std::string xml = gVendorManifestConverter(vm);
+TEST_F(LibVintfTest, HalManifestConverter) {
+    HalManifest vm = testHalManifest();
+    std::string xml = gHalManifestConverter(vm);
     EXPECT_EQ(xml,
         "<manifest version=\"1.0\">\n"
         "    <hal format=\"hidl\">\n"
@@ -312,12 +312,12 @@ TEST_F(LibVintfTest, IsValid) {
     ManifestHal invalidHal = ManifestHal::hal("android.hardware.camera", ImplLevel::SOC, "msm8892",
             {{Version(2,0), Version(2,1)}}, Transport::PASSTHROUGH);
     EXPECT_FALSE(isValid(invalidHal));
-    VendorManifest vm2;
+    HalManifest vm2;
     EXPECT_FALSE(add(vm2, std::move(invalidHal)));
 }
 
-TEST_F(LibVintfTest, VendorManifestGetHal) {
-    VendorManifest vm = testVendorManifest();
+TEST_F(LibVintfTest, HalManifestGetHal) {
+    HalManifest vm = testHalManifest();
     EXPECT_NE(getHal(vm, "android.hardware.camera"), nullptr);
     EXPECT_EQ(getHal(vm, "non-existent"), nullptr);
 
