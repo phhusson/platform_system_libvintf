@@ -19,6 +19,7 @@
 #include <vintf/parse_string.h>
 #include <vintf/parse_xml.h>
 #include <vintf/CompatibilityMatrix.h>
+#include <vintf/KernelInfo.h>
 #include <vintf/VendorManifest.h>
 
 #include <android-base/logging.h>
@@ -66,6 +67,24 @@ public:
                 Version(1,0), Transport::PASSTHROUGH));
 
         return vm;
+    }
+    KernelInfo testKernelInfo() {
+        KernelInfo info;
+        info.mOsName = "Linux";
+        info.mNodeName = "localhost";
+        info.mOsRelease = "3.18.31-g936f9a479d0f";
+        info.mKernelVersion = {3, 18, 31};
+        info.mOsVersion = "#4 SMP PREEMPT Wed Feb 1 18:10:52 PST 2017";
+        info.mHardwareId = "aarch64";
+        info.mKernelSepolicyVersion = 30;
+        info.kernelConfigs = {
+            {"CONFIG_64BIT", "y"},
+            {"CONFIG_ANDROID_BINDER_DEVICES", "\"binder,hwbinder\""},
+            {"CONFIG_ARCH_MMAP_RND_BITS", "24"},
+            {"CONFIG_BUILD_ARM64_APPENDED_DTB_IMAGE_NAMES", "\"\""},
+            {"CONFIG_ILLEGAL_POINTER_VALUE", "0xdead000000000000"}
+        };
+        return info;
     }
 };
 
@@ -299,6 +318,91 @@ TEST_F(LibVintfTest, VendorManifestGetHal) {
     size_t i = 0;
     for (const auto &hal : getHals(vm)) {
         EXPECT_EQ(hal.name, arr[i++]);
+    }
+}
+
+TEST_F(LibVintfTest, KernelInfo) {
+    KernelInfo ki = testKernelInfo();
+    using KernelConfigs = std::vector<KernelConfig>;
+    const KernelConfigs configs {
+            KernelConfig{"CONFIG_64BIT", Tristate::YES},
+            KernelConfig{"CONFIG_ANDROID_BINDER_DEVICES", "binder,hwbinder"},
+            KernelConfig{"CONFIG_ARCH_MMAP_RND_BITS", 24},
+            KernelConfig{"CONFIG_BUILD_ARM64_APPENDED_DTB_IMAGE_NAMES", ""},
+            KernelConfig{"CONFIG_ILLEGAL_POINTER_VALUE", 0xdead000000000000},
+            KernelConfig{"CONFIG_NOTEXIST", Tristate::NO},
+    };
+
+    auto testMatrix = [&] (MatrixKernel &&kernel) {
+        CompatibilityMatrix cm;
+        add(cm, std::move(kernel));
+        set(cm, {30, {1, 3}});
+        return cm;
+    };
+
+    std::string error;
+
+    {
+        MatrixKernel kernel(KernelVersion{4, 4, 1}, KernelConfigs(configs));
+        CompatibilityMatrix cm = testMatrix(std::move(kernel));
+        EXPECT_FALSE(ki.checkCompatibility(cm)) << "Kernel version shouldn't match";
+    }
+
+    {
+        MatrixKernel kernel(KernelVersion{3, 18, 22}, KernelConfigs(configs));
+        CompatibilityMatrix cm = testMatrix(std::move(kernel));
+        EXPECT_TRUE(ki.checkCompatibility(cm, &error)) << error;
+    }
+
+    {
+        MatrixKernel kernel(KernelVersion{3, 18, 22}, KernelConfigs(configs));
+        CompatibilityMatrix cm = testMatrix(std::move(kernel));
+        set(cm, Sepolicy{22, {1, 3}});
+        EXPECT_FALSE(ki.checkCompatibility(cm, &error))
+            << "kernel-sepolicy-version shouldn't match";
+        set(cm, Sepolicy{40, {1, 3}});
+        EXPECT_FALSE(ki.checkCompatibility(cm, &error))
+            << "kernel-sepolicy-version shouldn't match";
+    }
+
+    {
+        KernelConfigs newConfigs(configs);
+        newConfigs[0] = KernelConfig{"CONFIG_64BIT", Tristate::NO};
+        MatrixKernel kernel(KernelVersion{3, 18, 22}, std::move(newConfigs));
+        CompatibilityMatrix cm = testMatrix(std::move(kernel));
+        EXPECT_FALSE(ki.checkCompatibility(cm)) << "Value shouldn't match for tristate";
+    }
+
+    {
+        KernelConfigs newConfigs(configs);
+        newConfigs[0] = KernelConfig{"CONFIG_64BIT", 20};
+        MatrixKernel kernel(KernelVersion{3, 18, 22}, std::move(newConfigs));
+        CompatibilityMatrix cm = testMatrix(std::move(kernel));
+        EXPECT_FALSE(ki.checkCompatibility(cm)) << "Type shouldn't match";
+    }
+
+    {
+        KernelConfigs newConfigs(configs);
+        newConfigs[1] = KernelConfig{"CONFIG_ANDROID_BINDER_DEVICES", "binder"};
+        MatrixKernel kernel(KernelVersion{3, 18, 22}, std::move(newConfigs));
+        CompatibilityMatrix cm = testMatrix(std::move(kernel));
+        EXPECT_FALSE(ki.checkCompatibility(cm)) << "Value shouldn't match for string";
+    }
+
+    {
+        KernelConfigs newConfigs(configs);
+        newConfigs[1] = KernelConfig{"CONFIG_ANDROID_BINDER_DEVICES", Tristate::YES};
+        MatrixKernel kernel(KernelVersion{3, 18, 22}, std::move(newConfigs));
+        CompatibilityMatrix cm = testMatrix(std::move(kernel));
+        EXPECT_FALSE(ki.checkCompatibility(cm)) << "Type shouldn't match";
+    }
+
+    {
+        KernelConfigs newConfigs(configs);
+        newConfigs[2] = KernelConfig{"CONFIG_ARCH_MMAP_RND_BITS", 30};
+        MatrixKernel kernel(KernelVersion{3, 18, 22}, std::move(newConfigs));
+        CompatibilityMatrix cm = testMatrix(std::move(kernel));
+        EXPECT_FALSE(ki.checkCompatibility(cm)) << "Value shouldn't match for integer";
     }
 }
 
