@@ -21,8 +21,40 @@
 namespace android {
 namespace vintf {
 
+struct KernelSepolicyVersion {
+    size_t value;
+    inline KernelSepolicyVersion() : KernelSepolicyVersion(0u) {}
+    inline KernelSepolicyVersion(size_t v) : value(v) {}
+    inline operator size_t() const {
+        return value;
+    }
+};
+
+struct SepolicyVersion {
+    size_t minVer;
+    size_t maxVer;
+
+    SepolicyVersion() : SepolicyVersion(0u, 0u) {}
+    SepolicyVersion(size_t minV, size_t maxV)
+            : minVer(minV), maxVer(maxV) {}
+};
+
 struct Sepolicy {
-    // TODO implement this
+
+    Sepolicy() : Sepolicy(0u, {0u, 0u}) {}
+    Sepolicy(KernelSepolicyVersion kernelSepolicyVersion,
+            SepolicyVersion &&sepolicyVersion) :
+            mKernelSepolicyVersion(kernelSepolicyVersion),
+            mSepolicyVersion(std::move(sepolicyVersion)) {}
+
+    inline size_t kernelSepolicyVersion() const { return mKernelSepolicyVersion.value; }
+    inline const SepolicyVersion &sepolicyVersion() const {
+        return mSepolicyVersion;
+    }
+private:
+    friend struct SepolicyConverter;
+    KernelSepolicyVersion mKernelSepolicyVersion;
+    SepolicyVersion mSepolicyVersion;
 };
 
 } // namespace vintf

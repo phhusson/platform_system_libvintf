@@ -33,12 +33,14 @@ std::ostream &operator<<(std::ostream &os, ImplLevel il);
 std::ostream &operator<<(std::ostream &os, Transport tr);
 std::ostream &operator<<(std::ostream &os, KernelConfigType il);
 std::ostream &operator<<(std::ostream &os, Tristate tr);
+std::ostream &operator<<(std::ostream &os, KernelSepolicyVersion ksv);
 std::ostream &operator<<(std::ostream &os, const Version &ver);
 std::ostream &operator<<(std::ostream &os, const VersionRange &vr);
 std::ostream &operator<<(std::ostream &os, const KernelVersion &ver);
 std::ostream &operator<<(std::ostream &os, const ManifestHal &hal);
 std::ostream &operator<<(std::ostream &os, const MatrixHal &req);
 std::ostream &operator<<(std::ostream &os, const KernelConfigTypedValue &kcv);
+std::ostream &operator<<(std::ostream &os, const SepolicyVersion &sv);
 
 template <typename T>
 std::string to_string(const T &obj) {
@@ -53,12 +55,14 @@ bool parse(const std::string &s, Transport *tr);
 bool parse(const std::string &s, KernelConfigType *il);
 bool parse(const std::string &s, KernelConfigKey *key);
 bool parse(const std::string &s, Tristate *tr);
+bool parse(const std::string &s, KernelSepolicyVersion *ksv);
 bool parse(const std::string &s, Version *ver);
 bool parse(const std::string &s, VersionRange *vr);
 bool parse(const std::string &s, KernelVersion *ver);
 // if return true, hal->isValid() must be true.
 bool parse(const std::string &s, ManifestHal *hal);
 bool parse(const std::string &s, MatrixHal *req);
+bool parse(const std::string &s, SepolicyVersion *sv);
 
 bool parseKernelConfigInt(const std::string &s, int64_t *i);
 bool parseKernelConfigInt(const std::string &s, uint64_t *i);
