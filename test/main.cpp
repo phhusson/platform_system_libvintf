@@ -45,7 +45,7 @@ public:
         return vm.add(std::move(hal));
     }
     void set(CompatibilityMatrix &cm, Sepolicy &&sepolicy) {
-        cm.sepolicy = sepolicy;
+        cm.mSepolicy = sepolicy;
     }
     const ManifestHal *getHal(VendorManifest &vm, const std::string &name) {
         return vm.getHal(name);
@@ -54,7 +54,7 @@ public:
         return vm.getHals();
     }
     bool isEqual(const CompatibilityMatrix &cm1, const CompatibilityMatrix &cm2) {
-        return cm1.hals == cm2.hals && cm1.kernels == cm2.kernels;
+        return cm1.mHals == cm2.mHals && cm1.mKernels == cm2.mKernels;
     }
     bool isValid(const ManifestHal &mh) {
         return mh.isValid();
