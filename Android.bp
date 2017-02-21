@@ -16,8 +16,14 @@ subdirs = [
     "test"
 ]
 
+libvintf_flags = [
+    "-Wall",
+    "-Werror",
+]
+
 cc_library {
     name: "libvintf",
+    cflags: libvintf_flags,
     shared_libs: [
         "libbase",
         "liblog",
@@ -44,6 +50,7 @@ cc_library {
 
 cc_binary {
     name: "vintf",
+    cflags: libvintf_flags,
     shared_libs: [
         "libvintf",
         "libselinux",
