@@ -76,6 +76,29 @@ const std::vector<Version> &HalManifest::getSupportedVersions(const std::string 
     return hal->versions;
 }
 
+
+const std::set<std::string> &HalManifest::getInstances(
+        const std::string &halName, const std::string &interfaceName) const {
+    static const std::set<std::string> empty{};
+    static const std::set<std::string> def{{"default"}};
+    const ManifestHal *hal = getHal(halName);
+    if (hal == nullptr) {
+        return empty;
+    }
+    auto it = hal->interfaces.find(interfaceName);
+    if (it == hal->interfaces.end()) {
+        return def;
+    }
+    return it->second.instances;
+}
+
+
+bool HalManifest::hasInstance(const std::string &halName,
+        const std::string &interfaceName, const std::string &instanceName) const {
+    const auto &instances = getInstances(halName, interfaceName);
+    return instances.find(instanceName) != instances.end();
+}
+
 static bool isCompatible(const MatrixHal &matrixHal, const ManifestHal &manifestHal) {
     if (matrixHal.format != manifestHal.format) {
         return false;

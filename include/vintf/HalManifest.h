@@ -52,6 +52,19 @@ public:
     // If the component is not found, empty list is returned.
     const std::vector<Version> &getSupportedVersions(const std::string &name) const;
 
+    // Given a component name (e.g. "android.hardware.camera") and an interface
+    // name, return all instance names for that interface.
+    // * If the component ("android.hardware.camera") does not exist, return empty list
+    // * If the component ("android.hardware.camera") does exist,
+    //    * If the interface (ICamera) does not exist, return {"default"}
+    //    * Else return the list hal.interface.instance
+    const std::set<std::string> &getInstances(
+            const std::string &halName, const std::string &interfaceName) const;
+
+    // Convenience method for checking if instanceName is in getInstances(halName, interfaceName)
+    bool hasInstance(const std::string &halName,
+            const std::string &interfaceName, const std::string &instanceName) const;
+
     // Return a list of component names that does NOT conform to
     // the given compatibility matrix. It may contain components that are optional
     // for the framework.
