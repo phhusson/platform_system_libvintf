@@ -82,11 +82,11 @@ struct MapValueIterableImpl {
         const std::map<K, V> &, std::map<K, V> &>::type;
     MapValueIterableImpl(map_ref map) : mMap(map) {}
 
-    MapValueIteratorImpl<K, V, is_const> begin() {
+    MapValueIteratorImpl<K, V, is_const> begin() const {
         return MapValueIteratorImpl<K, V, is_const>(mMap.begin());
     }
 
-    MapValueIteratorImpl<K, V, is_const> end() {
+    MapValueIteratorImpl<K, V, is_const> end() const {
         return MapValueIteratorImpl<K, V, is_const>(mMap.end());
     }
 
@@ -99,6 +99,16 @@ using MapValueIterable = MapValueIterableImpl<K, V, false>;
 
 template<typename K, typename V>
 using ConstMapValueIterable = MapValueIterableImpl<K, V, true>;
+
+template<typename K, typename V>
+ConstMapValueIterable<K, V> iterateValues(const std::map<K, V> &map) {
+    return map;
+}
+
+template<typename K, typename V>
+MapValueIterable<K, V> iterateValues(std::map<K, V> &map) {
+    return map;
+}
 
 } // namespace vintf
 } // namespace android
