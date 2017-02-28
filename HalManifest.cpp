@@ -27,6 +27,7 @@
 
 #include <android-base/logging.h>
 
+#include "parse_string.h"
 #include "parse_xml.h"
 #include "CompatibilityMatrix.h"
 
@@ -51,14 +52,32 @@ ManifestHal *HalManifest::getHal(const std::string &name) {
     return const_cast<ManifestHal *>(const_cast<const HalManifest *>(this)->getHal(name));
 }
 
-Transport HalManifest::getTransport(const std::string &name, const Version &v) const {
-    const ManifestHal *hal = getHal(name);
+Transport HalManifest::getTransport(const std::string &package, const Version &v,
+            const std::string &interfaceName, const std::string &instanceName) const {
+    const ManifestHal *hal = getHal(package);
     if (hal == nullptr) {
         return Transport::EMPTY;
     }
     if (std::find(hal->versions.begin(), hal->versions.end(), v) == hal->versions.end()) {
         LOG(WARNING) << "HalManifest::getTransport: Cannot find "
-                     << v.majorVer << "." << v.minorVer << " in supported versions of " << name;
+                     << to_string(v) << " in supported versions of " << package;
+        return Transport::EMPTY;
+    }
+    auto it = hal->interfaces.find(interfaceName);
+    if (it == hal->interfaces.end()) {
+        // Missing interface tag, default to "default"
+        if (instanceName == "default") {
+            return hal->transport;
+        }
+        LOG(WARNING) << "HalManifest::getTransport: Cannot find interface '"
+                     << interfaceName << "' in " << package << "@" << to_string(v);
+        return Transport::EMPTY;
+    }
+    const auto &instances = it->second.instances;
+    if (instances.find(instanceName) == instances.end()) {
+        LOG(WARNING) << "HalManifest::getTransport: Cannot find instance '"
+                     << instanceName << "' in "
+                     << package << "@" << to_string(v) << "::" << interfaceName;
         return Transport::EMPTY;
     }
     return hal->transport;
