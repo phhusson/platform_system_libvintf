@@ -70,16 +70,9 @@ public:
     // for the framework.
     std::vector<std::string> checkIncompatiblity(const CompatibilityMatrix &mat) const;
 
-    // Gather all HAL Manifest fragments, and encapsulate in a HalManifest.
-    // If no error, it return the same singleton object in the future, and the HAL manifest
-    // file won't be touched again.
-    // If any error, nullptr is returned, and Get will try to parse the HAL manifest
-    // again when it is called again.
-    // This operation is thread-safe.
-    static const HalManifest *Get();
-
 private:
     friend struct HalManifestConverter;
+    friend class VintfObject;
     friend struct LibVintfTest;
     friend std::string dump(const HalManifest &vm);
 
@@ -98,7 +91,7 @@ private:
     // for (const ManifestHal &e : vm.getHals()) { }
     ConstMapValueIterable<std::string, ManifestHal> getHals() const;
 
-    status_t fetchAllInformation();
+    status_t fetchAllInformation(const std::string &path);
 
     // sorted map from component name to the component.
     // The component name looks like: android.hardware.foo
