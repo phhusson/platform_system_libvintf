@@ -73,14 +73,21 @@ public:
             .name = "android.hardware.camera",
             .versions = {Version(2, 0)},
             .impl = HalImplementation{ImplLevel::SOC, "msm8892"},
-            .transport = Transport::HWBINDER
+            .transport = Transport::HWBINDER,
+            .interfaces = {
+                {"ICamera", {"ICamera", {"legacy/0", "default"}}},
+                {"IBetterCamera", {"IBetterCamera", {"camera"}}}
+            }
         });
         vm.add(ManifestHal{
             .format = HalFormat::HIDL,
             .name = "android.hardware.nfc",
             .versions = {Version(1, 0)},
             .impl = HalImplementation{ImplLevel::GENERIC, "generic"},
-            .transport = Transport::PASSTHROUGH
+            .transport = Transport::PASSTHROUGH,
+            .interfaces = {
+                {"INfc", {"INfc", {"default"}}}
+            }
         });
 
         return vm;
@@ -131,14 +138,50 @@ TEST_F(LibVintfTest, HalManifestConverter) {
         "        <transport>hwbinder</transport>\n"
         "        <impl level=\"soc\">msm8892</impl>\n"
         "        <version>2.0</version>\n"
+        "        <interface>\n"
+        "            <name>IBetterCamera</name>\n"
+        "            <instance>camera</instance>\n"
+        "        </interface>\n"
+        "        <interface>\n"
+        "            <name>ICamera</name>\n"
+        "            <instance>default</instance>\n"
+        "            <instance>legacy/0</instance>\n"
+        "        </interface>\n"
         "    </hal>\n"
         "    <hal format=\"hidl\">\n"
         "        <name>android.hardware.nfc</name>\n"
         "        <transport>passthrough</transport>\n"
         "        <impl level=\"generic\">generic</impl>\n"
         "        <version>1.0</version>\n"
+        "        <interface>\n"
+        "            <name>INfc</name>\n"
+        "            <instance>default</instance>\n"
+        "        </interface>\n"
         "    </hal>\n"
         "</manifest>\n");
+}
+
+TEST_F(LibVintfTest, HalManifestInstances) {
+    HalManifest vm = testHalManifest();
+    EXPECT_EQ(vm.getInstances("android.hardware.camera", "ICamera"),
+            std::set<std::string>({"default", "legacy/0"}));
+    EXPECT_EQ(vm.getInstances("android.hardware.camera", "IBetterCamera"),
+            std::set<std::string>({"camera"}));
+    EXPECT_EQ(vm.getInstances("android.hardware.camera", "INotExist"),
+            std::set<std::string>({"default"}));
+    EXPECT_EQ(vm.getInstances("android.hardware.nfc", "INfc"),
+            std::set<std::string>({"default"}));
+
+    EXPECT_TRUE(vm.hasInstance("android.hardware.camera", "ICamera", "default"));
+    EXPECT_TRUE(vm.hasInstance("android.hardware.camera", "ICamera", "legacy/0"));
+    EXPECT_TRUE(vm.hasInstance("android.hardware.camera", "IBetterCamera", "camera"));
+    EXPECT_TRUE(vm.hasInstance("android.hardware.camera", "INotExist", "default"));
+    EXPECT_TRUE(vm.hasInstance("android.hardware.nfc", "INfc", "default"));
+
+    EXPECT_FALSE(vm.hasInstance("android.hardware.camera", "ICamera", "notexist"));
+    EXPECT_FALSE(vm.hasInstance("android.hardware.camera", "IBetterCamera", "default"));
+    EXPECT_FALSE(vm.hasInstance("android.hardware.camera", "INotExist", "notexist"));
+    EXPECT_FALSE(vm.hasInstance("android.hardware.nfc", "INfc", "notexist"));
 }
 
 TEST_F(LibVintfTest, VersionConverter) {

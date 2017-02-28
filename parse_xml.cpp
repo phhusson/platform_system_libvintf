@@ -419,6 +419,30 @@ struct HalImplementationConverter : public XmlNodeConverter<HalImplementation> {
 
 const HalImplementationConverter halImplementationConverter{};
 
+struct ManfiestHalInterfaceConverter : public XmlNodeConverter<ManifestHalInterface> {
+    std::string elementName() const override { return "interface"; }
+    void mutateNode(const ManifestHalInterface &intf, NodeType *root, DocType *d) const override {
+        appendTextElement(root, "name", intf.name, d);
+        appendTextElements(root, "instance", intf.instances, d);
+    }
+    bool buildObject(ManifestHalInterface *intf, NodeType *root) const override {
+        std::vector<std::string> instances;
+        if (!parseTextElement(root, "name", &intf->name) ||
+            !parseTextElements(root, "instance", &instances)) {
+            return false;
+        }
+        intf->instances.clear();
+        intf->instances.insert(instances.begin(), instances.end());
+        if (intf->instances.size() != instances.size()) {
+            this->mLastError = "Duplicated instances in " + intf->name;
+            return false;
+        }
+        return true;
+    }
+};
+
+const ManfiestHalInterfaceConverter manfiestHalInterfaceConverter{};
+
 struct ManifestHalConverter : public XmlNodeConverter<ManifestHal> {
     std::string elementName() const override { return "hal"; }
     void mutateNode(const ManifestHal &hal, NodeType *root, DocType *d) const override {
@@ -427,14 +451,26 @@ struct ManifestHalConverter : public XmlNodeConverter<ManifestHal> {
         appendChild(root, transportConverter(hal.transport, d));
         appendChild(root, halImplementationConverter(hal.impl, d));
         appendChildren(root, versionConverter, hal.versions, d);
+        appendChildren(root, manfiestHalInterfaceConverter, iterateValues(hal.interfaces), d);
     }
     bool buildObject(ManifestHal *object, NodeType *root) const override {
+        std::vector<ManifestHalInterface> interfaces;
         if (!parseAttr(root, "format", &object->format) ||
             !parseTextElement(root, "name", &object->name) ||
             !parseChild(root, transportConverter, &object->transport) ||
             !parseChild(root, halImplementationConverter, &object->impl) ||
-            !parseChildren(root, versionConverter, &object->versions)) {
+            !parseChildren(root, versionConverter, &object->versions) ||
+            !parseChildren(root, manfiestHalInterfaceConverter, &interfaces)) {
             return false;
+        }
+        object->interfaces.clear();
+        for (auto &&interface : interfaces) {
+            auto res = object->interfaces.emplace(interface.name,
+                                                  std::move(interface));
+            if (!res.second) {
+                this->mLastError = "Duplicated instance entry " + res.first->first;
+                return false;
+            }
         }
         return object->isValid();
     }

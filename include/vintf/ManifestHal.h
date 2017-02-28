@@ -20,9 +20,11 @@
 
 #include <string>
 #include <vector>
+#include <map>
 
 #include "HalFormat.h"
 #include "ImplLevel.h"
+#include "ManifestHalInterface.h"
 #include "Transport.h"
 #include "Version.h"
 
@@ -44,6 +46,7 @@ struct ManifestHal {
     std::vector<Version> versions;
     HalImplementation impl;
     Transport transport = Transport::EMPTY;
+    std::map<std::string, ManifestHalInterface> interfaces;
 
 private:
     friend struct LibVintfTest;
