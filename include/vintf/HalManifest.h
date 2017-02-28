@@ -32,7 +32,7 @@ namespace vintf {
 
 struct CompatibilityMatrix;
 
-// A Vendor Interface Object is reported by the hardware and query-able from
+// A HalManifest is reported by the hardware and query-able from
 // framework code. This is the API for the framework.
 struct HalManifest {
 public:
@@ -42,22 +42,14 @@ public:
 
     HalManifest() {}
 
-    // Get an HAL entry based on the component name. Return nullptr
-    // if the entry does not exist. The component name looks like:
-    // android.hardware.foo
-    const ManifestHal *getHal(const std::string &name) const;
-
-    // return getHal(name)->transport if the entry exist and v exactly matches
-    // one of the versions in that entry, else EMPTY
+    // Given a component name (e.g. "android.hardware.camera"),
+    // return getHal(name)->transport if the component exist and v exactly matches
+    // one of the versions in that component, else EMPTY
     Transport getTransport(const std::string &name, const Version &v) const;
 
-    // Return an iterable to all ManifestHal objects. Call it as follows:
-    // for (const ManifestHal &e : vm.getHals()) { }
-    ConstMapValueIterable<std::string, ManifestHal> getHals() const;
-
-    // Given a component name (e.g. "camera"), return a list of version numbers
-    // that are supported by the hardware. If the entry is not found, empty list
-    // is returned.
+    // Given a component name (e.g. "android.hardware.camera"),
+    // return a list of version numbers that are supported by the hardware.
+    // If the component is not found, empty list is returned.
     const std::vector<Version> &getSupportedVersions(const std::string &name) const;
 
     // Return a list of component names that does NOT conform to
@@ -65,7 +57,7 @@ public:
     // for the framework.
     std::vector<std::string> checkIncompatiblity(const CompatibilityMatrix &mat) const;
 
-    // Gather all Vendor Manifest fragments, and encapsulate in a HalManifest.
+    // Gather all HAL Manifest fragments, and encapsulate in a HalManifest.
     // If no error, it return the same singleton object in the future, and the HAL manifest
     // file won't be touched again.
     // If any error, nullptr is returned, and Get will try to parse the HAL manifest
@@ -76,6 +68,7 @@ public:
 private:
     friend struct HalManifestConverter;
     friend struct LibVintfTest;
+    friend std::string dump(const HalManifest &vm);
 
     // Add an hal to this manifest.
     bool add(ManifestHal &&hal);
@@ -83,9 +76,18 @@ private:
     // clear this manifest.
     inline void clear() { mHals.clear(); }
 
+    // Get an HAL component based on the component name. Return nullptr
+    // if the component does not exist. The component name looks like:
+    // android.hardware.foo
+    const ManifestHal *getHal(const std::string &name) const;
+
+    // Return an iterable to all ManifestHal objects. Call it as follows:
+    // for (const ManifestHal &e : vm.getHals()) { }
+    ConstMapValueIterable<std::string, ManifestHal> getHals() const;
+
     status_t fetchAllInformation();
 
-    // sorted map from component name to the entry.
+    // sorted map from component name to the component.
     // The component name looks like: android.hardware.foo
     std::map<std::string, ManifestHal> mHals;
 };

@@ -34,6 +34,7 @@ struct HalImplementation {
     std::string impl;
 };
 
+// A component of HalManifest.
 struct ManifestHal {
 
     bool operator==(const ManifestHal &other) const;
