@@ -68,10 +68,20 @@ public:
     }
     HalManifest testHalManifest() {
         HalManifest vm;
-        vm.add(ManifestHal::hal("android.hardware.camera", ImplLevel::SOC, "msm8892",
-                Version(2,0), Transport::HWBINDER));
-        vm.add(ManifestHal::hal("android.hardware.nfc", ImplLevel::GENERIC, "generic",
-                Version(1,0), Transport::PASSTHROUGH));
+        vm.add(ManifestHal{
+            .format = HalFormat::HIDL,
+            .name = "android.hardware.camera",
+            .versions = {Version(2, 0)},
+            .impl = HalImplementation{ImplLevel::SOC, "msm8892"},
+            .transport = Transport::HWBINDER
+        });
+        vm.add(ManifestHal{
+            .format = HalFormat::HIDL,
+            .name = "android.hardware.nfc",
+            .versions = {Version(1, 0)},
+            .impl = HalImplementation{ImplLevel::GENERIC, "generic"},
+            .transport = Transport::PASSTHROUGH
+        });
 
         return vm;
     }
@@ -309,8 +319,14 @@ TEST_F(LibVintfTest, CompatibilityMatrixCoverter) {
 TEST_F(LibVintfTest, IsValid) {
     EXPECT_TRUE(isValid(ManifestHal()));
 
-    ManifestHal invalidHal = ManifestHal::hal("android.hardware.camera", ImplLevel::SOC, "msm8892",
-            {{Version(2,0), Version(2,1)}}, Transport::PASSTHROUGH);
+    ManifestHal invalidHal{
+        .format = HalFormat::HIDL,
+        .name = "android.hardware.camera",
+        .versions = {{Version(2, 0), Version(2, 1)}},
+        .impl = HalImplementation{ImplLevel::SOC, "msm8892"},
+        .transport = Transport::PASSTHROUGH
+    };
+
     EXPECT_FALSE(isValid(invalidHal));
     HalManifest vm2;
     EXPECT_FALSE(add(vm2, std::move(invalidHal)));
