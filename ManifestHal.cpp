@@ -31,33 +31,6 @@ bool ManifestHal::isValid() const {
     return true;
 }
 
-// static
-ManifestHal ManifestHal::hal(std::string &&name,
-                       ImplLevel implLevel,
-                       std::string &&impl,
-                       Version version,
-                       Transport tr) {
-    return ManifestHal{HalFormat::HIDL, std::move(name), {version},
-            {implLevel, std::move(impl)}, tr};
-}
-
-// static
-ManifestHal ManifestHal::hal(std::string &&name,
-                       ImplLevel implLevel,
-                       std::string &&impl,
-                       std::vector<Version> &&versions,
-                       Transport tr) {
-    return ManifestHal{HalFormat::HIDL, std::move(name), std::move(versions),
-            {implLevel, std::move(impl)}, tr};
-}
-
-// static
-ManifestHal ManifestHal::nonhal(std::string &&name,
-                          std::vector<Version> &&versions) {
-    return ManifestHal{HalFormat::NATIVE, std::move(name), std::move(versions),
-            {ImplLevel::EMPTY, std::string{}}, Transport::EMPTY};
-}
-
 bool ManifestHal::operator==(const ManifestHal &other) const {
     if (format != other.format)
         return false;
