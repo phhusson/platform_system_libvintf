@@ -36,20 +36,6 @@ struct HalImplementation {
 
 struct ManifestHal {
 
-    // convenience constructors
-    static ManifestHal hal(std::string &&name,
-                           ImplLevel implLevel,
-                           std::string &&impl,
-                           Version version,
-                           Transport transport);
-    static ManifestHal hal(std::string &&name,
-                           ImplLevel implLevel,
-                           std::string &&impl,
-                           std::vector<Version> &&versions,
-                           Transport transport);
-    static ManifestHal nonhal(std::string &&name,
-                              std::vector<Version> &&versions);
-
     bool operator==(const ManifestHal &other) const;
 
     HalFormat format = HalFormat::HIDL;
