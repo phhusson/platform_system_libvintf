@@ -388,18 +388,12 @@ const MatrixHalConverter matrixHalConverter{};
 struct MatrixKernelConverter : public XmlNodeConverter<MatrixKernel> {
     std::string elementName() const override { return "kernel"; }
     void mutateNode(const MatrixKernel &kernel, NodeType *root, DocType *d) const override {
-        appendAttr(root, "version", Version{kernel.mMinLts.version, kernel.mMinLts.majorRev});
-        appendAttr(root, "minlts", kernel.mMinLts);
+        appendAttr(root, "version", kernel.mMinLts);
         appendChildren(root, kernelConfigConverter, kernel.mConfigs, d);
     }
     bool buildObject(MatrixKernel *object, NodeType *root) const override {
-        Version v;
-        if (!parseAttr(root, "minlts", &object->mMinLts) ||
-            !parseAttr(root, "version", &v) ||
+        if (!parseAttr(root, "version", &object->mMinLts) ||
             !parseChildren(root, kernelConfigConverter, &object->mConfigs)) {
-            return false;
-        }
-        if (v != Version{object->mMinLts.version, object->mMinLts.majorRev}) {
             return false;
         }
         return true;
