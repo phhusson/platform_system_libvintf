@@ -45,7 +45,8 @@ public:
     // Given a component name (e.g. "android.hardware.camera"),
     // return getHal(name)->transport if the component exist and v exactly matches
     // one of the versions in that component, else EMPTY
-    Transport getTransport(const std::string &name, const Version &v) const;
+    Transport getTransport(const std::string &name, const Version &v,
+            const std::string &interfaceName, const std::string &instanceName) const;
 
     // Given a component name (e.g. "android.hardware.camera"),
     // return a list of version numbers that are supported by the hardware.
