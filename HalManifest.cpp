@@ -18,9 +18,6 @@
 
 #include "HalManifest.h"
 
-#include "parse_xml.h"
-#include "CompatibilityMatrix.h"
-
 #include <dirent.h>
 
 #include <fstream>
@@ -30,8 +27,8 @@
 
 #include <android-base/logging.h>
 
-#define MANIFEST_PATH "/vendor/manifest/"
-#define MANIFEST_FILE "/vendor/manifest.xml"
+#include "parse_xml.h"
+#include "CompatibilityMatrix.h"
 
 namespace android {
 namespace vintf {
@@ -137,68 +134,22 @@ std::vector<std::string> HalManifest::checkIncompatiblity(const CompatibilityMat
     return incompatible;
 }
 
-status_t HalManifest::fetchAllInformation() {
-#if 0
-    // TODO: b/33755377 Uncomment this if we use a directory of fragments instead.
-    status_t err = OK;
-    DIR *dir = NULL;
-    struct dirent *e;
+status_t HalManifest::fetchAllInformation(const std::string &path) {
     std::ifstream in;
-    std::string buf;
-    if ((dir = opendir(MANIFEST_PATH))) {
-        while ((e = readdir(dir))) {
-            if (strcmp(e->d_name, ".") == 0 || strcmp(e->d_name, "..") == 0) {
-                continue;
-            }
-            in.open(e->d_name);
-            in >> buf;
-
-            err = handleFragment(this, buf); // And we will need to define this
-            if (err != OK) {
-                break;
-            }
-        }
-    }
-    if (dir != NULL) {
-        closedir(dir);
-    }
-    return err;
-#endif
-
-    std::ifstream in;
-    in.open(MANIFEST_FILE);
+    in.open(path);
     if (!in.is_open()) {
-        LOG(WARNING) << "Cannot open " MANIFEST_FILE;
+        LOG(WARNING) << "Cannot open " << path;
         return INVALID_OPERATION;
     }
     std::stringstream ss;
     ss << in.rdbuf();
     bool success = gHalManifestConverter(this, ss.str());
     if (!success) {
-        LOG(ERROR) << "Illformed vendor manifest: " MANIFEST_FILE << ": "
+        LOG(ERROR) << "Illformed vendor manifest: " << path << ": "
                    << gHalManifestConverter.lastError();
         return BAD_VALUE;
     }
     return OK;
-}
-
-// static
-const HalManifest *HalManifest::Get() {
-    static HalManifest vm{};
-    static HalManifest *vmp = nullptr;
-    static std::mutex mutex{};
-
-    std::lock_guard<std::mutex> lock(mutex);
-    if (vmp == nullptr) {
-        if (vm.fetchAllInformation() == OK) {
-            vmp = &vm;
-        } else {
-            vm.clear();
-            return nullptr;
-        }
-    }
-
-    return vmp;
 }
 
 

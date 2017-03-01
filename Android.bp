@@ -39,12 +39,13 @@ cc_library {
         "parse_string.cpp",
         "parse_xml.cpp",
         "CompatibilityMatrix.cpp",
+        "HalManifest.cpp",
         "KernelConfigTypedValue.cpp",
         "RuntimeInfo.cpp",
         "ManifestHal.cpp",
         "MatrixHal.cpp",
         "MatrixKernel.cpp",
-        "HalManifest.cpp",
+        "VintfObject.cpp",
     ],
 }
 

@@ -284,22 +284,8 @@ bool RuntimeInfo::checkCompatibility(const CompatibilityMatrix &mat,
     return true;
 }
 
-const RuntimeInfo *RuntimeInfo::Get() {
-    static RuntimeInfo ki{};
-    static RuntimeInfo *kip = nullptr;
-    static std::mutex mutex{};
-
-    std::lock_guard<std::mutex> lock(mutex);
-    if (kip == nullptr) {
-        if (RuntimeInfoFetcher(&ki).fetchAllInformation() == OK) {
-            kip = &ki;
-        } else {
-            ki.clear();
-            return nullptr;
-        }
-    }
-
-    return kip;
+status_t RuntimeInfo::fetchAllInformation() {
+    return RuntimeInfoFetcher(this).fetchAllInformation();
 }
 
 } // namespace vintf
