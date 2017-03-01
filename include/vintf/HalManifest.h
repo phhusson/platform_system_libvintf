@@ -70,22 +70,23 @@ public:
     // for the framework.
     std::vector<std::string> checkIncompatiblity(const CompatibilityMatrix &mat) const;
 
+    // Add an hal to this manifest so that a HalManifest can be constructed programatically.
+    bool add(ManifestHal &&hal);
+
+    // Get an HAL component based on the component name. Return nullptr
+    // if the component does not exist. The component name looks like:
+    // android.hardware.foo
+    const ManifestHal *getHal(const std::string &name) const;
+    ManifestHal *getHal(const std::string &name);
+
 private:
     friend struct HalManifestConverter;
     friend class VintfObject;
     friend struct LibVintfTest;
     friend std::string dump(const HalManifest &vm);
 
-    // Add an hal to this manifest.
-    bool add(ManifestHal &&hal);
-
     // clear this manifest.
     inline void clear() { mHals.clear(); }
-
-    // Get an HAL component based on the component name. Return nullptr
-    // if the component does not exist. The component name looks like:
-    // android.hardware.foo
-    const ManifestHal *getHal(const std::string &name) const;
 
     // Return an iterable to all ManifestHal objects. Call it as follows:
     // for (const ManifestHal &e : vm.getHals()) { }
