@@ -161,6 +161,27 @@ TEST_F(LibVintfTest, HalManifestConverter) {
         "</manifest>\n");
 }
 
+TEST_F(LibVintfTest, HalManifestOptional) {
+    HalManifest vm;
+    EXPECT_TRUE(gHalManifestConverter(&vm,
+            "<manifest version=\"1.0\"></manifest>"));
+    EXPECT_TRUE(gHalManifestConverter(&vm,
+            "<manifest version=\"1.0\">"
+            "    <hal>"
+            "        <name>android.hidl.manager</name>"
+            "        <transport>hwbinder</transport>"
+            "        <version>1.0</version>"
+            "    </hal>"
+            "</manifest>"));
+    EXPECT_FALSE(gHalManifestConverter(&vm,
+            "<manifest version=\"1.0\">"
+            "    <hal>"
+            "        <name>android.hidl.manager</name>"
+            "        <version>1.0</version>"
+            "    </hal>"
+            "</manifest>"));
+}
+
 TEST_F(LibVintfTest, HalManifestInstances) {
     HalManifest vm = testHalManifest();
     EXPECT_EQ(vm.getInstances("android.hardware.camera", "ICamera"),
