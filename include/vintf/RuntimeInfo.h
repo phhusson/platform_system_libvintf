@@ -34,11 +34,6 @@ struct RuntimeInfo {
 
     RuntimeInfo() {}
 
-    // Get the object that contains all kernel information. If any error,
-    // nullptr is returned.
-    // Note: this is not thread-safe.
-    static const RuntimeInfo *Get();
-
     // /proc/version
     // utsname.sysname
     const std::string &osName() const;
@@ -61,10 +56,12 @@ struct RuntimeInfo {
 private:
 
     friend struct RuntimeInfoFetcher;
+    friend class VintfObject;
     friend struct LibVintfTest;
     friend std::string dump(const RuntimeInfo &ki);
 
     void clear();
+    status_t fetchAllInformation();
 
     // /proc/config.gz
     // Key: CONFIG_xxx; Value: the value after = sign.
