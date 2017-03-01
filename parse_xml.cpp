@@ -111,6 +111,19 @@ inline bool getAttr(NodeType *root, const std::string &attrName, std::string *s)
 
 // --------------- tinyxml2 details end.
 
+// Helper functions for XmlConverter
+static bool parse(const std::string &attrText, bool *attr) {
+    if (attrText == "true" || attrText == "1") {
+        *attr = true;
+        return true;
+    }
+    if (attrText == "false" || attrText == "0") {
+        *attr = false;
+        return true;
+    }
+    return false;
+}
+
 // ---------------------- XmlNodeConverter definitions
 
 template<typename Object>
@@ -164,6 +177,8 @@ struct XmlNodeConverter : public XmlConverter<Object> {
     }
 
     // convenience methods for implementor.
+
+    // All append* functions helps mutateNode() to serialize the object into XML.
     template <typename T>
     inline void appendAttr(NodeType *e, const std::string &attrName, const T &attr) const {
         return appendStrAttr(e, attrName, ::android::vintf::to_string(attr));
@@ -200,6 +215,21 @@ struct XmlNodeConverter : public XmlConverter<Object> {
         }
     }
 
+    // All parse* functions helps buildObject() to deserialize XML to the object. Returns
+    // true if deserialization is successful, false if any error, and mLastError will be
+    // set to error message.
+    template <typename T>
+    inline bool parseOptionalAttr(NodeType *root, const std::string &attrName,
+            T &&defaultValue, T *attr) const {
+        std::string attrText;
+        bool success = getAttr(root, attrName, &attrText) &&
+                       ::android::vintf::parse(attrText, attr);
+        if (!success) {
+            *attr = std::move(defaultValue);
+        }
+        return true;
+    }
+
     template <typename T>
     inline bool parseAttr(NodeType *root, const std::string &attrName, T *attr) const {
         std::string attrText;
@@ -216,25 +246,6 @@ struct XmlNodeConverter : public XmlConverter<Object> {
             mLastError = "Could not find attr with name " + attrName;
         }
         return ret;
-    }
-
-    inline bool parseAttr(NodeType *root, const std::string &attrName, bool *attr) const {
-        std::string attrText;
-        if (!getAttr(root, attrName, &attrText)) {
-            mLastError = "Could not find attr with name " + attrName;
-            return false;
-        }
-        if (attrText == "true" || attrText == "1") {
-            *attr = true;
-            return true;
-        }
-        if (attrText == "false" || attrText == "0") {
-            *attr = false;
-            return true;
-        }
-        mLastError = "Could not parse attr with name \"" + attrName
-                + "\" and value \"" + attrText + "\"";
-        return false;
     }
 
     inline bool parseTextElement(NodeType *root,
@@ -264,6 +275,21 @@ struct XmlNodeConverter : public XmlConverter<Object> {
         if (child == nullptr) {
             mLastError = "Could not find element with name " + conv.elementName();
             return false;
+        }
+        bool success = conv.deserialize(t, child);
+        if (!success) {
+            mLastError = conv.lastError();
+        }
+        return success;
+    }
+
+    template <typename T>
+    inline bool parseOptionalChild(NodeType *root, const XmlNodeConverter<T> &conv,
+            T &&defaultValue, T *t) const {
+        NodeType *child = getChild(root, conv.elementName());
+        if (child == nullptr) {
+            *t = std::move(defaultValue);
+            return true;
         }
         bool success = conv.deserialize(t, child);
         if (!success) {
@@ -373,8 +399,8 @@ struct MatrixHalConverter : public XmlNodeConverter<MatrixHal> {
         appendChildren(root, versionRangeConverter, hal.versionRanges, d);
     }
     bool buildObject(MatrixHal *object, NodeType *root) const override {
-        if (!parseAttr(root, "format", &object->format) ||
-            !parseAttr(root, "optional", &object->optional) ||
+        if (!parseOptionalAttr(root, "format", HalFormat::HIDL, &object->format) ||
+            !parseOptionalAttr(root, "optional", false /* defaultValue */, &object->optional) ||
             !parseTextElement(root, "name", &object->name) ||
             !parseChildren(root, versionRangeConverter, &object->versionRanges)) {
             return false;
@@ -455,10 +481,10 @@ struct ManifestHalConverter : public XmlNodeConverter<ManifestHal> {
     }
     bool buildObject(ManifestHal *object, NodeType *root) const override {
         std::vector<ManifestHalInterface> interfaces;
-        if (!parseAttr(root, "format", &object->format) ||
+        if (!parseOptionalAttr(root, "format", HalFormat::HIDL, &object->format) ||
             !parseTextElement(root, "name", &object->name) ||
             !parseChild(root, transportConverter, &object->transport) ||
-            !parseChild(root, halImplementationConverter, &object->impl) ||
+            !parseOptionalChild(root, halImplementationConverter, {}, &object->impl) ||
             !parseChildren(root, versionConverter, &object->versions) ||
             !parseChildren(root, manfiestHalInterfaceConverter, &interfaces)) {
             return false;
