@@ -47,6 +47,10 @@ const ManifestHal *HalManifest::getHal(const std::string &name) const {
     return &(it->second);
 }
 
+ManifestHal *HalManifest::getHal(const std::string &name) {
+    return const_cast<ManifestHal *>(const_cast<const HalManifest *>(this)->getHal(name));
+}
+
 Transport HalManifest::getTransport(const std::string &name, const Version &v) const {
     const ManifestHal *hal = getHal(name);
     if (hal == nullptr) {
