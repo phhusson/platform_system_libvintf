@@ -475,7 +475,9 @@ struct ManifestHalConverter : public XmlNodeConverter<ManifestHal> {
         appendAttr(root, "format", hal.format);
         appendTextElement(root, "name", hal.name, d);
         appendChild(root, transportConverter(hal.transport, d));
-        appendChild(root, halImplementationConverter(hal.impl, d));
+        if (hal.impl.implLevel != ImplLevel::EMPTY) {
+            appendChild(root, halImplementationConverter(hal.impl, d));
+        }
         appendChildren(root, versionConverter, hal.versions, d);
         appendChildren(root, manfiestHalInterfaceConverter, iterateValues(hal.interfaces), d);
     }
@@ -586,6 +588,7 @@ const XmlConverter<KernelConfigTypedValue> &gKernelConfigTypedValueConverter
         = kernelConfigTypedValueConverter;
 const XmlConverter<MatrixHal> &gMatrixHalConverter = matrixHalConverter;
 const XmlConverter<HalImplementation> &gHalImplementationConverter = halImplementationConverter;
+const XmlConverter<ManifestHal> &gManifestHalConverter = manifestHalConverter;
 
 } // namespace vintf
 } // namespace android
