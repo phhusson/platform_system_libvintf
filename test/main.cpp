@@ -30,6 +30,7 @@ namespace android {
 namespace vintf {
 
 extern const XmlConverter<Version> &gVersionConverter;
+extern const XmlConverter<ManifestHal> &gManifestHalConverter;
 extern const XmlConverter<MatrixHal> &gMatrixHalConverter;
 extern const XmlConverter<KernelConfigTypedValue> &gKernelConfigTypedValueConverter;
 extern const XmlConverter<HalImplementation> &gHalImplementationConverter;
@@ -159,6 +160,21 @@ TEST_F(LibVintfTest, HalManifestConverter) {
         "        </interface>\n"
         "    </hal>\n"
         "</manifest>\n");
+}
+
+TEST_F(LibVintfTest, EmptyImpl) {
+    EXPECT_EQ(gManifestHalConverter(
+        ManifestHal{
+            .format = HalFormat::HIDL,
+            .name = "android.hidl.manager",
+            .impl = HalImplementation{},
+            .transport = Transport::HWBINDER,
+        }),
+        "<hal format=\"hidl\">\n"
+        "    <name>android.hidl.manager</name>\n"
+        "    <transport>hwbinder</transport>\n"
+        "</hal>\n"
+    ) << "HalImplementation should be missing.";
 }
 
 TEST_F(LibVintfTest, HalManifestOptional) {
