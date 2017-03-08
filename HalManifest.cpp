@@ -67,7 +67,11 @@ Transport HalManifest::getTransport(const std::string &package, const Version &v
     if (it == hal->interfaces.end()) {
         // Missing interface tag, default to "default"
         if (instanceName == "default") {
-            return hal->transport;
+            LOG(DEBUG) << "HalManifest::getTransport: Using "
+                       << ::android::vintf::to_string(hal->transportArch.transport)
+                       << " for " << interfaceName << "/default because the interface"
+                       << " is not in the manifest.";
+            return hal->transportArch.transport;
         }
         LOG(WARNING) << "HalManifest::getTransport: Cannot find interface '"
                      << interfaceName << "' in " << package << "@" << to_string(v);
@@ -80,7 +84,7 @@ Transport HalManifest::getTransport(const std::string &package, const Version &v
                      << package << "@" << to_string(v) << "::" << interfaceName;
         return Transport::EMPTY;
     }
-    return hal->transport;
+    return hal->transportArch.transport;
 }
 
 ConstMapValueIterable<std::string, ManifestHal> HalManifest::getHals() const {

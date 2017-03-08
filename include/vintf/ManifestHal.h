@@ -25,7 +25,7 @@
 #include "HalFormat.h"
 #include "ImplLevel.h"
 #include "ManifestHalInterface.h"
-#include "Transport.h"
+#include "TransportArch.h"
 #include "Version.h"
 
 namespace android {
@@ -45,7 +45,7 @@ struct ManifestHal {
     std::string name;
     std::vector<Version> versions;
     HalImplementation impl;
-    Transport transport = Transport::EMPTY;
+    TransportArch transportArch;
     std::map<std::string, ManifestHalInterface> interfaces;
 
 private:

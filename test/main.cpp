@@ -74,7 +74,7 @@ public:
             .name = "android.hardware.camera",
             .versions = {Version(2, 0)},
             .impl = HalImplementation{ImplLevel::SOC, "msm8892"},
-            .transport = Transport::HWBINDER,
+            .transportArch = {Transport::HWBINDER, Arch::ARCH_EMPTY},
             .interfaces = {
                 {"ICamera", {"ICamera", {"legacy/0", "default"}}},
                 {"IBetterCamera", {"IBetterCamera", {"camera"}}}
@@ -85,7 +85,7 @@ public:
             .name = "android.hardware.nfc",
             .versions = {Version(1, 0)},
             .impl = HalImplementation{ImplLevel::GENERIC, "generic"},
-            .transport = Transport::PASSTHROUGH,
+            .transportArch = {Transport::PASSTHROUGH, Arch::ARCH_32_64},
             .interfaces = {
                 {"INfc", {"INfc", {"default"}}}
             }
@@ -117,7 +117,7 @@ public:
 TEST_F(LibVintfTest, Stringify) {
     HalManifest vm = testHalManifest();
     EXPECT_EQ(dump(vm), "hidl/android.hardware.camera/hwbinder/soc/msm8892/2.0:"
-                        "hidl/android.hardware.nfc/passthrough/generic/generic/1.0");
+                        "hidl/android.hardware.nfc/passthrough32+64/generic/generic/1.0");
 
     EXPECT_EQ(to_string(HalFormat::HIDL), "hidl");
     EXPECT_EQ(to_string(HalFormat::NATIVE), "native");
@@ -151,7 +151,7 @@ TEST_F(LibVintfTest, HalManifestConverter) {
         "    </hal>\n"
         "    <hal format=\"hidl\">\n"
         "        <name>android.hardware.nfc</name>\n"
-        "        <transport>passthrough</transport>\n"
+        "        <transport arch=\"32+64\">passthrough</transport>\n"
         "        <impl level=\"generic\">generic</impl>\n"
         "        <version>1.0</version>\n"
         "        <interface>\n"
@@ -168,7 +168,7 @@ TEST_F(LibVintfTest, EmptyImpl) {
             .format = HalFormat::HIDL,
             .name = "android.hidl.manager",
             .impl = HalImplementation{},
-            .transport = Transport::HWBINDER,
+            .transportArch = {Transport::HWBINDER, Arch::ARCH_EMPTY},
         }),
         "<hal format=\"hidl\">\n"
         "    <name>android.hidl.manager</name>\n"
@@ -404,7 +404,7 @@ TEST_F(LibVintfTest, IsValid) {
         .name = "android.hardware.camera",
         .versions = {{Version(2, 0), Version(2, 1)}},
         .impl = HalImplementation{ImplLevel::SOC, "msm8892"},
-        .transport = Transport::PASSTHROUGH
+        .transportArch = {Transport::PASSTHROUGH, Arch::ARCH_32_64}
     };
 
     EXPECT_FALSE(isValid(invalidHal));

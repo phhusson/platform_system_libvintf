@@ -14,33 +14,42 @@
  * limitations under the License.
  */
 
-#include "ManifestHal.h"
-#include <unordered_set>
+
+#ifndef ANDROID_VINTF_ARCH_H
+#define ANDROID_VINTF_ARCH_H
+
+#include <stdint.h>
+#include <string>
+#include <array>
 
 namespace android {
 namespace vintf {
 
-bool ManifestHal::isValid() const {
-    std::unordered_set<size_t> existing;
-    for (const auto &v : versions) {
-        if (existing.find(v.majorVer) != existing.end()) {
-            return false;
-        }
-        existing.insert(v.majorVer);
+enum class Arch : size_t {
+    ARCH_EMPTY = 0,
+    ARCH_32,
+    ARCH_64,
+    ARCH_32_64
+};
+
+static const std::array<std::string, 4> gArchStrings = {
+    {
+        "",
+        "32",
+        "64",
+        "32+64",
     }
-    return transportArch.isValid();
+};
+
+inline bool has32(Arch arch) {
+    return arch == Arch::ARCH_32 || arch == Arch::ARCH_32_64;
 }
 
-bool ManifestHal::operator==(const ManifestHal &other) const {
-    if (format != other.format)
-        return false;
-    if (name != other.name)
-        return false;
-    if (versions != other.versions)
-        return false;
-    // do not compare impl
-    return true;
+inline bool has64(Arch arch) {
+    return arch == Arch::ARCH_64 || arch == Arch::ARCH_32_64;
 }
 
 } // namespace vintf
 } // namespace android
+
+#endif // ANDROID_VINTF_ARCH_H

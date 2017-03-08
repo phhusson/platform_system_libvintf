@@ -316,6 +316,10 @@ struct XmlNodeConverter : public XmlConverter<Object> {
         return true;
     }
 
+    template <typename T>
+    inline bool parseText(NodeType *node, T *s) const {
+        return ::android::vintf::parse(getText(node), s);
+    }
 protected:
     mutable std::string mLastError;
 };
@@ -347,9 +351,32 @@ const XmlTextConverter<Version> versionConverter{"version"};
 
 const XmlTextConverter<VersionRange> versionRangeConverter{"version"};
 
-const XmlTextConverter<Transport> transportConverter{"transport"};
-
 const XmlTextConverter<KernelConfigKey> kernelConfigKeyConverter{"key"};
+
+struct TransportArchConverter : public XmlNodeConverter<TransportArch> {
+    std::string elementName() const override { return "transport"; }
+    void mutateNode(const TransportArch &object, NodeType *root, DocType *d) const override {
+        if (object.arch != Arch::ARCH_EMPTY) {
+            appendAttr(root, "arch", object.arch);
+        }
+        appendText(root, ::android::vintf::to_string(object.transport), d);
+    }
+    bool buildObject(TransportArch *object, NodeType *root) const override {
+        if (!parseOptionalAttr(root, "arch", Arch::ARCH_EMPTY, &object->arch) ||
+            !parseText(root, &object->transport)) {
+            return false;
+        }
+        if (!object->isValid()) {
+            this->mLastError = "transport == " + ::android::vintf::to_string(object->transport) +
+                    " and arch == " + ::android::vintf::to_string(object->arch) +
+                    " is not a valid combination.";
+            return false;
+        }
+        return true;
+    }
+};
+
+const TransportArchConverter transportArchConverter{};
 
 struct KernelConfigTypedValueConverter : public XmlNodeConverter<KernelConfigTypedValue> {
     std::string elementName() const override { return "value"; }
@@ -474,7 +501,9 @@ struct ManifestHalConverter : public XmlNodeConverter<ManifestHal> {
     void mutateNode(const ManifestHal &hal, NodeType *root, DocType *d) const override {
         appendAttr(root, "format", hal.format);
         appendTextElement(root, "name", hal.name, d);
-        appendChild(root, transportConverter(hal.transport, d));
+        if (!hal.transportArch.empty()) {
+            appendChild(root, transportArchConverter(hal.transportArch, d));
+        }
         if (hal.impl.implLevel != ImplLevel::EMPTY) {
             appendChild(root, halImplementationConverter(hal.impl, d));
         }
@@ -485,7 +514,7 @@ struct ManifestHalConverter : public XmlNodeConverter<ManifestHal> {
         std::vector<ManifestHalInterface> interfaces;
         if (!parseOptionalAttr(root, "format", HalFormat::HIDL, &object->format) ||
             !parseTextElement(root, "name", &object->name) ||
-            !parseChild(root, transportConverter, &object->transport) ||
+            !parseChild(root, transportArchConverter, &object->transportArch) ||
             !parseOptionalChild(root, halImplementationConverter, {}, &object->impl) ||
             !parseChildren(root, versionConverter, &object->versions) ||
             !parseChildren(root, manfiestHalInterfaceConverter, &interfaces)) {
@@ -500,7 +529,11 @@ struct ManifestHalConverter : public XmlNodeConverter<ManifestHal> {
                 return false;
             }
         }
-        return object->isValid();
+        if (!object->isValid()) {
+            this->mLastError = "'" + object->name + "' is not a valid Manifest HAL.";
+            return false;
+        }
+        return true;
     }
 };
 
