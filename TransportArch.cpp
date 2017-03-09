@@ -14,32 +14,28 @@
  * limitations under the License.
  */
 
-#include "ManifestHal.h"
-#include <unordered_set>
+
+#include "TransportArch.h"
 
 namespace android {
 namespace vintf {
 
-bool ManifestHal::isValid() const {
-    std::unordered_set<size_t> existing;
-    for (const auto &v : versions) {
-        if (existing.find(v.majorVer) != existing.end()) {
-            return false;
-        }
-        existing.insert(v.majorVer);
-    }
-    return transportArch.isValid();
+bool TransportArch::empty() const {
+    return transport == Transport::EMPTY && arch == Arch::ARCH_EMPTY;
 }
 
-bool ManifestHal::operator==(const ManifestHal &other) const {
-    if (format != other.format)
-        return false;
-    if (name != other.name)
-        return false;
-    if (versions != other.versions)
-        return false;
-    // do not compare impl
-    return true;
+bool TransportArch::isValid() const {
+    switch (transport) {
+        case Transport::EMPTY: // fallthrough
+        case Transport::HWBINDER:
+            return arch == Arch::ARCH_EMPTY;
+
+        case Transport::PASSTHROUGH:
+            return arch != Arch::ARCH_EMPTY;
+
+        case Transport::TOGGLED:
+            return true; // allow all arch for toggled
+    }
 }
 
 } // namespace vintf
