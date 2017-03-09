@@ -41,6 +41,7 @@ static const std::array<std::string, 4> gTransportStrings = {
     }
 };
 
+
 } // namespace vintf
 } // namespace android
 
