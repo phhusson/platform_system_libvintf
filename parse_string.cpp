@@ -83,45 +83,20 @@ bool parseEnum(const std::string &s, E *e, const Array &strings) {
     return false;
 }
 
-bool parse(const std::string &s, HalFormat *hf) {
-    return parseEnum(s, hf, gHalFormatStrings);
-}
+#define DEFINE_PARSE_STREAMIN_FOR_ENUM(ENUM) \
+    bool parse(const std::string &s, ENUM *hf) {                   \
+        return parseEnum(s, hf, g##ENUM##Strings);                 \
+    }                                                              \
+    std::ostream &operator<<(std::ostream &os, ENUM hf) {          \
+        return os << g##ENUM##Strings.at(static_cast<size_t>(hf)); \
+    }                                                              \
 
-std::ostream &operator<<(std::ostream &os, HalFormat hf) {
-    return os << gHalFormatStrings.at(static_cast<size_t>(hf));
-}
-
-bool parse(const std::string &s, ImplLevel *il) {
-    return parseEnum(s, il, gImplLevelStrings);
-}
-
-std::ostream &operator<<(std::ostream &os, ImplLevel il) {
-    return os << gImplLevelStrings.at(static_cast<size_t>(il));
-}
-
-bool parse(const std::string &s, Transport *tr) {
-    return parseEnum(s, tr, gTransportStrings);
-}
-
-std::ostream &operator<<(std::ostream &os, Transport tr) {
-    return os << gTransportStrings.at(static_cast<size_t>(tr));
-}
-
-bool parse(const std::string &s, KernelConfigType *kc) {
-    return parseEnum(s, kc, gKernelConfigTypeStrings);
-}
-
-std::ostream &operator<<(std::ostream &os, KernelConfigType kc) {
-    return os << gKernelConfigTypeStrings.at(static_cast<size_t>(kc));
-}
-
-bool parse(const std::string &s, Tristate *kc) {
-    return parseEnum(s, kc, gTristateStrings);
-}
-
-std::ostream &operator<<(std::ostream &os, Tristate kc) {
-    return os << gTristateStrings.at(static_cast<size_t>(kc));
-}
+DEFINE_PARSE_STREAMIN_FOR_ENUM(HalFormat);
+DEFINE_PARSE_STREAMIN_FOR_ENUM(ImplLevel);
+DEFINE_PARSE_STREAMIN_FOR_ENUM(Transport);
+DEFINE_PARSE_STREAMIN_FOR_ENUM(Arch);
+DEFINE_PARSE_STREAMIN_FOR_ENUM(KernelConfigType);
+DEFINE_PARSE_STREAMIN_FOR_ENUM(Tristate);
 
 std::ostream &operator<<(std::ostream &os, const KernelConfigTypedValue &kctv) {
     switch (kctv.mType) {
@@ -259,6 +234,36 @@ bool parse(const std::string &s, KernelVersion *kernelVersion) {
     return true;
 }
 
+std::ostream &operator<<(std::ostream &os, const TransportArch &ta) {
+    return os << to_string(ta.transport) << to_string(ta.arch);
+}
+
+bool parse(const std::string &s, TransportArch *ta) {
+    bool transportSet = false;
+    bool archSet = false;
+    for (size_t i = 0; i < gTransportStrings.size(); ++i) {
+        if (s.find(gTransportStrings.at(i)) != std::string::npos) {
+            ta->transport = static_cast<Transport>(i);
+            transportSet = true;
+            break;
+        }
+    }
+    if (!transportSet) {
+        return false;
+    }
+    for (size_t i = 0; i < gArchStrings.size(); ++i) {
+        if (s.find(gArchStrings.at(i)) != std::string::npos) {
+            ta->arch = static_cast<Arch>(i);
+            archSet = true;
+            break;
+        }
+    }
+    if (!archSet) {
+        return false;
+    }
+    return ta->isValid();
+}
+
 std::ostream &operator<<(std::ostream &os, const KernelVersion &ver) {
     return os << ver.version << "." << ver.majorRev << "." << ver.minorRev;
 }
@@ -272,7 +277,7 @@ bool parse(const std::string &s, ManifestHal *hal) {
         return false;
     }
     hal->name = v[1];
-    if (!parse(v[2], &hal->transport)) {
+    if (!parse(v[2], &hal->transportArch)) {
         return false;
     }
     if (!parse(v[3], &hal->impl.implLevel)) {
@@ -288,7 +293,7 @@ bool parse(const std::string &s, ManifestHal *hal) {
 std::ostream &operator<<(std::ostream &os, const ManifestHal &hal) {
     return os << hal.format << "/"
               << hal.name << "/"
-              << hal.transport << "/"
+              << hal.transportArch << "/"
               << hal.impl.implLevel << "/"
               << hal.impl.impl << "/"
               << hal.versions;
