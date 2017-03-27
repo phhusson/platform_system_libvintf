@@ -80,6 +80,14 @@ public:
     const ManifestHal *getHal(const std::string &name) const;
     ManifestHal *getHal(const std::string &name);
 
+    // Returns all component names.
+    std::set<std::string> getHalNames() const;
+
+    // Given a component name (e.g. "android.hardware.camera"),
+    // return a list of interface names of that component.
+    // If the component is not found, empty list is returned.
+    std::set<std::string> getInterfaceNames(const std::string &name) const;
+
 private:
     friend struct HalManifestConverter;
     friend class VintfObject;
