@@ -40,6 +40,26 @@ bool HalManifest::add(ManifestHal &&hal) {
     return hal.isValid() && mHals.emplace(hal.name, std::move(hal)).second;
 }
 
+std::set<std::string> HalManifest::getHalNames() const {
+    std::set<std::string> names{};
+    for (const auto &hal : mHals) {
+        names.insert(hal.first);
+    }
+    return names;
+}
+
+std::set<std::string> HalManifest::getInterfaceNames(const std::string &name) const {
+    std::set<std::string> interfaceNames{};
+    const ManifestHal *hal = getHal(name);
+    if (hal == nullptr) {
+        return interfaceNames;
+    }
+    for (const auto &iface : hal->interfaces) {
+        interfaceNames.insert(iface.first);
+    }
+    return interfaceNames;
+}
+
 const ManifestHal *HalManifest::getHal(const std::string &name) const {
     const auto it = mHals.find(name);
     if (it == mHals.end()) {

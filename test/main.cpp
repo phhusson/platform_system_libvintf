@@ -412,6 +412,20 @@ TEST_F(LibVintfTest, IsValid) {
     EXPECT_FALSE(add(vm2, std::move(invalidHal)));
 }
 
+TEST_F(LibVintfTest, HalManifestGetHalNames) {
+    HalManifest vm = testHalManifest();
+    EXPECT_EQ(vm.getHalNames(), std::set<std::string>(
+                  {"android.hardware.camera", "android.hardware.nfc"}));
+}
+
+TEST_F(LibVintfTest, HalManifestGetInterfaceNames) {
+    HalManifest vm = testHalManifest();
+    EXPECT_EQ(vm.getInterfaceNames("android.hardware.camera"),
+              std::set<std::string>({"ICamera", "IBetterCamera"}));
+    EXPECT_EQ(vm.getInterfaceNames("android.hardware.nfc"),
+              std::set<std::string>({"INfc"}));
+}
+
 TEST_F(LibVintfTest, HalManifestGetHal) {
     HalManifest vm = testHalManifest();
     EXPECT_NE(getHal(vm, "android.hardware.camera"), nullptr);
