@@ -31,7 +31,7 @@ enum class Transport : size_t {
     HWBINDER,
 };
 
-static const std::array<std::string, 4> gTransportStrings = {
+static const std::array<std::string, 3> gTransportStrings = {
     {
         "",
         "passthrough",
