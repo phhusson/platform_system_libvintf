@@ -23,18 +23,12 @@
 #include <map>
 
 #include "HalFormat.h"
-#include "ImplLevel.h"
 #include "ManifestHalInterface.h"
 #include "TransportArch.h"
 #include "Version.h"
 
 namespace android {
 namespace vintf {
-
-struct HalImplementation {
-    ImplLevel implLevel = ImplLevel::EMPTY;
-    std::string impl;
-};
 
 // A component of HalManifest.
 struct ManifestHal {
@@ -44,7 +38,6 @@ struct ManifestHal {
     HalFormat format = HalFormat::HIDL;
     std::string name;
     std::vector<Version> versions;
-    HalImplementation impl;
     TransportArch transportArch;
     std::map<std::string, ManifestHalInterface> interfaces;
 

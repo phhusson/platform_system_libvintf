@@ -29,7 +29,6 @@ namespace android {
 namespace vintf {
 
 std::ostream &operator<<(std::ostream &os, HalFormat hf);
-std::ostream &operator<<(std::ostream &os, ImplLevel il);
 std::ostream &operator<<(std::ostream &os, Transport tr);
 std::ostream &operator<<(std::ostream &os, Arch ar);
 std::ostream &operator<<(std::ostream &os, KernelConfigType il);
@@ -52,7 +51,6 @@ std::string to_string(const T &obj) {
 }
 
 bool parse(const std::string &s, HalFormat *hf);
-bool parse(const std::string &s, ImplLevel *il);
 bool parse(const std::string &s, Transport *tr);
 bool parse(const std::string &s, Arch *ar);
 bool parse(const std::string &s, KernelConfigType *il);
