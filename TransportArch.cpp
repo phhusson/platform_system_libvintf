@@ -32,9 +32,6 @@ bool TransportArch::isValid() const {
 
         case Transport::PASSTHROUGH:
             return arch != Arch::ARCH_EMPTY;
-
-        case Transport::TOGGLED:
-            return true; // allow all arch for toggled
     }
 }
 
