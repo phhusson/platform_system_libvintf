@@ -215,6 +215,36 @@ std::ostream &operator<<(std::ostream &os, const VersionRange &vr) {
     return os << vr.minVer() << "-" << vr.maxMinor;
 }
 
+bool parse(const std::string &s, VndkVersionRange *vr) {
+    std::vector<std::string> v = SplitString(s, '-');
+    if (v.size() != 1 && v.size() != 2) {
+        return false;
+    }
+    std::vector<std::string> minVector = SplitString(v[0], '.');
+    if (minVector.size() != 3) {
+        return false;
+    }
+    if (!ParseUint(minVector[0], &vr->sdk) ||
+        !ParseUint(minVector[1], &vr->vndk) ||
+        !ParseUint(minVector[2], &vr->patchMin)) {
+        return false;
+    }
+    if (v.size() == 1) {
+        vr->patchMax = vr->patchMin;
+        return true;
+    } else {
+        return ParseUint(v[1], &vr->patchMax);
+    }
+}
+
+std::ostream &operator<<(std::ostream &os, const VndkVersionRange &vr) {
+    os << vr.sdk << "." << vr.vndk << "." << vr.patchMin;
+    if (!vr.isSingleVersion()) {
+        os << "-" << vr.patchMax;
+    }
+    return os;
+}
+
 bool parse(const std::string &s, KernelVersion *kernelVersion) {
     std::vector<std::string> v = SplitString(s, '.');
     if (v.size() != 3) {
