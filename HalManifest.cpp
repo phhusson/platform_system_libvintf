@@ -85,14 +85,6 @@ Transport HalManifest::getTransport(const std::string &package, const Version &v
     }
     auto it = hal->interfaces.find(interfaceName);
     if (it == hal->interfaces.end()) {
-        // Missing interface tag, default to "default"
-        if (instanceName == "default") {
-            LOG(DEBUG) << "HalManifest::getTransport: Using "
-                       << ::android::vintf::to_string(hal->transportArch.transport)
-                       << " for " << interfaceName << "/default because the interface"
-                       << " is not in the manifest.";
-            return hal->transportArch.transport;
-        }
         LOG(WARNING) << "HalManifest::getTransport: Cannot find interface '"
                      << interfaceName << "' in " << package << "@" << to_string(v);
         return Transport::EMPTY;
