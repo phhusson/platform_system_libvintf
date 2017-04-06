@@ -97,6 +97,7 @@ private:
     friend class AssembleVintf;
     friend struct LibVintfTest;
     friend std::string dump(const HalManifest &vm);
+    friend bool operator==(const HalManifest &lft, const HalManifest &rgt);
 
     // clear this manifest.
     inline void clear() { mHals.clear(); }
