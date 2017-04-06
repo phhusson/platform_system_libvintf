@@ -455,23 +455,6 @@ struct MatrixKernelConverter : public XmlNodeConverter<MatrixKernel> {
 
 const MatrixKernelConverter matrixKernelConverter{};
 
-struct HalImplementationConverter : public XmlNodeConverter<HalImplementation> {
-    std::string elementName() const override { return "impl"; }
-    void mutateNode(const HalImplementation &impl, NodeType *root, DocType *d) const override {
-        appendAttr(root, "level", impl.implLevel);
-        appendText(root, impl.impl, d);
-    }
-    bool buildObject(HalImplementation *object, NodeType *root) const override {
-        if (!parseAttr(root, "level", &object->implLevel) ||
-            !parseText(root, &object->impl)) {
-            return false;
-        }
-        return true;
-    }
-};
-
-const HalImplementationConverter halImplementationConverter{};
-
 struct ManfiestHalInterfaceConverter : public XmlNodeConverter<ManifestHalInterface> {
     std::string elementName() const override { return "interface"; }
     void mutateNode(const ManifestHalInterface &intf, NodeType *root, DocType *d) const override {
@@ -504,9 +487,6 @@ struct ManifestHalConverter : public XmlNodeConverter<ManifestHal> {
         if (!hal.transportArch.empty()) {
             appendChild(root, transportArchConverter(hal.transportArch, d));
         }
-        if (hal.impl.implLevel != ImplLevel::EMPTY) {
-            appendChild(root, halImplementationConverter(hal.impl, d));
-        }
         appendChildren(root, versionConverter, hal.versions, d);
         appendChildren(root, manfiestHalInterfaceConverter, iterateValues(hal.interfaces), d);
     }
@@ -515,7 +495,6 @@ struct ManifestHalConverter : public XmlNodeConverter<ManifestHal> {
         if (!parseOptionalAttr(root, "format", HalFormat::HIDL, &object->format) ||
             !parseTextElement(root, "name", &object->name) ||
             !parseChild(root, transportArchConverter, &object->transportArch) ||
-            !parseOptionalChild(root, halImplementationConverter, {}, &object->impl) ||
             !parseChildren(root, versionConverter, &object->versions) ||
             !parseChildren(root, manfiestHalInterfaceConverter, &interfaces)) {
             return false;
@@ -620,7 +599,6 @@ const XmlConverter<Version> &gVersionConverter = versionConverter;
 const XmlConverter<KernelConfigTypedValue> &gKernelConfigTypedValueConverter
         = kernelConfigTypedValueConverter;
 const XmlConverter<MatrixHal> &gMatrixHalConverter = matrixHalConverter;
-const XmlConverter<HalImplementation> &gHalImplementationConverter = halImplementationConverter;
 const XmlConverter<ManifestHal> &gManifestHalConverter = manifestHalConverter;
 
 } // namespace vintf
