@@ -60,9 +60,6 @@ public:
     ConstMapValueIterable<std::string, ManifestHal> getHals(HalManifest &vm) {
         return vm.getHals();
     }
-    bool isEqual(const CompatibilityMatrix &cm1, const CompatibilityMatrix &cm2) {
-        return cm1.mHals == cm2.mHals && cm1.framework.mKernels == cm2.framework.mKernels;
-    }
     bool isValid(const ManifestHal &mh) {
         return mh.isValid();
     }
@@ -182,6 +179,9 @@ TEST_F(LibVintfTest, HalManifestConverter) {
         "        <version>25.0</version>\n"
         "    </sepolicy>\n"
         "</manifest>\n");
+    HalManifest vm2;
+    EXPECT_TRUE(gHalManifestConverter(&vm2, xml));
+    EXPECT_EQ(vm, vm2);
 }
 
 TEST_F(LibVintfTest, HalManifestConverterFramework) {
@@ -212,6 +212,7 @@ TEST_F(LibVintfTest, HalManifestConverterFramework) {
         "</manifest>\n");
     HalManifest vm2;
     EXPECT_TRUE(gHalManifestConverter(&vm2, xml));
+    EXPECT_EQ(vm, vm2);
 }
 
 TEST_F(LibVintfTest, HalManifestOptional) {
@@ -420,7 +421,7 @@ TEST_F(LibVintfTest, CompatibilityMatrixCoverter) {
             "</compatibility-matrix>\n");
     CompatibilityMatrix cm2;
     EXPECT_TRUE(gCompatibilityMatrixConverter(&cm2, xml));
-    EXPECT_TRUE(isEqual(cm, cm2));
+    EXPECT_EQ(cm, cm2);
 }
 
 TEST_F(LibVintfTest, IsValid) {
