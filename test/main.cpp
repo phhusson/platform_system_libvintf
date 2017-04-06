@@ -33,7 +33,6 @@ extern const XmlConverter<Version> &gVersionConverter;
 extern const XmlConverter<ManifestHal> &gManifestHalConverter;
 extern const XmlConverter<MatrixHal> &gMatrixHalConverter;
 extern const XmlConverter<KernelConfigTypedValue> &gKernelConfigTypedValueConverter;
-extern const XmlConverter<HalImplementation> &gHalImplementationConverter;
 extern const XmlConverter<HalManifest> &gHalManifestConverter;
 extern const XmlConverter<CompatibilityMatrix> &gCompatibilityMatrixConverter;
 
@@ -53,7 +52,7 @@ public:
         return vm.add(std::move(hal));
     }
     void set(CompatibilityMatrix &cm, Sepolicy &&sepolicy) {
-        cm.mSepolicy = sepolicy;
+        cm.framework.mSepolicy = sepolicy;
     }
     const ManifestHal *getHal(HalManifest &vm, const std::string &name) {
         return vm.getHal(name);
@@ -62,18 +61,19 @@ public:
         return vm.getHals();
     }
     bool isEqual(const CompatibilityMatrix &cm1, const CompatibilityMatrix &cm2) {
-        return cm1.mHals == cm2.mHals && cm1.mKernels == cm2.mKernels;
+        return cm1.mHals == cm2.mHals && cm1.framework.mKernels == cm2.framework.mKernels;
     }
     bool isValid(const ManifestHal &mh) {
         return mh.isValid();
     }
     HalManifest testHalManifest() {
         HalManifest vm;
+        vm.mType = SchemaType::DEVICE;
+        vm.device.mSepolicyVersion = {25, 0};
         vm.add(ManifestHal{
             .format = HalFormat::HIDL,
             .name = "android.hardware.camera",
             .versions = {Version(2, 0)},
-            .impl = HalImplementation{ImplLevel::SOC, "msm8892"},
             .transportArch = {Transport::HWBINDER, Arch::ARCH_EMPTY},
             .interfaces = {
                 {"ICamera", {"ICamera", {"legacy/0", "default"}}},
@@ -84,7 +84,6 @@ public:
             .format = HalFormat::HIDL,
             .name = "android.hardware.nfc",
             .versions = {Version(1, 0)},
-            .impl = HalImplementation{ImplLevel::GENERIC, "generic"},
             .transportArch = {Transport::PASSTHROUGH, Arch::ARCH_32_64},
             .interfaces = {
                 {"INfc", {"INfc", {"default"}}}
@@ -116,8 +115,8 @@ public:
 
 TEST_F(LibVintfTest, Stringify) {
     HalManifest vm = testHalManifest();
-    EXPECT_EQ(dump(vm), "hidl/android.hardware.camera/hwbinder/soc/msm8892/2.0:"
-                        "hidl/android.hardware.nfc/passthrough32+64/generic/generic/1.0");
+    EXPECT_EQ(dump(vm), "hidl/android.hardware.camera/hwbinder/2.0:"
+                        "hidl/android.hardware.nfc/passthrough32+64/1.0");
 
     EXPECT_EQ(to_string(HalFormat::HIDL), "hidl");
     EXPECT_EQ(to_string(HalFormat::NATIVE), "native");
@@ -133,11 +132,10 @@ TEST_F(LibVintfTest, HalManifestConverter) {
     HalManifest vm = testHalManifest();
     std::string xml = gHalManifestConverter(vm);
     EXPECT_EQ(xml,
-        "<manifest version=\"1.0\">\n"
+        "<manifest version=\"1.0\" type=\"device\">\n"
         "    <hal format=\"hidl\">\n"
         "        <name>android.hardware.camera</name>\n"
         "        <transport>hwbinder</transport>\n"
-        "        <impl level=\"soc\">msm8892</impl>\n"
         "        <version>2.0</version>\n"
         "        <interface>\n"
         "            <name>IBetterCamera</name>\n"
@@ -152,37 +150,24 @@ TEST_F(LibVintfTest, HalManifestConverter) {
         "    <hal format=\"hidl\">\n"
         "        <name>android.hardware.nfc</name>\n"
         "        <transport arch=\"32+64\">passthrough</transport>\n"
-        "        <impl level=\"generic\">generic</impl>\n"
         "        <version>1.0</version>\n"
         "        <interface>\n"
         "            <name>INfc</name>\n"
         "            <instance>default</instance>\n"
         "        </interface>\n"
         "    </hal>\n"
+        "    <sepolicy>\n"
+        "        <version>25.0</version>\n"
+        "    </sepolicy>\n"
         "</manifest>\n");
-}
-
-TEST_F(LibVintfTest, EmptyImpl) {
-    EXPECT_EQ(gManifestHalConverter(
-        ManifestHal{
-            .format = HalFormat::HIDL,
-            .name = "android.hidl.manager",
-            .impl = HalImplementation{},
-            .transportArch = {Transport::HWBINDER, Arch::ARCH_EMPTY},
-        }),
-        "<hal format=\"hidl\">\n"
-        "    <name>android.hidl.manager</name>\n"
-        "    <transport>hwbinder</transport>\n"
-        "</hal>\n"
-    ) << "HalImplementation should be missing.";
 }
 
 TEST_F(LibVintfTest, HalManifestOptional) {
     HalManifest vm;
     EXPECT_TRUE(gHalManifestConverter(&vm,
-            "<manifest version=\"1.0\"></manifest>"));
+            "<manifest version=\"1.0\" type=\"device\"></manifest>"));
     EXPECT_TRUE(gHalManifestConverter(&vm,
-            "<manifest version=\"1.0\">"
+            "<manifest version=\"1.0\" type=\"device\">"
             "    <hal>"
             "        <name>android.hidl.manager</name>"
             "        <transport>hwbinder</transport>"
@@ -190,7 +175,7 @@ TEST_F(LibVintfTest, HalManifestOptional) {
             "    </hal>"
             "</manifest>"));
     EXPECT_FALSE(gHalManifestConverter(&vm,
-            "<manifest version=\"1.0\">"
+            "<manifest version=\"1.0\" type=\"device\">"
             "    <hal>"
             "        <name>android.hidl.manager</name>"
             "        <version>1.0</version>"
@@ -228,16 +213,6 @@ TEST_F(LibVintfTest, VersionConverter) {
     Version v2;
     EXPECT_TRUE(gVersionConverter(&v2, xml));
     EXPECT_EQ(v, v2);
-}
-
-TEST_F(LibVintfTest, HalImplementationConverter) {
-    HalImplementation hl{ImplLevel::SOC, "msm8992"};
-    std::string xml = gHalImplementationConverter(hl);
-    EXPECT_EQ(xml, "<impl level=\"soc\">msm8992</impl>\n");
-    HalImplementation hl2;
-    EXPECT_TRUE(gHalImplementationConverter(&hl2, xml));
-    EXPECT_EQ(hl.impl, hl2.impl);
-    EXPECT_EQ(hl.implLevel, hl2.implLevel);
 }
 
 TEST_F(LibVintfTest, MatrixHalConverter) {
@@ -355,7 +330,7 @@ TEST_F(LibVintfTest, CompatibilityMatrixCoverter) {
     set(cm, Sepolicy(30, {1, 3}));
     std::string xml = gCompatibilityMatrixConverter(cm);
     EXPECT_EQ(xml,
-            "<compatibility-matrix version=\"1.0\">\n"
+            "<compatibility-matrix version=\"1.0\" type=\"framework\">\n"
             "    <hal format=\"native\" optional=\"false\">\n"
             "        <name>android.hardware.camera</name>\n"
             "        <version>1.2-3</version>\n"
@@ -403,7 +378,6 @@ TEST_F(LibVintfTest, IsValid) {
         .format = HalFormat::HIDL,
         .name = "android.hardware.camera",
         .versions = {{Version(2, 0), Version(2, 1)}},
-        .impl = HalImplementation{ImplLevel::SOC, "msm8892"},
         .transportArch = {Transport::PASSTHROUGH, Arch::ARCH_32_64}
     };
 

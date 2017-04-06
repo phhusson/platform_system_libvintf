@@ -14,9 +14,8 @@
  * limitations under the License.
  */
 
-
-#ifndef ANDROID_VINTF_IMPL_LEVEL_H
-#define ANDROID_VINTF_IMPL_LEVEL_H
+#ifndef ANDROID_VINTF_MANIFEST_TYPE_H
+#define ANDROID_VINTF_MANIFEST_TYPE_H
 
 #include <stdint.h>
 #include <string>
@@ -25,23 +24,19 @@
 namespace android {
 namespace vintf {
 
-enum class ImplLevel : size_t {
-    EMPTY = 0,
-    TARGET,
-    SOC,
-    GENERIC
+enum class SchemaType : size_t {
+    DEVICE = 0,
+    FRAMEWORK,
 };
 
-static const std::array<std::string, 4> gImplLevelStrings = {
+static const std::array<std::string, 2> gSchemaTypeStrings = {
     {
-        "",
-        "target",
-        "soc",
-        "generic",
+        "device",
+        "framework",
     }
 };
 
 } // namespace vintf
 } // namespace android
 
-#endif // ANDROID_VINTF_IMPL_LEVEL_H
+#endif // ANDROID_VINTF_MANIFEST_TYPE_H

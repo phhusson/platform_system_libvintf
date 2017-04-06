@@ -26,13 +26,16 @@ bool CompatibilityMatrix::add(MatrixHal &&hal) {
 }
 
 bool CompatibilityMatrix::add(MatrixKernel &&kernel) {
-    mKernels.push_back(std::move(kernel));
+    if (mType != SchemaType::FRAMEWORK) {
+        return false;
+    }
+    framework.mKernels.push_back(std::move(kernel));
     return true;
 }
 
 void CompatibilityMatrix::clear() {
     mHals.clear();
-    mKernels.clear();
+    framework.mKernels.clear();
 }
 
 ConstMapValueIterable<std::string, MatrixHal> CompatibilityMatrix::getHals() const {
@@ -40,17 +43,16 @@ ConstMapValueIterable<std::string, MatrixHal> CompatibilityMatrix::getHals() con
 }
 
 const MatrixKernel *CompatibilityMatrix::findKernel(const KernelVersion &v) const {
-    for (const MatrixKernel &matrixKernel : mKernels) {
+    if (mType != SchemaType::FRAMEWORK) {
+        return nullptr;
+    }
+    for (const MatrixKernel &matrixKernel : framework.mKernels) {
         if (matrixKernel.minLts().version == v.version &&
             matrixKernel.minLts().majorRev == v.majorRev) {
             return matrixKernel.minLts().minorRev <= v.minorRev ? &matrixKernel : nullptr;
         }
     }
     return nullptr;
-}
-
-const Sepolicy &CompatibilityMatrix::getSepolicy() const {
-    return mSepolicy;
 }
 
 } // namespace vintf

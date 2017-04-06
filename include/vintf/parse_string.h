@@ -29,12 +29,12 @@ namespace android {
 namespace vintf {
 
 std::ostream &operator<<(std::ostream &os, HalFormat hf);
-std::ostream &operator<<(std::ostream &os, ImplLevel il);
 std::ostream &operator<<(std::ostream &os, Transport tr);
 std::ostream &operator<<(std::ostream &os, Arch ar);
 std::ostream &operator<<(std::ostream &os, KernelConfigType il);
 std::ostream &operator<<(std::ostream &os, Tristate tr);
-std::ostream &operator<<(std::ostream &os, KernelSepolicyVersion ksv);
+std::ostream &operator<<(std::ostream &os, SchemaType ksv);
+std::ostream &operator<<(std::ostream &os, const ManifestHal &hal);
 std::ostream &operator<<(std::ostream &os, const Version &ver);
 std::ostream &operator<<(std::ostream &os, const VersionRange &vr);
 std::ostream &operator<<(std::ostream &os, const KernelVersion &ver);
@@ -52,12 +52,12 @@ std::string to_string(const T &obj) {
 }
 
 bool parse(const std::string &s, HalFormat *hf);
-bool parse(const std::string &s, ImplLevel *il);
 bool parse(const std::string &s, Transport *tr);
 bool parse(const std::string &s, Arch *ar);
 bool parse(const std::string &s, KernelConfigType *il);
 bool parse(const std::string &s, KernelConfigKey *key);
 bool parse(const std::string &s, Tristate *tr);
+bool parse(const std::string &s, SchemaType *ver);
 bool parse(const std::string &s, KernelSepolicyVersion *ksv);
 bool parse(const std::string &s, Version *ver);
 bool parse(const std::string &s, VersionRange *vr);
