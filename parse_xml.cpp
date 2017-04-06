@@ -539,12 +539,26 @@ struct SepolicyConverter : public XmlNodeConverter<Sepolicy> {
 };
 const SepolicyConverter sepolicyConverter{};
 
+struct HalManifestSepolicyConverter : public XmlNodeConverter<Version> {
+    std::string elementName() const override { return "sepolicy"; }
+    void mutateNode(const Version &m, NodeType *root, DocType *d) const override {
+        appendChild(root, versionConverter(m, d));
+    }
+    bool buildObject(Version *object, NodeType *root) const override {
+        return parseChild(root, versionConverter, object);
+    }
+};
+const HalManifestSepolicyConverter halManifestSepolicyConverter{};
+
 struct HalManifestConverter : public XmlNodeConverter<HalManifest> {
     std::string elementName() const override { return "manifest"; }
     void mutateNode(const HalManifest &m, NodeType *root, DocType *d) const override {
         appendAttr(root, "version", HalManifest::kVersion);
         appendAttr(root, "type", m.mType);
         appendChildren(root, manifestHalConverter, m.getHals(), d);
+        if (m.mType == SchemaType::DEVICE) {
+            appendChild(root, halManifestSepolicyConverter(m.device.mSepolicyVersion, d));
+        }
     }
     bool buildObject(HalManifest *object, NodeType *root) const override {
         Version version;
@@ -557,6 +571,14 @@ struct HalManifestConverter : public XmlNodeConverter<HalManifest> {
         if (version != HalManifest::kVersion) {
             this->mLastError = "Unrecognized manifest.version";
             return false;
+        }
+        if (object->mType == SchemaType::DEVICE) {
+            // tags for device hal manifest only.
+            // TODO(b/36456394): should not allow <sepolicy> to be missing.
+            if (!parseOptionalChild(root, halManifestSepolicyConverter, {},
+                    &object->device.mSepolicyVersion)) {
+                return false;
+            }
         }
         for (auto &&hal : hals) {
             if (!object->add(std::move(hal))) {
