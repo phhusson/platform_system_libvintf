@@ -52,7 +52,7 @@ public:
         return vm.add(std::move(hal));
     }
     void set(CompatibilityMatrix &cm, Sepolicy &&sepolicy) {
-        cm.mSepolicy = sepolicy;
+        cm.framework.mSepolicy = sepolicy;
     }
     const ManifestHal *getHal(HalManifest &vm, const std::string &name) {
         return vm.getHal(name);
@@ -61,13 +61,14 @@ public:
         return vm.getHals();
     }
     bool isEqual(const CompatibilityMatrix &cm1, const CompatibilityMatrix &cm2) {
-        return cm1.mHals == cm2.mHals && cm1.mKernels == cm2.mKernels;
+        return cm1.mHals == cm2.mHals && cm1.framework.mKernels == cm2.framework.mKernels;
     }
     bool isValid(const ManifestHal &mh) {
         return mh.isValid();
     }
     HalManifest testHalManifest() {
         HalManifest vm;
+        vm.mType = SchemaType::DEVICE;
         vm.add(ManifestHal{
             .format = HalFormat::HIDL,
             .name = "android.hardware.camera",
@@ -130,7 +131,7 @@ TEST_F(LibVintfTest, HalManifestConverter) {
     HalManifest vm = testHalManifest();
     std::string xml = gHalManifestConverter(vm);
     EXPECT_EQ(xml,
-        "<manifest version=\"1.0\">\n"
+        "<manifest version=\"1.0\" type=\"device\">\n"
         "    <hal format=\"hidl\">\n"
         "        <name>android.hardware.camera</name>\n"
         "        <transport>hwbinder</transport>\n"
@@ -160,9 +161,9 @@ TEST_F(LibVintfTest, HalManifestConverter) {
 TEST_F(LibVintfTest, HalManifestOptional) {
     HalManifest vm;
     EXPECT_TRUE(gHalManifestConverter(&vm,
-            "<manifest version=\"1.0\"></manifest>"));
+            "<manifest version=\"1.0\" type=\"device\"></manifest>"));
     EXPECT_TRUE(gHalManifestConverter(&vm,
-            "<manifest version=\"1.0\">"
+            "<manifest version=\"1.0\" type=\"device\">"
             "    <hal>"
             "        <name>android.hidl.manager</name>"
             "        <transport>hwbinder</transport>"
@@ -170,7 +171,7 @@ TEST_F(LibVintfTest, HalManifestOptional) {
             "    </hal>"
             "</manifest>"));
     EXPECT_FALSE(gHalManifestConverter(&vm,
-            "<manifest version=\"1.0\">"
+            "<manifest version=\"1.0\" type=\"device\">"
             "    <hal>"
             "        <name>android.hidl.manager</name>"
             "        <version>1.0</version>"
@@ -325,7 +326,7 @@ TEST_F(LibVintfTest, CompatibilityMatrixCoverter) {
     set(cm, Sepolicy(30, {1, 3}));
     std::string xml = gCompatibilityMatrixConverter(cm);
     EXPECT_EQ(xml,
-            "<compatibility-matrix version=\"1.0\">\n"
+            "<compatibility-matrix version=\"1.0\" type=\"framework\">\n"
             "    <hal format=\"native\" optional=\"false\">\n"
             "        <name>android.hardware.camera</name>\n"
             "        <version>1.2-3</version>\n"
