@@ -543,11 +543,19 @@ struct HalManifestConverter : public XmlNodeConverter<HalManifest> {
     std::string elementName() const override { return "manifest"; }
     void mutateNode(const HalManifest &m, NodeType *root, DocType *d) const override {
         appendAttr(root, "version", HalManifest::kVersion);
+        appendAttr(root, "type", m.mType);
         appendChildren(root, manifestHalConverter, m.getHals(), d);
     }
     bool buildObject(HalManifest *object, NodeType *root) const override {
+        Version version;
         std::vector<ManifestHal> hals;
-        if (!parseChildren(root, manifestHalConverter, &hals)) {
+        if (!parseAttr(root, "version", &version) ||
+            !parseAttr(root, "type", &object->mType) ||
+            !parseChildren(root, manifestHalConverter, &hals)) {
+            return false;
+        }
+        if (version != HalManifest::kVersion) {
+            this->mLastError = "Unrecognized manifest.version";
             return false;
         }
         for (auto &&hal : hals) {
@@ -566,15 +574,31 @@ struct CompatibilityMatrixConverter : public XmlNodeConverter<CompatibilityMatri
     std::string elementName() const override { return "compatibility-matrix"; }
     void mutateNode(const CompatibilityMatrix &m, NodeType *root, DocType *d) const override {
         appendAttr(root, "version", CompatibilityMatrix::kVersion);
+        appendAttr(root, "type", m.mType);
         appendChildren(root, matrixHalConverter, iterateValues(m.mHals), d);
-        appendChildren(root, matrixKernelConverter, m.mKernels, d);
-        appendChild(root, sepolicyConverter(m.mSepolicy, d));
+        if (m.mType == SchemaType::FRAMEWORK) {
+            appendChildren(root, matrixKernelConverter, m.framework.mKernels, d);
+            appendChild(root, sepolicyConverter(m.framework.mSepolicy, d));
+        }
     }
     bool buildObject(CompatibilityMatrix *object, NodeType *root) const override {
+        Version version;
         std::vector<MatrixHal> hals;
-        if (!parseChildren(root, matrixHalConverter, &hals) ||
-            !parseChildren(root, matrixKernelConverter, &object->mKernels) ||
-            !parseChild(root, sepolicyConverter, &object->mSepolicy)) {
+        if (!parseAttr(root, "version", &version) ||
+            !parseAttr(root, "type", &object->mType) ||
+            !parseChildren(root, matrixHalConverter, &hals)) {
+            return false;
+        }
+
+        if (object->mType == SchemaType::FRAMEWORK) {
+            if (!parseChildren(root, matrixKernelConverter, &object->framework.mKernels) ||
+                !parseChild(root, sepolicyConverter, &object->framework.mSepolicy)) {
+                return false;
+            }
+        }
+
+        if (version != CompatibilityMatrix::kVersion) {
+            this->mLastError = "Unrecognized compatibility-matrix.version";
             return false;
         }
         for (auto &&hal : hals) {
