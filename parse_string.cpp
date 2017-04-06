@@ -96,6 +96,7 @@ DEFINE_PARSE_STREAMIN_FOR_ENUM(Transport);
 DEFINE_PARSE_STREAMIN_FOR_ENUM(Arch);
 DEFINE_PARSE_STREAMIN_FOR_ENUM(KernelConfigType);
 DEFINE_PARSE_STREAMIN_FOR_ENUM(Tristate);
+DEFINE_PARSE_STREAMIN_FOR_ENUM(SchemaType);
 
 std::ostream &operator<<(std::ostream &os, const KernelConfigTypedValue &kctv) {
     switch (kctv.mType) {
