@@ -191,6 +191,14 @@ status_t HalManifest::fetchAllInformation(const std::string &path) {
     return OK;
 }
 
+bool operator==(const HalManifest &lft, const HalManifest &rgt) {
+    return lft.mType == rgt.mType &&
+           lft.mHals == rgt.mHals &&
+           (lft.mType != SchemaType::DEVICE || (
+                lft.device.mSepolicyVersion == rgt.device.mSepolicyVersion)) &&
+           (lft.mType != SchemaType::FRAMEWORK || (
+                lft.framework.mVndks == rgt.framework.mVndks));
+}
 
 } // namespace vintf
 } // namespace android
