@@ -37,6 +37,7 @@ std::ostream &operator<<(std::ostream &os, SchemaType ksv);
 std::ostream &operator<<(std::ostream &os, const ManifestHal &hal);
 std::ostream &operator<<(std::ostream &os, const Version &ver);
 std::ostream &operator<<(std::ostream &os, const VersionRange &vr);
+std::ostream &operator<<(std::ostream &os, const VndkVersionRange &vr);
 std::ostream &operator<<(std::ostream &os, const KernelVersion &ver);
 std::ostream &operator<<(std::ostream &os, const TransportArch &ta);
 std::ostream &operator<<(std::ostream &os, const ManifestHal &hal);
@@ -61,6 +62,7 @@ bool parse(const std::string &s, SchemaType *ver);
 bool parse(const std::string &s, KernelSepolicyVersion *ksv);
 bool parse(const std::string &s, Version *ver);
 bool parse(const std::string &s, VersionRange *vr);
+bool parse(const std::string &s, VndkVersionRange *vr);
 bool parse(const std::string &s, KernelVersion *ver);
 // if return true, ta->isValid() must be true.
 bool parse(const std::string &s, TransportArch *ta);

@@ -25,6 +25,7 @@
 #include "MapValueIterator.h"
 #include "Sepolicy.h"
 #include "SchemaType.h"
+#include "Vndk.h"
 
 namespace android {
 namespace vintf {
@@ -64,6 +65,11 @@ private:
         std::vector<MatrixKernel> mKernels;
         Sepolicy mSepolicy;
     } framework;
+
+    // entries only for device compatibility matrix.
+    struct {
+        Vndk mVndk;
+    } device;
 };
 
 } // namespace vintf
