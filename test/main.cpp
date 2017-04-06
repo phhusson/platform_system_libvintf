@@ -66,7 +66,7 @@ public:
     bool isValid(const ManifestHal &mh) {
         return mh.isValid();
     }
-    HalManifest testHalManifest() {
+    HalManifest testDeviceManifest() {
         HalManifest vm;
         vm.mType = SchemaType::DEVICE;
         vm.device.mSepolicyVersion = {25, 0};
@@ -92,6 +92,28 @@ public:
 
         return vm;
     }
+    HalManifest testFrameworkManfiest() {
+        HalManifest vm;
+        vm.mType = SchemaType::FRAMEWORK;
+        vm.add(ManifestHal{
+            .format = HalFormat::HIDL,
+            .name = "android.hidl.manager",
+            .versions = {Version(1, 0)},
+            .transportArch = {Transport::HWBINDER, Arch::ARCH_EMPTY},
+            .interfaces = {
+                {"IServiceManager", {"IServiceManager", {"default"}}},
+            }
+        });
+        Vndk vndk2505;
+        vndk2505.mVersionRange = {25, 0, 5};
+        vndk2505.mLibraries = { "libjpeg.so", "libbase.so" };
+        Vndk vndk2513;
+        vndk2513.mVersionRange = {25, 1, 3};
+        vndk2513.mLibraries = { "libjpeg.so", "libbase.so", "libtinyxml2.so" };
+        vm.framework.mVndks = { std::move(vndk2505), std::move(vndk2513) };
+
+        return vm;
+    }
     RuntimeInfo testRuntimeInfo() {
         RuntimeInfo info;
         info.mOsName = "Linux";
@@ -114,7 +136,7 @@ public:
 
 
 TEST_F(LibVintfTest, Stringify) {
-    HalManifest vm = testHalManifest();
+    HalManifest vm = testDeviceManifest();
     EXPECT_EQ(dump(vm), "hidl/android.hardware.camera/hwbinder/2.0:"
                         "hidl/android.hardware.nfc/passthrough32+64/1.0");
 
@@ -129,7 +151,7 @@ TEST_F(LibVintfTest, Stringify) {
 }
 
 TEST_F(LibVintfTest, HalManifestConverter) {
-    HalManifest vm = testHalManifest();
+    HalManifest vm = testDeviceManifest();
     std::string xml = gHalManifestConverter(vm);
     EXPECT_EQ(xml,
         "<manifest version=\"1.0\" type=\"device\">\n"
@@ -162,6 +184,36 @@ TEST_F(LibVintfTest, HalManifestConverter) {
         "</manifest>\n");
 }
 
+TEST_F(LibVintfTest, HalManifestConverterFramework) {
+    HalManifest vm = testFrameworkManfiest();
+    std::string xml = gHalManifestConverter(vm);
+    EXPECT_EQ(xml,
+        "<manifest version=\"1.0\" type=\"framework\">\n"
+        "    <hal format=\"hidl\">\n"
+        "        <name>android.hidl.manager</name>\n"
+        "        <transport>hwbinder</transport>\n"
+        "        <version>1.0</version>\n"
+        "        <interface>\n"
+        "            <name>IServiceManager</name>\n"
+        "            <instance>default</instance>\n"
+        "        </interface>\n"
+        "    </hal>\n"
+        "    <vndk>\n"
+        "        <version>25.0.5</version>\n"
+        "        <library>libbase.so</library>\n"
+        "        <library>libjpeg.so</library>\n"
+        "    </vndk>\n"
+        "    <vndk>\n"
+        "        <version>25.1.3</version>\n"
+        "        <library>libbase.so</library>\n"
+        "        <library>libjpeg.so</library>\n"
+        "        <library>libtinyxml2.so</library>\n"
+        "    </vndk>\n"
+        "</manifest>\n");
+    HalManifest vm2;
+    EXPECT_TRUE(gHalManifestConverter(&vm2, xml));
+}
+
 TEST_F(LibVintfTest, HalManifestOptional) {
     HalManifest vm;
     EXPECT_TRUE(gHalManifestConverter(&vm,
@@ -184,7 +236,7 @@ TEST_F(LibVintfTest, HalManifestOptional) {
 }
 
 TEST_F(LibVintfTest, HalManifestInstances) {
-    HalManifest vm = testHalManifest();
+    HalManifest vm = testDeviceManifest();
     EXPECT_EQ(vm.getInstances("android.hardware.camera", "ICamera"),
             std::set<std::string>({"default", "legacy/0"}));
     EXPECT_EQ(vm.getInstances("android.hardware.camera", "IBetterCamera"),
@@ -387,13 +439,13 @@ TEST_F(LibVintfTest, IsValid) {
 }
 
 TEST_F(LibVintfTest, HalManifestGetHalNames) {
-    HalManifest vm = testHalManifest();
+    HalManifest vm = testDeviceManifest();
     EXPECT_EQ(vm.getHalNames(), std::set<std::string>(
                   {"android.hardware.camera", "android.hardware.nfc"}));
 }
 
 TEST_F(LibVintfTest, HalManifestGetInterfaceNames) {
-    HalManifest vm = testHalManifest();
+    HalManifest vm = testDeviceManifest();
     EXPECT_EQ(vm.getInterfaceNames("android.hardware.camera"),
               std::set<std::string>({"ICamera", "IBetterCamera"}));
     EXPECT_EQ(vm.getInterfaceNames("android.hardware.nfc"),
@@ -401,7 +453,7 @@ TEST_F(LibVintfTest, HalManifestGetInterfaceNames) {
 }
 
 TEST_F(LibVintfTest, HalManifestGetHal) {
-    HalManifest vm = testHalManifest();
+    HalManifest vm = testDeviceManifest();
     EXPECT_NE(getHal(vm, "android.hardware.camera"), nullptr);
     EXPECT_EQ(getHal(vm, "non-existent"), nullptr);
 

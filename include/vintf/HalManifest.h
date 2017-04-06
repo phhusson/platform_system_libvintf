@@ -27,6 +27,7 @@
 #include "MapValueIterator.h"
 #include "SchemaType.h"
 #include "Version.h"
+#include "Vndk.h"
 
 namespace android {
 namespace vintf {
@@ -116,6 +117,11 @@ private:
     struct {
         Version mSepolicyVersion;
     } device;
+
+    // entries for framework hal manifest only
+    struct {
+        std::vector<Vndk> mVndks;
+    } framework;
 };
 
 
