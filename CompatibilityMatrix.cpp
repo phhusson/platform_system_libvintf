@@ -49,9 +49,5 @@ const MatrixKernel *CompatibilityMatrix::findKernel(const KernelVersion &v) cons
     return nullptr;
 }
 
-const Sepolicy &CompatibilityMatrix::getSepolicy() const {
-    return mSepolicy;
-}
-
 } // namespace vintf
 } // namespace android
