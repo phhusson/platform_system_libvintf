@@ -114,6 +114,7 @@ private:
 
     // entries for device hal manifest only
     struct {
+        Version mSepolicyVersion;
     } device;
 };
 
