@@ -242,10 +242,17 @@ void RuntimeInfo::clear() {
 
 bool RuntimeInfo::checkCompatibility(const CompatibilityMatrix &mat,
             std::string *error) const {
-    if (kernelSepolicyVersion() != mat.mSepolicy.kernelSepolicyVersion()) {
+    if (mat.mType != SchemaType::FRAMEWORK) {
+        if (error != nullptr) {
+            *error = "Should not check runtime info against " + to_string(mat.mType)
+                    + " compatibility matrix.";
+        }
+        return false;
+    }
+    if (kernelSepolicyVersion() != mat.framework.mSepolicy.kernelSepolicyVersion()) {
         if (error != nullptr) {
             *error = "kernelSepolicyVersion = " + to_string(kernelSepolicyVersion())
-                     + " but required " + to_string(mat.mSepolicy.kernelSepolicyVersion());
+                     + " but required " + to_string(mat.framework.mSepolicy.kernelSepolicyVersion());
         }
         return false;
     }

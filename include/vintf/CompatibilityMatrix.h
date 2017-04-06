@@ -24,12 +24,17 @@
 #include "MatrixKernel.h"
 #include "MapValueIterator.h"
 #include "Sepolicy.h"
+#include "SchemaType.h"
 
 namespace android {
 namespace vintf {
 
 // Compatibility matrix defines what hardware does the framework requires.
 struct CompatibilityMatrix {
+
+    // Create a framework compatibility matrix.
+    CompatibilityMatrix() : mType(SchemaType::FRAMEWORK) {};
+
     constexpr static Version kVersion{1, 0};
 
 private:
@@ -49,12 +54,16 @@ private:
     friend struct CompatibilityMatrixConverter;
     friend struct LibVintfTest;
 
+    SchemaType mType;
+
     // sorted map from component name to the entry.
     std::map<std::string, MatrixHal> mHals;
 
-    std::vector<MatrixKernel> mKernels;
-
-    Sepolicy mSepolicy;
+    // entries only for framework compatibility matrix.
+    struct {
+        std::vector<MatrixKernel> mKernels;
+        Sepolicy mSepolicy;
+    } framework;
 };
 
 } // namespace vintf
