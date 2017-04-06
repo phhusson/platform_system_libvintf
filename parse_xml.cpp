@@ -235,7 +235,8 @@ struct XmlNodeConverter : public XmlConverter<Object> {
         std::string attrText;
         bool ret = getAttr(root, attrName, &attrText) && ::android::vintf::parse(attrText, attr);
         if (!ret) {
-            mLastError = "Could not parse attr with name " + attrName;
+            mLastError = "Could not find/parse attr with name \"" + attrName + "\" for element <"
+                    + elementName() + ">";
         }
         return ret;
     }
@@ -243,7 +244,8 @@ struct XmlNodeConverter : public XmlConverter<Object> {
     inline bool parseAttr(NodeType *root, const std::string &attrName, std::string *attr) const {
         bool ret = getAttr(root, attrName, attr);
         if (!ret) {
-            mLastError = "Could not find attr with name " + attrName;
+            mLastError = "Could not find attr with name \"" + attrName + "\" for element <"
+                    + elementName() + ">";
         }
         return ret;
     }
@@ -252,7 +254,8 @@ struct XmlNodeConverter : public XmlConverter<Object> {
             const std::string &elementName, std::string *s) const {
         NodeType *child = getChild(root, elementName);
         if (child == nullptr) {
-            mLastError = "Could not find element with name " + elementName;
+            mLastError = "Could not find element with name <" + elementName + "> in element <"
+                    + this->elementName() + ">";
             return false;
         }
         *s = getText(child);
@@ -273,7 +276,8 @@ struct XmlNodeConverter : public XmlConverter<Object> {
     inline bool parseChild(NodeType *root, const XmlNodeConverter<T> &conv, T *t) const {
         NodeType *child = getChild(root, conv.elementName());
         if (child == nullptr) {
-            mLastError = "Could not find element with name " + conv.elementName();
+            mLastError = "Could not find element with name <" + conv.elementName() + "> in element <"
+                    + this->elementName() + ">";
             return false;
         }
         bool success = conv.deserialize(t, child);
@@ -304,7 +308,8 @@ struct XmlNodeConverter : public XmlConverter<Object> {
         v->resize(nodes.size());
         for (size_t i = 0; i < nodes.size(); ++i) {
             if (!conv.deserialize(&v->at(i), nodes[i])) {
-                mLastError = "Could not parse element with name " + conv.elementName();
+                mLastError = "Could not parse element with name <" + conv.elementName()
+                        + "> in element <" + this->elementName() + ">: " + conv.lastError();
                 return false;
             }
         }
@@ -318,7 +323,12 @@ struct XmlNodeConverter : public XmlConverter<Object> {
 
     template <typename T>
     inline bool parseText(NodeType *node, T *s) const {
-        return ::android::vintf::parse(getText(node), s);
+        std::string text = getText(node);
+        bool ret = ::android::vintf::parse(text, s);
+        if (!ret) {
+            mLastError = "Could not parse text \"" + text + "\" in element <" + elementName() + ">";
+        }
+        return ret;
     }
 protected:
     mutable std::string mLastError;
@@ -333,12 +343,7 @@ struct XmlTextConverter : public XmlNodeConverter<Object> {
         appendText(root, ::android::vintf::to_string(object), d);
     }
     virtual bool buildObject(Object *object, NodeType *root) const override {
-        std::string text = getText(root);
-        bool ret = ::android::vintf::parse(text, object);
-        if (!ret) {
-            this->mLastError = "Could not parse " + text;
-        }
-        return ret;
+        return this->parseText(root, object);
     }
     virtual std::string elementName() const { return mElementName; };
 private:
