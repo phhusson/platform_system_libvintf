@@ -242,15 +242,15 @@ void RuntimeInfo::clear() {
 
 bool RuntimeInfo::checkCompatibility(const CompatibilityMatrix &mat,
             std::string *error) const {
-    if (kernelSepolicyVersion() != mat.getSepolicy().kernelSepolicyVersion()) {
+    if (kernelSepolicyVersion() != mat.mSepolicy.kernelSepolicyVersion()) {
         if (error != nullptr) {
             *error = "kernelSepolicyVersion = " + to_string(kernelSepolicyVersion())
-                     + " but required " + to_string(mat.getSepolicy().kernelSepolicyVersion());
+                     + " but required " + to_string(mat.mSepolicy.kernelSepolicyVersion());
         }
         return false;
     }
 
-    // TODO(b/35217573): check sepolicy version against mat.getSepolicy().sepolicyVersion() here.
+    // TODO(b/35217573): check sepolicy version against mat.mSepolicy.sepolicyVersion() here.
 
     const MatrixKernel *matrixKernel = mat.findKernel(this->mKernelVersion);
     if (matrixKernel == nullptr) {
