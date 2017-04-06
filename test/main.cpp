@@ -69,6 +69,7 @@ public:
     HalManifest testHalManifest() {
         HalManifest vm;
         vm.mType = SchemaType::DEVICE;
+        vm.device.mSepolicyVersion = {25, 0};
         vm.add(ManifestHal{
             .format = HalFormat::HIDL,
             .name = "android.hardware.camera",
@@ -155,6 +156,9 @@ TEST_F(LibVintfTest, HalManifestConverter) {
         "            <instance>default</instance>\n"
         "        </interface>\n"
         "    </hal>\n"
+        "    <sepolicy>\n"
+        "        <version>25.0</version>\n"
+        "    </sepolicy>\n"
         "</manifest>\n");
 }
 
