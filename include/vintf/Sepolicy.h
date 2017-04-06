@@ -57,6 +57,14 @@ private:
     SepolicyVersion mSepolicyVersion;
 };
 
+inline bool operator==(const SepolicyVersion &lft, const SepolicyVersion &rgt) {
+    return lft.minVer == rgt.minVer && lft.maxVer == rgt.maxVer;
+}
+inline bool operator==(const Sepolicy &lft, const Sepolicy &rgt) {
+    return lft.kernelSepolicyVersion() == rgt.kernelSepolicyVersion() &&
+           lft.sepolicyVersion() == rgt.sepolicyVersion();
+}
+
 } // namespace vintf
 } // namespace android
 
