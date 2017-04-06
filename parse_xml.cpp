@@ -316,6 +316,23 @@ struct XmlNodeConverter : public XmlConverter<Object> {
         return true;
     }
 
+    template <typename T>
+    inline bool parseChildren(NodeType *root, const XmlNodeConverter<T> &conv, std::set<T> *s) const {
+        std::vector<T> vec;
+        if (!parseChildren(root, conv, &vec)) {
+            return false;
+        }
+        s->clear();
+        s->insert(vec.begin(), vec.end());
+        if (s->size() != vec.size()) {
+            mLastError = "Duplicated elements <" + conv.elementName() + "> in element <"
+                    + this->elementName() + ">";
+            s->clear();
+            return false;
+        }
+        return true;
+    }
+
     inline bool parseText(NodeType *node, std::string *s) const {
         *s = getText(node);
         return true;
@@ -544,6 +561,26 @@ struct SepolicyConverter : public XmlNodeConverter<Sepolicy> {
 };
 const SepolicyConverter sepolicyConverter{};
 
+const XmlTextConverter<VndkVersionRange> vndkVersionRangeConverter{"version"};
+const XmlTextConverter<std::string> vndkLibraryConverter{"library"};
+
+struct VndkConverter : public XmlNodeConverter<Vndk> {
+    std::string elementName() const override { return "vndk"; }
+    void mutateNode(const Vndk &object, NodeType *root, DocType *d) const override {
+        appendChild(root, vndkVersionRangeConverter(object.mVersionRange, d));
+        appendChildren(root, vndkLibraryConverter, object.mLibraries, d);
+    }
+    bool buildObject(Vndk *object, NodeType *root) const override {
+        if (!parseChild(root, vndkVersionRangeConverter, &object->mVersionRange) ||
+            !parseChildren(root, vndkLibraryConverter, &object->mLibraries)) {
+            return false;
+        }
+        return true;
+    }
+};
+
+const VndkConverter vndkConverter{};
+
 struct HalManifestSepolicyConverter : public XmlNodeConverter<Version> {
     std::string elementName() const override { return "sepolicy"; }
     void mutateNode(const Version &m, NodeType *root, DocType *d) const override {
@@ -563,6 +600,8 @@ struct HalManifestConverter : public XmlNodeConverter<HalManifest> {
         appendChildren(root, manifestHalConverter, m.getHals(), d);
         if (m.mType == SchemaType::DEVICE) {
             appendChild(root, halManifestSepolicyConverter(m.device.mSepolicyVersion, d));
+        } else if (m.mType == SchemaType::FRAMEWORK) {
+            appendChildren(root, vndkConverter, m.framework.mVndks, d);
         }
     }
     bool buildObject(HalManifest *object, NodeType *root) const override {
@@ -583,6 +622,17 @@ struct HalManifestConverter : public XmlNodeConverter<HalManifest> {
             if (!parseOptionalChild(root, halManifestSepolicyConverter, {},
                     &object->device.mSepolicyVersion)) {
                 return false;
+            }
+        } else if (object->mType == SchemaType::FRAMEWORK) {
+            if (!parseChildren(root, vndkConverter, &object->framework.mVndks)) {
+                return false;
+            }
+            for (const auto &vndk : object->framework.mVndks) {
+                if (!vndk.mVersionRange.isSingleVersion()) {
+                    this->mLastError = "vndk.version " + to_string(vndk.mVersionRange)
+                            + " cannot be a range for manifests";
+                    return false;
+                }
             }
         }
         for (auto &&hal : hals) {
@@ -620,6 +670,10 @@ struct CompatibilityMatrixConverter : public XmlNodeConverter<CompatibilityMatri
         if (object->mType == SchemaType::FRAMEWORK) {
             if (!parseChildren(root, matrixKernelConverter, &object->framework.mKernels) ||
                 !parseChild(root, sepolicyConverter, &object->framework.mSepolicy)) {
+                return false;
+            }
+        } else if (object->mType == SchemaType::DEVICE) {
+            if (!parseChild(root, vndkConverter, &object->device.mVndk)) {
                 return false;
             }
         }
