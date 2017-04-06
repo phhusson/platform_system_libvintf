@@ -46,9 +46,21 @@ private:
     friend struct VndkConverter;
     friend struct HalManifestConverter;
     friend struct LibVintfTest;
+    friend struct HalManifest;
+    friend struct CompatibilityMatrix;
+    friend bool operator==(const Vndk &, const Vndk &);
     VndkVersionRange mVersionRange;
     std::set<std::string> mLibraries;
 };
+
+inline bool operator==(const VndkVersionRange &lft, const VndkVersionRange &rgt) {
+    return lft.sdk == rgt.sdk && lft.vndk == rgt.vndk &&
+           lft.patchMin == rgt.patchMin && lft.patchMax == rgt.patchMax;
+}
+inline bool operator==(const Vndk &lft, const Vndk &rgt) {
+    return lft.mVersionRange == rgt.mVersionRange &&
+           lft.mLibraries == rgt.mLibraries;
+}
 
 } // namespace vintf
 } // namespace android
