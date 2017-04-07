@@ -136,7 +136,12 @@ status_t RuntimeInfoFetcher::fetchCpuInfo() {
 }
 
 status_t RuntimeInfoFetcher::fetchKernelSepolicyVers() {
-    int pv = security_policyvers();
+    int pv;
+#ifdef LIBVINTF_TARGET
+    pv = security_policyvers();
+#else
+    pv = 0;
+#endif
     if (pv < 0) {
         return pv;
     }
