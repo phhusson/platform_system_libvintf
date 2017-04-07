@@ -23,13 +23,14 @@ libvintf_flags = [
 
 cc_library {
     name: "libvintf",
-    host_supported: true,
     cflags: libvintf_flags,
     shared_libs: [
         "libbase",
         "liblog",
         "libselinux",
         "libtinyxml2",
+        "libutils",
+        "libz",
     ],
     export_include_dirs: ["include"],
     local_include_dirs: ["include/vintf"],
@@ -47,21 +48,6 @@ cc_library {
         "TransportArch.cpp",
         "VintfObject.cpp",
     ],
-
-    target: {
-        linux: {
-            shared_libs: [
-                "libz-host",
-            ],
-        },
-        android: {
-            shared_libs: [
-                "libutils",
-                "libz"
-            ],
-            cflags: ["-DLIBVINTF_TARGET"],
-        },
-    }
 }
 
 cc_binary {
@@ -69,19 +55,9 @@ cc_binary {
     cflags: libvintf_flags,
     shared_libs: [
         "libvintf",
+        "libselinux",
     ],
     srcs: [
         "main.cpp"
-    ],
-}
-
-cc_binary_host {
-    name: "assemble_vintf",
-    cflags: libvintf_flags,
-    shared_libs: [
-        "libvintf"
-    ],
-    srcs: [
-        "assemble_vintf.cpp"
     ],
 }
