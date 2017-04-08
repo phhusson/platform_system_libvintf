@@ -67,6 +67,14 @@ const RuntimeInfo *VintfObject::GetRuntimeInfo() {
             std::bind(&RuntimeInfo::fetchAllInformation, std::placeholders::_1));
 }
 
+// static
+int32_t VintfObject::CheckCompatibility(
+        const std::vector<std::string> &,
+        bool) {
+    // TODO(b/36814503): actually do the verification.
+    return -1;
+}
+
 
 } // namespace vintf
 } // namespace android
