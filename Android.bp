@@ -49,15 +49,18 @@ cc_library {
     ],
 
     target: {
-        linux: {
-            shared_libs: [
-                "libz-host",
-            ],
+        host: {
+            srcs: [
+                "RuntimeInfo-host.cpp"
+            ]
         },
         android: {
             shared_libs: [
                 "libutils",
                 "libz"
+            ],
+            srcs: [
+                "RuntimeInfo-target.cpp"
             ],
             cflags: ["-DLIBVINTF_TARGET"],
         },
