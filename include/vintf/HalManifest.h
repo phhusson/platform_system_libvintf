@@ -54,15 +54,17 @@ public:
     // Given a component name (e.g. "android.hardware.camera"),
     // return a list of version numbers that are supported by the hardware.
     // If the component is not found, empty list is returned.
-    const std::vector<Version> &getSupportedVersions(const std::string &name) const;
+    // If multiple matches, return a concatenation of version entries
+    // (dupes removed)
+    std::set<Version> getSupportedVersions(const std::string &name) const;
 
     // Given a component name (e.g. "android.hardware.camera") and an interface
     // name, return all instance names for that interface.
     // * If the component ("android.hardware.camera") does not exist, return empty list
     // * If the component ("android.hardware.camera") does exist,
-    //    * If the interface (ICamera) does not exist, return {"default"}
+    //    * If the interface (ICamera) does not exist, return empty list
     //    * Else return the list hal.interface.instance
-    const std::set<std::string> &getInstances(
+    std::set<std::string> getInstances(
             const std::string &halName, const std::string &interfaceName) const;
 
     // Convenience method for checking if instanceName is in getInstances(halName, interfaceName)
@@ -77,11 +79,12 @@ public:
     // Add an hal to this manifest so that a HalManifest can be constructed programatically.
     bool add(ManifestHal &&hal);
 
-    // Get an HAL component based on the component name. Return nullptr
-    // if the component does not exist. The component name looks like:
+    // Get any HAL component based on the component name. Return any one
+    // if multiple. Return nullptr if the component does not exist. This is only
+    // for creating HalManifest objects programatically.
+    // The component name looks like:
     // android.hardware.foo
-    const ManifestHal *getHal(const std::string &name) const;
-    ManifestHal *getHal(const std::string &name);
+    ManifestHal *getAnyHal(const std::string &name);
 
     // Returns all component names.
     std::set<std::string> getHalNames() const;
@@ -101,7 +104,10 @@ private:
 
     // Return an iterable to all ManifestHal objects. Call it as follows:
     // for (const ManifestHal &e : vm.getHals()) { }
-    ConstMapValueIterable<std::string, ManifestHal> getHals() const;
+    ConstMultiMapValueIterable<std::string, ManifestHal> getHals() const;
+
+    // Get all hals with the name
+    std::vector<const ManifestHal *> getHals(const std::string &name) const;
 
     status_t fetchAllInformation(const std::string &path);
 
@@ -109,7 +115,7 @@ private:
 
     // sorted map from component name to the component.
     // The component name looks like: android.hardware.foo
-    std::map<std::string, ManifestHal> mHals;
+    std::multimap<std::string, ManifestHal> mHals;
 
     // entries for device hal manifest only
     struct {
