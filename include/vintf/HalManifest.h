@@ -99,9 +99,6 @@ private:
     friend std::string dump(const HalManifest &vm);
     friend bool operator==(const HalManifest &lft, const HalManifest &rgt);
 
-    // clear this manifest.
-    inline void clear() { mHals.clear(); }
-
     // Return an iterable to all ManifestHal objects. Call it as follows:
     // for (const ManifestHal &e : vm.getHals()) { }
     ConstMapValueIterable<std::string, ManifestHal> getHals() const;
