@@ -543,17 +543,17 @@ struct ManifestHalConverter : public XmlNodeConverter<ManifestHal> {
 const ManifestHalConverter manifestHalConverter{};
 
 const XmlTextConverter<KernelSepolicyVersion> kernelSepolicyVersionConverter{"kernel-sepolicy-version"};
-const XmlTextConverter<SepolicyVersion> sepolicyVersionConverter{"sepolicy-version"};
+const XmlTextConverter<VersionRange> sepolicyVersionConverter{"sepolicy-version"};
 
 struct SepolicyConverter : public XmlNodeConverter<Sepolicy> {
     std::string elementName() const override { return "sepolicy"; }
     void mutateNode(const Sepolicy &object, NodeType *root, DocType *d) const override {
         appendChild(root, kernelSepolicyVersionConverter(object.kernelSepolicyVersion(), d));
-        appendChild(root, sepolicyVersionConverter(object.sepolicyVersion(), d));
+        appendChildren(root, sepolicyVersionConverter, object.sepolicyVersions(), d);
     }
     bool buildObject(Sepolicy *object, NodeType *root) const override {
         if (!parseChild(root, kernelSepolicyVersionConverter, &object->mKernelSepolicyVersion) ||
-            !parseChild(root, sepolicyVersionConverter, &object->mSepolicyVersion)) {
+            !parseChildren(root, sepolicyVersionConverter, &object->mSepolicyVersionRanges)) {
             return false;
         }
         return true;
