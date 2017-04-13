@@ -33,11 +33,6 @@ bool CompatibilityMatrix::add(MatrixKernel &&kernel) {
     return true;
 }
 
-void CompatibilityMatrix::clear() {
-    mHals.clear();
-    framework.mKernels.clear();
-}
-
 ConstMapValueIterable<std::string, MatrixHal> CompatibilityMatrix::getHals() const {
     return ConstMapValueIterable<std::string, MatrixHal>(mHals);
 }
