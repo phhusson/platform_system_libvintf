@@ -71,6 +71,9 @@ public:
     const ManifestHal *getAnyHal(HalManifest &vm, const std::string &name) {
         return vm.getAnyHal(name);
     }
+    MatrixHal *getAnyHal(CompatibilityMatrix &cm, const std::string &name) {
+        return cm.getAnyHal(name);
+    }
     ConstMultiMapValueIterable<std::string, ManifestHal> getHals(HalManifest &vm) {
         return vm.getHals();
     }
@@ -619,6 +622,114 @@ TEST_F(LibVintfTest, RuntimeInfo) {
         setAvb(badAvb, {2, 3}, {2, 1});
         EXPECT_TRUE(badAvb.checkCompatibility(cm, &error));
     }
+}
+
+TEST_F(LibVintfTest, Compat) {
+    std::string manifestXml =
+        "<manifest version=\"1.0\" type=\"device\">\n"
+        "    <hal format=\"hidl\">\n"
+        "        <name>android.hardware.camera</name>\n"
+        "        <transport>hwbinder</transport>\n"
+        "        <version>3.5</version>\n"
+        "        <interface>\n"
+        "            <name>IBetterCamera</name>\n"
+        "            <instance>camera</instance>\n"
+        "        </interface>\n"
+        "        <interface>\n"
+        "            <name>ICamera</name>\n"
+        "            <instance>default</instance>\n"
+        "            <instance>legacy/0</instance>\n"
+        "        </interface>\n"
+        "    </hal>\n"
+        "    <hal format=\"hidl\">\n"
+        "        <name>android.hardware.nfc</name>\n"
+        "        <transport>hwbinder</transport>\n"
+        "        <version>1.0</version>\n"
+        "        <version>2.0</version>\n"
+        "        <interface>\n"
+        "            <name>INfc</name>\n"
+        "            <instance>nfc_nci</instance>\n"
+        "        </interface>\n"
+        "    </hal>\n"
+        "    <hal format=\"hidl\">\n"
+        "        <name>android.hardware.nfc</name>\n"
+        "        <transport>hwbinder</transport>\n"
+        "        <version>2.0</version>\n"
+        "        <interface>\n"
+        "            <name>INfc</name>\n"
+        "            <instance>default</instance>\n"
+        "        </interface>\n"
+        "    </hal>\n"
+        "    <sepolicy>\n"
+        "        <version>25.5</version>\n"
+        "    </sepolicy>\n"
+        "</manifest>\n";
+
+    std::string matrixXml =
+        "<compatibility-matrix version=\"1.0\" type=\"framework\">\n"
+        "    <hal format=\"hidl\" optional=\"false\">\n"
+        "        <name>android.hardware.camera</name>\n"
+        "        <version>2.0-5</version>\n"
+        "        <version>3.4-16</version>\n"
+        "    </hal>\n"
+        "    <hal format=\"hidl\" optional=\"false\">\n"
+        "        <name>android.hardware.nfc</name>\n"
+        "        <version>1.0</version>\n"
+        "        <version>2.0</version>\n"
+        "    </hal>\n"
+        "    <hal format=\"hidl\" optional=\"true\">\n"
+        "        <name>android.hardware.foo</name>\n"
+        "        <version>1.0</version>\n"
+        "    </hal>\n"
+        "    <sepolicy>\n"
+        "        <kernel-sepolicy-version>30</kernel-sepolicy-version>\n"
+        "        <sepolicy-version>25.5</sepolicy-version>\n"
+        "        <sepolicy-version>26.0-3</sepolicy-version>\n"
+        "    </sepolicy>\n"
+        "    <avb>\n"
+        "        <vbmeta-version>2.1</vbmeta-version>\n"
+        "    </avb>\n"
+        "</compatibility-matrix>\n";
+
+    HalManifest manifest;
+    CompatibilityMatrix matrix;
+    std::string error;
+    EXPECT_TRUE(gHalManifestConverter(&manifest, manifestXml));
+    EXPECT_TRUE(gCompatibilityMatrixConverter(&matrix, matrixXml));
+    EXPECT_TRUE(manifest.checkCompatibility(matrix, &error)) << error;
+
+    // some smaller test cases
+    matrixXml =
+        "<compatibility-matrix version=\"1.0\" type=\"framework\">\n"
+        "    <hal format=\"hidl\" optional=\"false\">\n"
+        "        <name>android.hardware.camera</name>\n"
+        "        <version>3.4</version>\n"
+        "    </hal>\n"
+        "    <sepolicy>\n"
+        "        <kernel-sepolicy-version>30</kernel-sepolicy-version>\n"
+        "        <sepolicy-version>25.5</sepolicy-version>\n"
+        "    </sepolicy>\n"
+        "    <avb><vbmeta-version>2.1</vbmeta-version></avb>\n"
+        "</compatibility-matrix>\n";
+    matrix = {};
+    EXPECT_TRUE(gCompatibilityMatrixConverter(&matrix, matrixXml));
+    EXPECT_TRUE(manifest.checkCompatibility(matrix, &error)) << error;
+    MatrixHal *camera = getAnyHal(matrix, "android.hardware.camera");
+    EXPECT_NE(camera, nullptr);
+    camera->versionRanges[0] = {3, 5};
+    EXPECT_TRUE(manifest.checkCompatibility(matrix, &error)) << error;
+    camera->versionRanges[0] = {3, 6};
+    EXPECT_FALSE(manifest.checkCompatibility(matrix));
+
+    // reset it
+    matrix = {};
+    EXPECT_TRUE(gCompatibilityMatrixConverter(&matrix, matrixXml));
+    set(matrix, Sepolicy{30, {{26, 0}}});
+    EXPECT_FALSE(manifest.checkCompatibility(matrix));
+    set(matrix, Sepolicy{30, {{25, 6}}});
+    EXPECT_FALSE(manifest.checkCompatibility(matrix));
+    set(matrix, Sepolicy{30, {{25, 4}}});
+    EXPECT_TRUE(manifest.checkCompatibility(matrix, &error)) << error;
 }
 
 } // namespace vintf
