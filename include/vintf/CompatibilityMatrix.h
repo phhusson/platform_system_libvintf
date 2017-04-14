@@ -64,6 +64,7 @@ private:
     struct {
         std::vector<MatrixKernel> mKernels;
         Sepolicy mSepolicy;
+        Version mAvbMetaVersion;
     } framework;
 
     // entries only for device compatibility matrix.

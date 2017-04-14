@@ -647,6 +647,18 @@ struct HalManifestConverter : public XmlNodeConverter<HalManifest> {
 
 const HalManifestConverter halManifestConverter{};
 
+const XmlTextConverter<Version> avbVersionConverter{"vbmeta-version"};
+struct AvbConverter : public XmlNodeConverter<Version> {
+    std::string elementName() const override { return "avb"; }
+    void mutateNode(const Version &m, NodeType *root, DocType *d) const override {
+        appendChild(root, avbVersionConverter(m, d));
+    }
+    bool buildObject(Version *object, NodeType *root) const override {
+        return parseChild(root, avbVersionConverter, object);
+    }
+};
+const AvbConverter avbConverter{};
+
 struct CompatibilityMatrixConverter : public XmlNodeConverter<CompatibilityMatrix> {
     std::string elementName() const override { return "compatibility-matrix"; }
     void mutateNode(const CompatibilityMatrix &m, NodeType *root, DocType *d) const override {
@@ -656,6 +668,7 @@ struct CompatibilityMatrixConverter : public XmlNodeConverter<CompatibilityMatri
         if (m.mType == SchemaType::FRAMEWORK) {
             appendChildren(root, matrixKernelConverter, m.framework.mKernels, d);
             appendChild(root, sepolicyConverter(m.framework.mSepolicy, d));
+            appendChild(root, avbConverter(m.framework.mAvbMetaVersion, d));
         } else if (m.mType == SchemaType::DEVICE) {
             appendChild(root, vndkConverter(m.device.mVndk, d));
         }
@@ -671,7 +684,8 @@ struct CompatibilityMatrixConverter : public XmlNodeConverter<CompatibilityMatri
 
         if (object->mType == SchemaType::FRAMEWORK) {
             if (!parseChildren(root, matrixKernelConverter, &object->framework.mKernels) ||
-                !parseChild(root, sepolicyConverter, &object->framework.mSepolicy)) {
+                !parseChild(root, sepolicyConverter, &object->framework.mSepolicy) ||
+                !parseChild(root, avbConverter, &object->framework.mAvbMetaVersion)) {
                 return false;
             }
         } else if (object->mType == SchemaType::DEVICE) {

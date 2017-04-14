@@ -61,6 +61,13 @@ public:
         cm.device.mVndk.mVersionRange = range;
         cm.device.mVndk.mLibraries = libs;
     }
+    void setAvb(RuntimeInfo &ki, Version initVersion, Version bootVersion) {
+        ki.mAvbInitVersion = initVersion;
+        ki.mAvbBootVersion = bootVersion;
+    }
+    void setAvb(CompatibilityMatrix &cm, Version &&avbVersion) {
+        cm.framework.mAvbMetaVersion = avbVersion;
+    }
     const ManifestHal *getHal(HalManifest &vm, const std::string &name) {
         return vm.getHal(name);
     }
@@ -134,6 +141,7 @@ public:
             {"CONFIG_BUILD_ARM64_APPENDED_DTB_IMAGE_NAMES", "\"\""},
             {"CONFIG_ILLEGAL_POINTER_VALUE", "0xdead000000000000"}
         };
+        info.mAvbBootVersion = info.mAvbInitVersion = {2, 1};
         return info;
     }
 };
@@ -388,6 +396,7 @@ TEST_F(LibVintfTest, CompatibilityMatrixCoverter) {
     EXPECT_TRUE(add(cm, MatrixKernel{KernelVersion(4, 4, 1),
             {KernelConfig{"CONFIG_BAZ", 20}, KernelConfig{"CONFIG_BAR", KernelConfigRangeValue{3, 5} }}}));
     set(cm, Sepolicy(30, {{25, 0}, {26, 0, 3}}));
+    setAvb(cm, Version{2, 1});
     std::string xml = gCompatibilityMatrixConverter(cm);
     EXPECT_EQ(xml,
             "<compatibility-matrix version=\"1.0\" type=\"framework\">\n"
@@ -426,6 +435,9 @@ TEST_F(LibVintfTest, CompatibilityMatrixCoverter) {
             "        <sepolicy-version>25.0</sepolicy-version>\n"
             "        <sepolicy-version>26.0-3</sepolicy-version>\n"
             "    </sepolicy>\n"
+            "    <avb>\n"
+            "        <vbmeta-version>2.1</vbmeta-version>\n"
+            "    </avb>\n"
             "</compatibility-matrix>\n");
     CompatibilityMatrix cm2;
     EXPECT_TRUE(gCompatibilityMatrixConverter(&cm2, xml));
@@ -514,6 +526,7 @@ TEST_F(LibVintfTest, RuntimeInfo) {
         CompatibilityMatrix cm;
         add(cm, std::move(kernel));
         set(cm, {30, {{25, 0}}});
+        setAvb(cm, {2, 1});
         return cm;
     };
 
@@ -580,6 +593,25 @@ TEST_F(LibVintfTest, RuntimeInfo) {
         MatrixKernel kernel(KernelVersion{3, 18, 22}, std::move(newConfigs));
         CompatibilityMatrix cm = testMatrix(std::move(kernel));
         EXPECT_FALSE(ki.checkCompatibility(cm)) << "Value shouldn't match for integer";
+    }
+
+    RuntimeInfo badAvb = testRuntimeInfo();
+    CompatibilityMatrix cm = testMatrix(MatrixKernel(KernelVersion{3, 18, 31}, {}));
+    {
+        setAvb(badAvb, {1, 0}, {2, 1});
+        EXPECT_FALSE(badAvb.checkCompatibility(cm, &error));
+    }
+    {
+        setAvb(badAvb, {2, 1}, {3, 0});
+        EXPECT_FALSE(badAvb.checkCompatibility(cm, &error));
+    }
+    {
+        setAvb(badAvb, {2, 1}, {2, 3});
+        EXPECT_TRUE(badAvb.checkCompatibility(cm, &error));
+    }
+    {
+        setAvb(badAvb, {2, 3}, {2, 1});
+        EXPECT_TRUE(badAvb.checkCompatibility(cm, &error));
     }
 }
 
