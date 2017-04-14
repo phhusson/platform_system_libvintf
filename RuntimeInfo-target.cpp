@@ -185,9 +185,11 @@ status_t RuntimeInfoFetcher::parseKernelVersion() {
     return OK;
 }
 
-// Grab sepolicy files.
+// Grab sepolicy file paths.
 status_t RuntimeInfoFetcher::fetchSepolicyFiles() {
-    // TODO implement this
+    mRuntimeInfo->mSepolicyFilePaths = {
+        // TODO(b/36456394) need a list of sepolicy files
+    };
     return OK;
 }
 
