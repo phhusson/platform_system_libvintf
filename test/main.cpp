@@ -54,6 +54,13 @@ public:
     void set(CompatibilityMatrix &cm, Sepolicy &&sepolicy) {
         cm.framework.mSepolicy = sepolicy;
     }
+    void set(CompatibilityMatrix &cm, SchemaType type) {
+        cm.mType = type;
+    }
+    void set(CompatibilityMatrix &cm, VndkVersionRange &&range, std::set<std::string> &&libs) {
+        cm.device.mVndk.mVersionRange = range;
+        cm.device.mVndk.mLibraries = libs;
+    }
     const ManifestHal *getHal(HalManifest &vm, const std::string &name) {
         return vm.getHal(name);
     }
@@ -419,6 +426,31 @@ TEST_F(LibVintfTest, CompatibilityMatrixCoverter) {
             "        <sepolicy-version>1-3</sepolicy-version>\n"
             "    </sepolicy>\n"
             "</compatibility-matrix>\n");
+    CompatibilityMatrix cm2;
+    EXPECT_TRUE(gCompatibilityMatrixConverter(&cm2, xml));
+    EXPECT_EQ(cm, cm2);
+}
+
+TEST_F(LibVintfTest, DeviceCompatibilityMatrixCoverter) {
+    CompatibilityMatrix cm;
+    EXPECT_TRUE(add(cm, MatrixHal{HalFormat::NATIVE, "android.hidl.manager",
+            {{VersionRange(1,0)}},
+            false /* optional */}));
+    set(cm, SchemaType::DEVICE);
+    set(cm, VndkVersionRange{25,0,1,5}, {"libjpeg.so", "libbase.so"});
+    std::string xml = gCompatibilityMatrixConverter(cm);
+    EXPECT_EQ(xml,
+        "<compatibility-matrix version=\"1.0\" type=\"device\">\n"
+        "    <hal format=\"native\" optional=\"false\">\n"
+        "        <name>android.hidl.manager</name>\n"
+        "        <version>1.0</version>\n"
+        "    </hal>\n"
+        "    <vndk>\n"
+        "        <version>25.0.1-5</version>\n"
+        "        <library>libbase.so</library>\n"
+        "        <library>libjpeg.so</library>\n"
+        "    </vndk>\n"
+        "</compatibility-matrix>\n");
     CompatibilityMatrix cm2;
     EXPECT_TRUE(gCompatibilityMatrixConverter(&cm2, xml));
     EXPECT_EQ(cm, cm2);
