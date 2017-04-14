@@ -30,39 +30,28 @@ struct KernelSepolicyVersion {
     }
 };
 
-struct SepolicyVersion {
-    size_t minVer;
-    size_t maxVer;
-
-    SepolicyVersion() : SepolicyVersion(0u, 0u) {}
-    SepolicyVersion(size_t minV, size_t maxV)
-            : minVer(minV), maxVer(maxV) {}
-};
-
+// Sepolicy section in compatibility matrix.
 struct Sepolicy {
 
-    Sepolicy() : Sepolicy(0u, {0u, 0u}) {}
+    Sepolicy() : Sepolicy(0u, {}) {}
     Sepolicy(KernelSepolicyVersion kernelSepolicyVersion,
-            SepolicyVersion &&sepolicyVersion) :
+            std::vector<VersionRange> &&sepolicyVersions) :
             mKernelSepolicyVersion(kernelSepolicyVersion),
-            mSepolicyVersion(std::move(sepolicyVersion)) {}
+            mSepolicyVersionRanges(std::move(sepolicyVersions)) {}
 
     inline size_t kernelSepolicyVersion() const { return mKernelSepolicyVersion.value; }
-    inline const SepolicyVersion &sepolicyVersion() const {
-        return mSepolicyVersion;
+    inline const std::vector<VersionRange> &sepolicyVersions() const {
+        return mSepolicyVersionRanges;
     }
 private:
     friend struct SepolicyConverter;
     KernelSepolicyVersion mKernelSepolicyVersion;
-    SepolicyVersion mSepolicyVersion;
+    std::vector<VersionRange> mSepolicyVersionRanges;
 };
 
-inline bool operator==(const SepolicyVersion &lft, const SepolicyVersion &rgt) {
-    return lft.minVer == rgt.minVer && lft.maxVer == rgt.maxVer;
-}
 inline bool operator==(const Sepolicy &lft, const Sepolicy &rgt) {
     return lft.kernelSepolicyVersion() == rgt.kernelSepolicyVersion() &&
-           lft.sepolicyVersion() == rgt.sepolicyVersion();
+           lft.sepolicyVersions() == rgt.sepolicyVersions();
 }
 
 } // namespace vintf
