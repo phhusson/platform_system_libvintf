@@ -656,6 +656,8 @@ struct CompatibilityMatrixConverter : public XmlNodeConverter<CompatibilityMatri
         if (m.mType == SchemaType::FRAMEWORK) {
             appendChildren(root, matrixKernelConverter, m.framework.mKernels, d);
             appendChild(root, sepolicyConverter(m.framework.mSepolicy, d));
+        } else if (m.mType == SchemaType::DEVICE) {
+            appendChild(root, vndkConverter(m.device.mVndk, d));
         }
     }
     bool buildObject(CompatibilityMatrix *object, NodeType *root) const override {
