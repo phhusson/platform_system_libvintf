@@ -42,7 +42,9 @@ namespace vintf {
  * file won't be touched again.
  * If any error, nullptr is returned, and Get will try to parse the HAL manifest
  * again when it is called again.
- * This operation is thread-safe.
+ * All these operations are thread-safe.
+ * If skipCache, always skip the cache in memory and read the files / get runtime information
+ * again from the device.
  */
 class VintfObject {
 public:
@@ -50,18 +52,18 @@ public:
      * Return the API that access the device-side HAL manifest stored
      * in /vendor/manifest.xml.
      */
-    static const HalManifest *GetDeviceHalManifest();
+    static const HalManifest *GetDeviceHalManifest(bool skipCache = false);
 
     /*
      * Return the API that access the framework-side HAL manifest stored
      * in /system/manfiest.xml.
      */
-    static const HalManifest *GetFrameworkHalManifest();
+    static const HalManifest *GetFrameworkHalManifest(bool skipCache = false);
 
     /*
      * Return the API that access device runtime info.
      */
-    static const RuntimeInfo *GetRuntimeInfo();
+    static const RuntimeInfo *GetRuntimeInfo(bool skipCache = false);
 
     /**
      * Check compatibility, given a set of manifests / matrices in packageInfo.
@@ -78,9 +80,14 @@ public:
      */
     static int32_t CheckCompatibility(
             const std::vector<std::string> &packageInfo,
-            bool mount = false);
+            bool mount = false,
+            std::string *error = nullptr);
 };
 
+enum : int32_t {
+    COMPATIBLE = 0,
+    INCOMPATIBLE = 1,
+};
 
 } // namespace vintf
 } // namespace android

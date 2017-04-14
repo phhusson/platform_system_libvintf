@@ -269,6 +269,10 @@ status_t HalManifest::fetchAllInformation(const std::string &path) {
     return OK;
 }
 
+SchemaType HalManifest::type() const {
+    return mType;
+}
+
 bool operator==(const HalManifest &lft, const HalManifest &rgt) {
     return lft.mType == rgt.mType &&
            lft.mHals == rgt.mHals &&
