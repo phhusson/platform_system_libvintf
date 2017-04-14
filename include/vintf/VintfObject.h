@@ -68,11 +68,9 @@ public:
     /**
      * Check compatibility, given a set of manifests / matrices in packageInfo.
      * They will be checked against the manifests / matrices on the device.
-     * Partitions (/system, /vendor) are mounted if necessary.
      *
      * @param packageInfo a list of XMLs of HalManifest /
      * CompatibilityMatrix objects.
-     * @param mount whether partitions should be mounted to do the check.
      *
      * @return = 0 if success (compatible)
      *         > 0 if incompatible
@@ -80,7 +78,6 @@ public:
      */
     static int32_t CheckCompatibility(
             const std::vector<std::string> &packageInfo,
-            bool mount = false,
             std::string *error = nullptr);
 };
 
@@ -88,6 +85,19 @@ enum : int32_t {
     COMPATIBLE = 0,
     INCOMPATIBLE = 1,
 };
+
+// exposed for testing and VintfObjectRecovery.
+namespace details {
+int32_t checkCompatibility(const std::vector<std::string> &xmls, bool mount,
+        std::function<status_t(void)> mountSystem,
+        std::function<status_t(void)> umountSystem,
+        std::function<status_t(void)> mountVendor,
+        std::function<status_t(void)> umountVendor,
+        std::function<const HalManifest *(bool)> GetFrameworkHalManifest,
+        std::function<const HalManifest *(bool)> GetDeviceHalManifest,
+        std::function<const RuntimeInfo *(bool)> GetRuntimeInfo,
+        std::string *error);
+} // namespace details
 
 } // namespace vintf
 } // namespace android
