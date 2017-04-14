@@ -36,6 +36,8 @@ struct CompatibilityMatrix {
     // Create a framework compatibility matrix.
     CompatibilityMatrix() : mType(SchemaType::FRAMEWORK) {};
 
+    SchemaType type() const;
+
     constexpr static Version kVersion{1, 0};
 
 private:
