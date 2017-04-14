@@ -41,7 +41,6 @@ struct CompatibilityMatrix {
 private:
     bool add(MatrixHal &&hal);
     bool add(MatrixKernel &&kernel);
-    void clear();
 
     // Find a MatrixKernel entry that has version v. nullptr if not found.
     const MatrixKernel *findKernel(const KernelVersion &v) const;

@@ -60,7 +60,6 @@ private:
     friend struct LibVintfTest;
     friend std::string dump(const RuntimeInfo &ki);
 
-    void clear();
     status_t fetchAllInformation();
 
     // /proc/config.gz
