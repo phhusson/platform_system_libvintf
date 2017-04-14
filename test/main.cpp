@@ -16,11 +16,12 @@
 
 #define LOG_TAG "LibHidlTest"
 
+#include <functional>
+
 #include <vintf/parse_string.h>
 #include <vintf/parse_xml.h>
 #include <vintf/CompatibilityMatrix.h>
-#include <vintf/RuntimeInfo.h>
-#include <vintf/HalManifest.h>
+#include <vintf/VintfObject.h>
 
 #include <android-base/logging.h>
 #include <android-base/parseint.h>
@@ -730,6 +731,170 @@ TEST_F(LibVintfTest, Compat) {
     EXPECT_FALSE(manifest.checkCompatibility(matrix));
     set(matrix, Sepolicy{30, {{25, 4}}});
     EXPECT_TRUE(manifest.checkCompatibility(matrix, &error)) << error;
+}
+
+namespace details {
+int32_t checkCompatibility(const std::vector<std::string> &xmls, bool mount,
+        std::function<status_t(void)> mountSystem,
+        std::function<status_t(void)> mountVendor,
+        std::function<const HalManifest *(bool)> GetFrameworkHalManifest,
+        std::function<const HalManifest *(bool)> GetDeviceHalManifest,
+        std::function<const RuntimeInfo *(bool)> GetRuntimeInfo,
+        std::string *error);
+} // namespace details
+
+TEST_F(LibVintfTest, Compat2) {
+    std::string deviceManifestXml =
+        "<manifest version=\"1.0\" type=\"device\">\n"
+        "    <sepolicy>\n"
+        "        <version>25.5</version>\n"
+        "    </sepolicy>\n"
+        "</manifest>\n";
+    std::string frameworkManifestXml =
+        "<manifest version=\"1.0\" type=\"framework\">\n"
+        "    <vndk>\n"
+        "        <version>25.0.5</version>\n"
+        "    </vndk>\n"
+        "</manifest>\n";
+    std::string deviceMatrixXml =
+        "<compatibility-matrix version=\"1.0\" type=\"device\">\n"
+        "    <vndk>\n"
+        "        <version>25.0.5</version>\n"
+        "    </vndk>\n"
+        "</compatibility-matrix>\n";
+    std::string frameworkMatrixXml =
+        "<compatibility-matrix version=\"1.0\" type=\"framework\">\n"
+        "    <kernel version=\"3.18.31\"></kernel>"
+        "    <sepolicy>\n"
+        "        <kernel-sepolicy-version>30</kernel-sepolicy-version>\n"
+        "        <sepolicy-version>25.5</sepolicy-version>\n"
+        "    </sepolicy>\n"
+        "    <avb>\n"
+        "        <vbmeta-version>2.1</vbmeta-version>\n"
+        "    </avb>\n"
+        "</compatibility-matrix>\n";
+    RuntimeInfo runtimeInfo = testRuntimeInfo();
+    HalManifest devManifest;
+    HalManifest fwkManifest;
+    CompatibilityMatrix devMatrix;
+    CompatibilityMatrix fwkMatrix;
+    EXPECT_TRUE(gHalManifestConverter(&devManifest, deviceManifestXml));
+    EXPECT_TRUE(gHalManifestConverter(&fwkManifest, frameworkManifestXml));
+    EXPECT_TRUE(gCompatibilityMatrixConverter(&devMatrix, deviceMatrixXml));
+    EXPECT_TRUE(gCompatibilityMatrixConverter(&fwkMatrix, frameworkMatrixXml));
+    std::string error;
+    EXPECT_TRUE(devManifest.checkCompatibility(fwkMatrix, &error)) << error;
+    EXPECT_TRUE(fwkManifest.checkCompatibility(devMatrix, &error)) << error;
+    EXPECT_TRUE(runtimeInfo.checkCompatibility(fwkMatrix, &error)) << error;
+
+    bool systemMounted = false;
+    bool vendorMounted = false;
+    auto mountSystem = [&systemMounted] () { systemMounted = true; return OK; };
+    auto mountVendor = [&vendorMounted] () { vendorMounted = true; return OK; };
+    auto nullManifestFunc = [](bool) -> const HalManifest * { return nullptr; };
+    auto runtimeInfoFunc = [&](bool) { return &runtimeInfo; };
+    // full OTA
+    EXPECT_EQ(COMPATIBLE, details::checkCompatibility(
+            {deviceManifestXml, deviceMatrixXml, frameworkManifestXml, frameworkMatrixXml},
+            false /* mount */, mountSystem, mountVendor,
+            nullManifestFunc,
+            nullManifestFunc,
+            runtimeInfoFunc,
+            &error)) << error;
+    EXPECT_FALSE(systemMounted);
+    EXPECT_FALSE(vendorMounted);
+    EXPECT_EQ(COMPATIBLE, details::checkCompatibility(
+            {deviceManifestXml, deviceMatrixXml, frameworkManifestXml, frameworkMatrixXml},
+            true /* mount */, mountSystem, mountVendor,
+            nullManifestFunc,
+            nullManifestFunc,
+            runtimeInfoFunc,
+            &error)) << error;
+    EXPECT_FALSE(systemMounted);
+    EXPECT_FALSE(vendorMounted);
+
+    // framework only OTA
+    EXPECT_GT(0, details::checkCompatibility(
+            {frameworkManifestXml, frameworkMatrixXml},
+            false /* mount */, mountSystem, mountVendor,
+            nullManifestFunc,
+            nullManifestFunc,
+            runtimeInfoFunc,
+            &error)) << "should not mount, thus info should be missing";
+    EXPECT_FALSE(systemMounted);
+    EXPECT_FALSE(vendorMounted);
+    EXPECT_EQ(COMPATIBLE, details::checkCompatibility(
+            {frameworkManifestXml, frameworkMatrixXml},
+            true /* mount */, mountSystem, mountVendor,
+            nullManifestFunc,
+            [&](auto) { return &devManifest; },
+            runtimeInfoFunc,
+            &error)) << error;
+    EXPECT_FALSE(systemMounted);
+    EXPECT_TRUE(vendorMounted);
+
+    CompatibilityMatrix failedFwkMatrix;
+    std::string failedFrameworkMatrixXml;
+
+    // Failed framework only OTA example 1: runtime info doesn't work (avb version)
+    failedFwkMatrix = {};
+    systemMounted = false;
+    vendorMounted = false;
+    failedFrameworkMatrixXml =
+        "<compatibility-matrix version=\"1.0\" type=\"framework\">\n"
+        "    <kernel version=\"3.18.31\"></kernel>"
+        "    <sepolicy>\n"
+        "        <kernel-sepolicy-version>30</kernel-sepolicy-version>\n"
+        "        <sepolicy-version>25.5</sepolicy-version>\n"
+        "    </sepolicy>\n"
+        "    <avb>\n"
+        "        <vbmeta-version>2.2</vbmeta-version>\n"
+        "    </avb>\n"
+        "</compatibility-matrix>\n";
+    EXPECT_TRUE(gCompatibilityMatrixConverter(&failedFwkMatrix, failedFrameworkMatrixXml));
+    EXPECT_TRUE(devManifest.checkCompatibility(failedFwkMatrix, &error)) << error;
+    EXPECT_FALSE(runtimeInfo.checkCompatibility(failedFwkMatrix, &error)) << error;
+    EXPECT_EQ(INCOMPATIBLE, details::checkCompatibility(
+            {frameworkManifestXml, failedFrameworkMatrixXml},
+            true /* mount */, mountSystem, mountVendor,
+            nullManifestFunc,
+            [&](auto) { return &devManifest; },
+            runtimeInfoFunc,
+            &error)) << error;
+    EXPECT_FALSE(systemMounted);
+    EXPECT_TRUE(vendorMounted);
+
+    // Failed framework only OTA example 2: unsupported HAL
+    failedFwkMatrix = {};
+    systemMounted = false;
+    vendorMounted = false;
+    failedFrameworkMatrixXml =
+        "<compatibility-matrix version=\"1.0\" type=\"framework\">\n"
+        "    <hal format=\"hidl\" optional=\"false\">\n"
+        "        <name>android.hardware.camera</name>\n"
+        "        <version>2.0-5</version>\n"
+        "    </hal>\n"
+        "    <kernel version=\"3.18.31\"></kernel>"
+        "    <sepolicy>\n"
+        "        <kernel-sepolicy-version>30</kernel-sepolicy-version>\n"
+        "        <sepolicy-version>25.5</sepolicy-version>\n"
+        "    </sepolicy>\n"
+        "    <avb>\n"
+        "        <vbmeta-version>2.1</vbmeta-version>\n"
+        "    </avb>\n"
+        "</compatibility-matrix>\n";
+    EXPECT_TRUE(gCompatibilityMatrixConverter(&failedFwkMatrix, failedFrameworkMatrixXml));
+    EXPECT_FALSE(devManifest.checkCompatibility(failedFwkMatrix, &error)) << error;
+    EXPECT_TRUE(runtimeInfo.checkCompatibility(failedFwkMatrix, &error)) << error;
+    EXPECT_EQ(INCOMPATIBLE, details::checkCompatibility(
+            {frameworkManifestXml, failedFrameworkMatrixXml},
+            true /* mount */, mountSystem, mountVendor,
+            nullManifestFunc,
+            [&](auto) { return &devManifest; },
+            runtimeInfoFunc,
+            &error)) << error;
+    EXPECT_FALSE(systemMounted);
+    EXPECT_TRUE(vendorMounted);
 }
 
 } // namespace vintf
