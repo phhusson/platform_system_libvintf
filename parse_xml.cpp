@@ -618,7 +618,8 @@ struct HalManifestConverter : public XmlNodeConverter<HalManifest> {
         }
         if (object->mType == SchemaType::DEVICE) {
             // tags for device hal manifest only.
-            // TODO(b/36456394): should not allow <sepolicy> to be missing.
+            // <sepolicy> can be missing because it can be determined at build time, not hard-coded
+            // in the XML file.
             if (!parseOptionalChild(root, halManifestSepolicyConverter, {},
                     &object->device.mSepolicyVersion)) {
                 return false;
