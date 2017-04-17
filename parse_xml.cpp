@@ -685,7 +685,7 @@ struct CompatibilityMatrixConverter : public XmlNodeConverter<CompatibilityMatri
         if (object->mType == SchemaType::FRAMEWORK) {
             if (!parseChildren(root, matrixKernelConverter, &object->framework.mKernels) ||
                 !parseChild(root, sepolicyConverter, &object->framework.mSepolicy) ||
-                !parseChild(root, avbConverter, &object->framework.mAvbMetaVersion)) {
+                !parseOptionalChild(root, avbConverter, {}, &object->framework.mAvbMetaVersion)) {
                 return false;
             }
         } else if (object->mType == SchemaType::DEVICE) {
