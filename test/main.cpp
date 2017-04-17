@@ -733,16 +733,6 @@ TEST_F(LibVintfTest, Compat) {
     EXPECT_TRUE(manifest.checkCompatibility(matrix, &error)) << error;
 }
 
-namespace details {
-int32_t checkCompatibility(const std::vector<std::string> &xmls, bool mount,
-        std::function<status_t(void)> mountSystem,
-        std::function<status_t(void)> mountVendor,
-        std::function<const HalManifest *(bool)> GetFrameworkHalManifest,
-        std::function<const HalManifest *(bool)> GetDeviceHalManifest,
-        std::function<const RuntimeInfo *(bool)> GetRuntimeInfo,
-        std::string *error);
-} // namespace details
-
 TEST_F(LibVintfTest, Compat2) {
     std::string deviceManifestXml =
         "<manifest version=\"1.0\" type=\"device\">\n"
@@ -789,49 +779,61 @@ TEST_F(LibVintfTest, Compat2) {
 
     bool systemMounted = false;
     bool vendorMounted = false;
-    auto mountSystem = [&systemMounted] () { systemMounted = true; return OK; };
-    auto mountVendor = [&vendorMounted] () { vendorMounted = true; return OK; };
+    bool systemUmounted = false;
+    bool vendorUmounted = false;
+    auto mountSystem  = [&systemMounted]  () { systemMounted = true;  return OK; };
+    auto mountVendor  = [&vendorMounted]  () { vendorMounted = true;  return OK; };
+    auto umountSystem = [&systemUmounted] () { systemUmounted = true; return OK; };
+    auto umountVendor = [&vendorUmounted] () { vendorUmounted = true; return OK; };
     auto nullManifestFunc = [](bool) -> const HalManifest * { return nullptr; };
     auto runtimeInfoFunc = [&](bool) { return &runtimeInfo; };
     // full OTA
     EXPECT_EQ(COMPATIBLE, details::checkCompatibility(
             {deviceManifestXml, deviceMatrixXml, frameworkManifestXml, frameworkMatrixXml},
-            false /* mount */, mountSystem, mountVendor,
+            false /* mount */, mountSystem, umountSystem, mountVendor, umountVendor,
             nullManifestFunc,
             nullManifestFunc,
             runtimeInfoFunc,
             &error)) << error;
     EXPECT_FALSE(systemMounted);
     EXPECT_FALSE(vendorMounted);
+    EXPECT_FALSE(systemUmounted);
+    EXPECT_FALSE(vendorUmounted);
     EXPECT_EQ(COMPATIBLE, details::checkCompatibility(
             {deviceManifestXml, deviceMatrixXml, frameworkManifestXml, frameworkMatrixXml},
-            true /* mount */, mountSystem, mountVendor,
+            true /* mount */, mountSystem, umountSystem, mountVendor, umountVendor,
             nullManifestFunc,
             nullManifestFunc,
             runtimeInfoFunc,
             &error)) << error;
     EXPECT_FALSE(systemMounted);
     EXPECT_FALSE(vendorMounted);
+    EXPECT_FALSE(systemUmounted);
+    EXPECT_FALSE(vendorUmounted);
 
     // framework only OTA
     EXPECT_GT(0, details::checkCompatibility(
             {frameworkManifestXml, frameworkMatrixXml},
-            false /* mount */, mountSystem, mountVendor,
+            false /* mount */, mountSystem, umountSystem, mountVendor, umountVendor,
             nullManifestFunc,
             nullManifestFunc,
             runtimeInfoFunc,
             &error)) << "should not mount, thus info should be missing";
     EXPECT_FALSE(systemMounted);
     EXPECT_FALSE(vendorMounted);
+    EXPECT_FALSE(systemUmounted);
+    EXPECT_FALSE(vendorUmounted);
     EXPECT_EQ(COMPATIBLE, details::checkCompatibility(
             {frameworkManifestXml, frameworkMatrixXml},
-            true /* mount */, mountSystem, mountVendor,
+            true /* mount */, mountSystem, umountSystem, mountVendor, umountVendor,
             nullManifestFunc,
             [&](auto) { return &devManifest; },
             runtimeInfoFunc,
             &error)) << error;
     EXPECT_FALSE(systemMounted);
     EXPECT_TRUE(vendorMounted);
+    EXPECT_FALSE(systemUmounted);
+    EXPECT_TRUE(vendorUmounted);
 
     CompatibilityMatrix failedFwkMatrix;
     std::string failedFrameworkMatrixXml;
@@ -856,13 +858,15 @@ TEST_F(LibVintfTest, Compat2) {
     EXPECT_FALSE(runtimeInfo.checkCompatibility(failedFwkMatrix, &error)) << error;
     EXPECT_EQ(INCOMPATIBLE, details::checkCompatibility(
             {frameworkManifestXml, failedFrameworkMatrixXml},
-            true /* mount */, mountSystem, mountVendor,
+            true /* mount */, mountSystem, umountSystem, mountVendor, umountVendor,
             nullManifestFunc,
             [&](auto) { return &devManifest; },
             runtimeInfoFunc,
             &error)) << error;
     EXPECT_FALSE(systemMounted);
     EXPECT_TRUE(vendorMounted);
+    EXPECT_FALSE(systemUmounted);
+    EXPECT_TRUE(vendorUmounted);
 
     // Failed framework only OTA example 2: unsupported HAL
     failedFwkMatrix = {};
@@ -888,13 +892,15 @@ TEST_F(LibVintfTest, Compat2) {
     EXPECT_TRUE(runtimeInfo.checkCompatibility(failedFwkMatrix, &error)) << error;
     EXPECT_EQ(INCOMPATIBLE, details::checkCompatibility(
             {frameworkManifestXml, failedFrameworkMatrixXml},
-            true /* mount */, mountSystem, mountVendor,
+            true /* mount */, mountSystem, umountSystem, mountVendor, umountVendor,
             nullManifestFunc,
             [&](auto) { return &devManifest; },
             runtimeInfoFunc,
             &error)) << error;
     EXPECT_FALSE(systemMounted);
     EXPECT_TRUE(vendorMounted);
+    EXPECT_FALSE(systemUmounted);
+    EXPECT_TRUE(vendorUmounted);
 }
 
 } // namespace vintf
