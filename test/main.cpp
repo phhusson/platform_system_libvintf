@@ -69,6 +69,9 @@ public:
     void setAvb(CompatibilityMatrix &cm, Version &&avbVersion) {
         cm.framework.mAvbMetaVersion = avbVersion;
     }
+    Version getAvb(CompatibilityMatrix &cm) {
+        return cm.framework.mAvbMetaVersion;
+    }
     const ManifestHal *getAnyHal(HalManifest &vm, const std::string &name) {
         return vm.getAnyHal(name);
     }
@@ -623,6 +626,20 @@ TEST_F(LibVintfTest, RuntimeInfo) {
         setAvb(badAvb, {2, 3}, {2, 1});
         EXPECT_TRUE(badAvb.checkCompatibility(cm, &error));
     }
+}
+
+TEST_F(LibVintfTest, MissingAvb) {
+    std::string xml =
+        "<compatibility-matrix version=\"1.0\" type=\"framework\">\n"
+        "    <kernel version=\"3.18.31\"></kernel>"
+        "    <sepolicy>\n"
+        "        <kernel-sepolicy-version>30</kernel-sepolicy-version>\n"
+        "        <sepolicy-version>25.5</sepolicy-version>\n"
+        "    </sepolicy>\n"
+        "</compatibility-matrix>\n";
+    CompatibilityMatrix cm;
+    EXPECT_TRUE(gCompatibilityMatrixConverter(&cm, xml));
+    EXPECT_EQ(getAvb(cm), Version(0, 0));
 }
 
 TEST_F(LibVintfTest, Compat) {
