@@ -73,13 +73,7 @@ const RuntimeInfo *VintfObject::GetRuntimeInfo(bool skipCache) {
 
 namespace details {
 
-static status_t mountSystem() {
-    // TODO(b/36814503): mount system partition here for recovery mode.
-    return OK;
-}
-
-static status_t mountVendor() {
-    // TODO(b/36814503): mount vendor partition here for recovery mode.
+static status_t fakeMountUmount() {
     return OK;
 }
 
@@ -90,7 +84,7 @@ enum class ParseStatus {
     DUPLICATED_DEV_ENTRY,
 };
 
-std::string toString(ParseStatus status) {
+static std::string toString(ParseStatus status) {
     switch(status) {
         case ParseStatus::OK:                   return "OK";
         case ParseStatus::PARSE_ERROR:          return "parse error";
@@ -101,7 +95,7 @@ std::string toString(ParseStatus status) {
 }
 
 template<typename T>
-ParseStatus tryParse(const std::string &xml, const XmlConverter<T> &parse,
+static ParseStatus tryParse(const std::string &xml, const XmlConverter<T> &parse,
         std::unique_ptr<T> *fwk, std::unique_ptr<T> *dev) {
     std::unique_ptr<T> ret = std::make_unique<T>();
     if (!parse(ret.get(), xml)) {
@@ -124,6 +118,7 @@ ParseStatus tryParse(const std::string &xml, const XmlConverter<T> &parse,
 template<typename T, typename GetFunction>
 static status_t getMissing(const T *pkg, bool mount,
         std::function<status_t(void)> mountFunction,
+        std::function<status_t(void)> umountFunction,
         const T **updated,
         GetFunction getFunction) {
     if (pkg != nullptr) {
@@ -133,6 +128,9 @@ static status_t getMissing(const T *pkg, bool mount,
             (void)mountFunction(); // ignore mount errors
         }
         *updated = getFunction();
+        if (mount) {
+            (void)umountFunction(); // ignore umount errors
+        }
     }
     return OK;
 }
@@ -166,7 +164,9 @@ struct UpdatedInfo {
 // Do compatibility check.
 int32_t checkCompatibility(const std::vector<std::string> &xmls, bool mount,
         std::function<status_t(void)> mountSystem,
+        std::function<status_t(void)> umountSystem,
         std::function<status_t(void)> mountVendor,
+        std::function<status_t(void)> umountVendor,
         std::function<const HalManifest *(bool)> GetFrameworkHalManifest,
         std::function<const HalManifest *(bool)> GetDeviceHalManifest,
         std::function<const RuntimeInfo *(bool)> GetRuntimeInfo,
@@ -205,11 +205,13 @@ int32_t checkCompatibility(const std::vector<std::string> &xmls, bool mount,
     }
 
     // get missing info from device
-    if ((status = getMissing(pkg.fwk.manifest.get(), mount, mountSystem, &updated.fwk.manifest,
+    if ((status = getMissing(pkg.fwk.manifest.get(), mount, mountSystem, umountSystem,
+            &updated.fwk.manifest,
             std::bind(GetFrameworkHalManifest, true /* skipCache */))) != OK) {
         return status;
     }
-    if ((status = getMissing(pkg.dev.manifest.get(), mount, mountVendor, &updated.dev.manifest,
+    if ((status = getMissing(pkg.dev.manifest.get(), mount, mountVendor, umountVendor,
+            &updated.dev.manifest,
             std::bind(GetDeviceHalManifest, true /* skipCache */))) != OK) {
         return status;
     }
@@ -272,10 +274,10 @@ int32_t checkCompatibility(const std::vector<std::string> &xmls, bool mount,
 
 // static
 int32_t VintfObject::CheckCompatibility(
-        const std::vector<std::string> &xmls,
-        bool mount, std::string *error) {
-    return details::checkCompatibility(xmls, mount,
-            &details::mountSystem, &details::mountVendor,
+        const std::vector<std::string> &xmls, std::string *error) {
+    return details::checkCompatibility(xmls, false /* mount */,
+            &details::fakeMountUmount, &details::fakeMountUmount,
+            &details::fakeMountUmount, &details::fakeMountUmount,
             &VintfObject::GetFrameworkHalManifest,
             &VintfObject::GetDeviceHalManifest,
             &VintfObject::GetRuntimeInfo,
