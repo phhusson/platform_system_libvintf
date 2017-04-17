@@ -28,6 +28,7 @@ namespace vintf {
 // are unmounted afterwards.
 
 class VintfObjectRecovery {
+public:
     /**
      * Check compatibility, given a set of manifests / matrices in packageInfo.
      * They will be checked against the manifests / matrices on the device.
