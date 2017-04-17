@@ -57,7 +57,8 @@ bool operator==(const CompatibilityMatrix &lft, const CompatibilityMatrix &rgt) 
                 lft.device.mVndk == rgt.device.mVndk)) &&
            (lft.mType != SchemaType::FRAMEWORK || (
                 lft.framework.mKernels == rgt.framework.mKernels &&
-                lft.framework.mSepolicy == rgt.framework.mSepolicy));
+                lft.framework.mSepolicy == rgt.framework.mSepolicy &&
+                lft.framework.mAvbMetaVersion == rgt.framework.mAvbMetaVersion));
 }
 
 } // namespace vintf

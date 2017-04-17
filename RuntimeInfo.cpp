@@ -70,7 +70,7 @@ bool RuntimeInfo::checkCompatibility(const CompatibilityMatrix &mat,
         return false;
     }
 
-    // TODO(b/35217573): check sepolicy version against mat.mSepolicy.sepolicyVersion() here.
+    // mat.mSepolicy.sepolicyVersion() is checked against static HalManifest.device.mSepolicyVersion
 
     const MatrixKernel *matrixKernel = mat.findKernel(this->mKernelVersion);
     if (matrixKernel == nullptr) {
@@ -101,6 +101,15 @@ bool RuntimeInfo::checkCompatibility(const CompatibilityMatrix &mat,
             return false;
         }
     }
+
+    const Version &matAvb = mat.framework.mAvbMetaVersion;
+    if (mAvbBootVersion.majorVer != matAvb.majorVer ||
+        mAvbBootVersion.minorVer <  matAvb.minorVer ||
+        mAvbInitVersion.majorVer != matAvb.majorVer ||
+        mAvbInitVersion.minorVer <  matAvb.minorVer) {
+        return false;
+    }
+
     return true;
 }
 
