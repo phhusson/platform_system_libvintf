@@ -47,7 +47,7 @@ private:
 
     // Return an iterable to all MatrixHal objects. Call it as follows:
     // for (const MatrixHal &e : cm.getHals()) { }
-    ConstMapValueIterable<std::string, MatrixHal> getHals() const;
+    ConstMultiMapValueIterable<std::string, MatrixHal> getHals() const;
 
     friend struct HalManifest;
     friend struct RuntimeInfo;
@@ -58,7 +58,7 @@ private:
     SchemaType mType;
 
     // sorted map from component name to the entry.
-    std::map<std::string, MatrixHal> mHals;
+    std::multimap<std::string, MatrixHal> mHals;
 
     // entries only for framework compatibility matrix.
     struct {
