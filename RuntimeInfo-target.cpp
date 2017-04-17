@@ -27,6 +27,7 @@
 #include <sys/utsname.h>
 #include <unistd.h>
 
+#include <cutils/properties.h>
 #include <selinux/selinux.h>
 #include <zlib.h>
 
@@ -62,6 +63,7 @@ private:
     status_t fetchCpuInfo();
     status_t fetchKernelSepolicyVers();
     status_t fetchSepolicyFiles();
+    status_t fetchAvb();
     status_t parseKernelVersion();
     RuntimeInfo *mRuntimeInfo;
     std::string mRemaining;
@@ -193,6 +195,19 @@ status_t RuntimeInfoFetcher::fetchSepolicyFiles() {
     return OK;
 }
 
+status_t RuntimeInfoFetcher::fetchAvb() {
+    char prop[PROPERTY_VALUE_MAX];
+    property_get("ro.boot.vbmeta.avb_version", prop, "0.0");
+    if (!parse(prop, &mRuntimeInfo->mAvbBootVersion)) {
+        return UNKNOWN_ERROR;
+    }
+    property_get("ro.boot.avb_version", prop, "0.0");
+    if (!parse(prop, &mRuntimeInfo->mAvbInitVersion)) {
+        return UNKNOWN_ERROR;
+    }
+    return OK;
+}
+
 status_t RuntimeInfoFetcher::fetchAllInformation() {
     status_t err;
     if ((err = fetchVersion()) != OK) {
@@ -208,6 +223,9 @@ status_t RuntimeInfoFetcher::fetchAllInformation() {
         return err;
     }
     if ((err = fetchSepolicyFiles()) != OK) {
+        return err;
+    }
+    if ((err = fetchAvb()) != OK) {
         return err;
     }
     return OK;
