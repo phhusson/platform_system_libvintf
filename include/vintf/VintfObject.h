@@ -62,6 +62,23 @@ public:
      * Return the API that access device runtime info.
      */
     static const RuntimeInfo *GetRuntimeInfo();
+
+    /**
+     * Check compatibility, given a set of manifests / matrices in packageInfo.
+     * They will be checked against the manifests / matrices on the device.
+     * Partitions (/system, /vendor) are mounted if necessary.
+     *
+     * @param packageInfo a list of XMLs of HalManifest /
+     * CompatibilityMatrix objects.
+     * @param mount whether partitions should be mounted to do the check.
+     *
+     * @return = 0 if success (compatible)
+     *         > 0 if incompatible
+     *         < 0 if any error (mount partition fails, illformed XML, etc.)
+     */
+    static int32_t CheckCompatibility(
+            const std::vector<std::string> &packageInfo,
+            bool mount = false);
 };
 
 
