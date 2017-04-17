@@ -37,7 +37,11 @@ namespace vintf {
 constexpr Version HalManifest::kVersion;
 
 bool HalManifest::add(ManifestHal &&hal) {
-    return hal.isValid() && mHals.emplace(hal.name, std::move(hal)).second;
+    if (!hal.isValid()) {
+        return false;
+    }
+    mHals.emplace(hal.name, std::move(hal));
+    return true;
 }
 
 std::set<std::string> HalManifest::getHalNames() const {
@@ -50,84 +54,85 @@ std::set<std::string> HalManifest::getHalNames() const {
 
 std::set<std::string> HalManifest::getInterfaceNames(const std::string &name) const {
     std::set<std::string> interfaceNames{};
-    const ManifestHal *hal = getHal(name);
-    if (hal == nullptr) {
-        return interfaceNames;
-    }
-    for (const auto &iface : hal->interfaces) {
-        interfaceNames.insert(iface.first);
+    for (const ManifestHal *hal : getHals(name)) {
+        for (const auto &iface : hal->interfaces) {
+            interfaceNames.insert(iface.first);
+        }
     }
     return interfaceNames;
 }
 
-const ManifestHal *HalManifest::getHal(const std::string &name) const {
-    const auto it = mHals.find(name);
+ManifestHal *HalManifest::getAnyHal(const std::string &name) {
+    auto it = mHals.find(name);
     if (it == mHals.end()) {
         return nullptr;
     }
     return &(it->second);
 }
 
-ManifestHal *HalManifest::getHal(const std::string &name) {
-    return const_cast<ManifestHal *>(const_cast<const HalManifest *>(this)->getHal(name));
+std::vector<const ManifestHal *> HalManifest::getHals(const std::string &name) const {
+    std::vector<const ManifestHal *> ret;
+    auto range = mHals.equal_range(name);
+    for (auto it = range.first; it != range.second; ++it) {
+        ret.push_back(&it->second);
+    }
+    return ret;
 }
 
 Transport HalManifest::getTransport(const std::string &package, const Version &v,
             const std::string &interfaceName, const std::string &instanceName) const {
-    const ManifestHal *hal = getHal(package);
-    if (hal == nullptr) {
-        return Transport::EMPTY;
+
+    for (const ManifestHal *hal : getHals(package)) {
+        if (std::find(hal->versions.begin(), hal->versions.end(), v) == hal->versions.end()) {
+            LOG(INFO) << "HalManifest::getTransport(" << to_string(mType) << "): Cannot find "
+                      << to_string(v) << " in supported versions of " << package;
+            continue;
+        }
+        auto it = hal->interfaces.find(interfaceName);
+        if (it == hal->interfaces.end()) {
+            LOG(INFO) << "HalManifest::getTransport(" << to_string(mType) << "): Cannot find interface '"
+                      << interfaceName << "' in " << package << "@" << to_string(v);
+            continue;
+        }
+        const auto &instances = it->second.instances;
+        if (instances.find(instanceName) == instances.end()) {
+            LOG(INFO) << "HalManifest::getTransport(" << to_string(mType) << "): Cannot find instance '"
+                      << instanceName << "' in "
+                      << package << "@" << to_string(v) << "::" << interfaceName;
+            continue;
+        }
+        return hal->transportArch.transport;
     }
-    if (std::find(hal->versions.begin(), hal->versions.end(), v) == hal->versions.end()) {
-        LOG(WARNING) << "HalManifest::getTransport: Cannot find "
-                     << to_string(v) << " in supported versions of " << package;
-        return Transport::EMPTY;
-    }
-    auto it = hal->interfaces.find(interfaceName);
-    if (it == hal->interfaces.end()) {
-        LOG(WARNING) << "HalManifest::getTransport: Cannot find interface '"
-                     << interfaceName << "' in " << package << "@" << to_string(v);
-        return Transport::EMPTY;
-    }
-    const auto &instances = it->second.instances;
-    if (instances.find(instanceName) == instances.end()) {
-        LOG(WARNING) << "HalManifest::getTransport: Cannot find instance '"
-                     << instanceName << "' in "
-                     << package << "@" << to_string(v) << "::" << interfaceName;
-        return Transport::EMPTY;
-    }
-    return hal->transportArch.transport;
+    LOG(INFO) << "HalManifest::getTransport(" << to_string(mType) << "): Cannot get transport for "
+                 << package << "@" << v << "::" << interfaceName << "/" << instanceName;
+    return Transport::EMPTY;
+
 }
 
-ConstMapValueIterable<std::string, ManifestHal> HalManifest::getHals() const {
-    return ConstMapValueIterable<std::string, ManifestHal>(mHals);
+ConstMultiMapValueIterable<std::string, ManifestHal> HalManifest::getHals() const {
+    return ConstMultiMapValueIterable<std::string, ManifestHal>(mHals);
 }
 
-const std::vector<Version> &HalManifest::getSupportedVersions(const std::string &name) const {
-    static const std::vector<Version> empty{};
-    const ManifestHal *hal = getHal(name);
-    if (hal == nullptr) {
-        return empty;
+std::set<Version> HalManifest::getSupportedVersions(const std::string &name) const {
+    std::set<Version> ret;
+    for (const ManifestHal *hal : getHals(name)) {
+        ret.insert(hal->versions.begin(), hal->versions.end());
     }
-    return hal->versions;
+    return ret;
 }
 
 
-const std::set<std::string> &HalManifest::getInstances(
+std::set<std::string> HalManifest::getInstances(
         const std::string &halName, const std::string &interfaceName) const {
-    static const std::set<std::string> empty{};
-    static const std::set<std::string> def{{"default"}};
-    const ManifestHal *hal = getHal(halName);
-    if (hal == nullptr) {
-        return empty;
+    std::set<std::string> ret;
+    for (const ManifestHal *hal : getHals(halName)) {
+        auto it = hal->interfaces.find(interfaceName);
+        if (it != hal->interfaces.end()) {
+            ret.insert(it->second.instances.begin(), it->second.instances.end());
+        }
     }
-    auto it = hal->interfaces.find(interfaceName);
-    if (it == hal->interfaces.end()) {
-        return def;
-    }
-    return it->second.instances;
+    return ret;
 }
-
 
 bool HalManifest::hasInstance(const std::string &halName,
         const std::string &interfaceName, const std::string &instanceName) const {
@@ -154,20 +159,21 @@ static bool isCompatible(const MatrixHal &matrixHal, const ManifestHal &manifest
     return false;
 }
 
+// For each hal in mat, there must be a hal in manifest that supports this.
 std::vector<std::string> HalManifest::checkIncompatiblity(const CompatibilityMatrix &mat) const {
     std::vector<std::string> incompatible;
     for (const MatrixHal &matrixHal : mat.getHals()) {
         // don't check optional; put it in the incompatibility list as well.
         const std::string &name = matrixHal.name;
-        auto it = mHals.find(name);
-        if (it == mHals.end()) {
-            incompatible.push_back(name);
-            continue;
+        bool matrixHalSupported = false;
+        for (const ManifestHal *manifestHal : getHals(name)) {
+            matrixHalSupported = isCompatible(matrixHal, *manifestHal);
+            if (matrixHalSupported) {
+                break;
+            }
         }
-        const ManifestHal &manifestHal = it->second;
-        if (!isCompatible(matrixHal, manifestHal)) {
+        if (!matrixHalSupported) {
             incompatible.push_back(name);
-            continue;
         }
     }
     return incompatible;

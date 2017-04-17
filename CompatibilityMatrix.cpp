@@ -22,7 +22,8 @@ namespace vintf {
 constexpr Version CompatibilityMatrix::kVersion;
 
 bool CompatibilityMatrix::add(MatrixHal &&hal) {
-    return mHals.emplace(hal.name, std::move(hal)).second;
+    mHals.emplace(hal.name, std::move(hal));
+    return true;
 }
 
 bool CompatibilityMatrix::add(MatrixKernel &&kernel) {
@@ -33,8 +34,8 @@ bool CompatibilityMatrix::add(MatrixKernel &&kernel) {
     return true;
 }
 
-ConstMapValueIterable<std::string, MatrixHal> CompatibilityMatrix::getHals() const {
-    return ConstMapValueIterable<std::string, MatrixHal>(mHals);
+ConstMultiMapValueIterable<std::string, MatrixHal> CompatibilityMatrix::getHals() const {
+    return ConstMultiMapValueIterable<std::string, MatrixHal>(mHals);
 }
 
 const MatrixKernel *CompatibilityMatrix::findKernel(const KernelVersion &v) const {
