@@ -49,6 +49,9 @@ private:
     // for (const MatrixHal &e : cm.getHals()) { }
     ConstMultiMapValueIterable<std::string, MatrixHal> getHals() const;
 
+    // for constructing matrix programitically only.
+    MatrixHal *getAnyHal(const std::string &name);
+
     friend struct HalManifest;
     friend struct RuntimeInfo;
     friend struct CompatibilityMatrixConverter;

@@ -72,9 +72,21 @@ public:
             const std::string &interfaceName, const std::string &instanceName) const;
 
     // Return a list of component names that does NOT conform to
-    // the given compatibility matrix. It may contain components that are optional
-    // for the framework.
-    std::vector<std::string> checkIncompatiblity(const CompatibilityMatrix &mat) const;
+    // the given compatibility matrix. It contains components that are optional
+    // for the framework if includeOptional = true.
+    // Note: only HAL entries are checked. To check other entries as well, use
+    // checkCompatibility.
+    std::vector<std::string> checkIncompatibility(const CompatibilityMatrix &mat,
+            bool includeOptional = true) const;
+
+    // Check compatibility against a compatibility matrix. Considered compatible if
+    // - framework manifest vs. device compat-mat
+    //     - checkIncompatibility for HALs returns only optional HALs
+    //     - one of manifest.vndk match compat-mat.vndk
+    // - device manifest vs. framework compat-mat
+    //     - checkIncompatibility for HALs returns only optional HALs
+    //     - manifest.sepolicy.version match one of compat-mat.sepolicy.sepolicy-version
+    bool checkCompatibility(const CompatibilityMatrix &mat, std::string *error = nullptr) const;
 
     // Add an hal to this manifest so that a HalManifest can be constructed programatically.
     bool add(ManifestHal &&hal);

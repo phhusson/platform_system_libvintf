@@ -38,6 +38,14 @@ ConstMultiMapValueIterable<std::string, MatrixHal> CompatibilityMatrix::getHals(
     return ConstMultiMapValueIterable<std::string, MatrixHal>(mHals);
 }
 
+MatrixHal *CompatibilityMatrix::getAnyHal(const std::string &name) {
+    auto it = mHals.find(name);
+    if (it == mHals.end()) {
+        return nullptr;
+    }
+    return &(it->second);
+}
+
 const MatrixKernel *CompatibilityMatrix::findKernel(const KernelVersion &v) const {
     if (mType != SchemaType::FRAMEWORK) {
         return nullptr;
