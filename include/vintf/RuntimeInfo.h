@@ -46,6 +46,8 @@ struct RuntimeInfo {
     // utsname.machine
     const std::string &hardwareId() const;
 
+    const std::vector<std::string> &sepolicyFilePaths() const;
+
     // /sys/fs/selinux/policyvers
     size_t kernelSepolicyVersion() const;
 
@@ -71,6 +73,8 @@ private:
     std::string mOsVersion;
     std::string mHardwareId;
     KernelVersion mKernelVersion;
+
+    std::vector<std::string> mSepolicyFilePaths;
 
     size_t mKernelSepolicyVersion;
 
