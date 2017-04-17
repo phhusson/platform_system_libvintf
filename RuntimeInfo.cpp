@@ -49,15 +49,6 @@ size_t RuntimeInfo::kernelSepolicyVersion() const {
     return mKernelSepolicyVersion;
 }
 
-void RuntimeInfo::clear() {
-    mKernelConfigs.clear();
-    mOsName.clear();
-    mNodeName.clear();
-    mOsRelease.clear();
-    mOsVersion.clear();
-    mHardwareId.clear();
-}
-
 bool RuntimeInfo::checkCompatibility(const CompatibilityMatrix &mat,
             std::string *error) const {
     if (mat.mType != SchemaType::FRAMEWORK) {
