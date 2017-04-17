@@ -106,6 +106,8 @@ public:
     // If the component is not found, empty list is returned.
     std::set<std::string> getInterfaceNames(const std::string &name) const;
 
+    SchemaType type() const;
+
 private:
     friend struct HalManifestConverter;
     friend class VintfObject;

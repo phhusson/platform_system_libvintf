@@ -59,6 +59,10 @@ const MatrixKernel *CompatibilityMatrix::findKernel(const KernelVersion &v) cons
     return nullptr;
 }
 
+SchemaType CompatibilityMatrix::type() const {
+    return mType;
+}
+
 bool operator==(const CompatibilityMatrix &lft, const CompatibilityMatrix &rgt) {
     return lft.mType == rgt.mType &&
            lft.mHals == rgt.mHals &&
