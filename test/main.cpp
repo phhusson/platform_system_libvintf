@@ -387,7 +387,7 @@ TEST_F(LibVintfTest, CompatibilityMatrixCoverter) {
             {KernelConfig{"CONFIG_FOO", Tristate::YES}, KernelConfig{"CONFIG_BAR", "stringvalue"}}}));
     EXPECT_TRUE(add(cm, MatrixKernel{KernelVersion(4, 4, 1),
             {KernelConfig{"CONFIG_BAZ", 20}, KernelConfig{"CONFIG_BAR", KernelConfigRangeValue{3, 5} }}}));
-    set(cm, Sepolicy(30, {1, 3}));
+    set(cm, Sepolicy(30, {{25, 0}, {26, 0, 3}}));
     std::string xml = gCompatibilityMatrixConverter(cm);
     EXPECT_EQ(xml,
             "<compatibility-matrix version=\"1.0\" type=\"framework\">\n"
@@ -423,7 +423,8 @@ TEST_F(LibVintfTest, CompatibilityMatrixCoverter) {
             "    </kernel>\n"
             "    <sepolicy>\n"
             "        <kernel-sepolicy-version>30</kernel-sepolicy-version>\n"
-            "        <sepolicy-version>1-3</sepolicy-version>\n"
+            "        <sepolicy-version>25.0</sepolicy-version>\n"
+            "        <sepolicy-version>26.0-3</sepolicy-version>\n"
             "    </sepolicy>\n"
             "</compatibility-matrix>\n");
     CompatibilityMatrix cm2;
@@ -512,7 +513,7 @@ TEST_F(LibVintfTest, RuntimeInfo) {
     auto testMatrix = [&] (MatrixKernel &&kernel) {
         CompatibilityMatrix cm;
         add(cm, std::move(kernel));
-        set(cm, {30, {1, 3}});
+        set(cm, {30, {{25, 0}}});
         return cm;
     };
 
@@ -533,10 +534,10 @@ TEST_F(LibVintfTest, RuntimeInfo) {
     {
         MatrixKernel kernel(KernelVersion{3, 18, 22}, KernelConfigs(configs));
         CompatibilityMatrix cm = testMatrix(std::move(kernel));
-        set(cm, Sepolicy{22, {1, 3}});
+        set(cm, Sepolicy{22, {{25, 0}}});
         EXPECT_FALSE(ki.checkCompatibility(cm, &error))
             << "kernel-sepolicy-version shouldn't match";
-        set(cm, Sepolicy{40, {1, 3}});
+        set(cm, Sepolicy{40, {{25, 0}}});
         EXPECT_FALSE(ki.checkCompatibility(cm, &error))
             << "kernel-sepolicy-version shouldn't match";
     }
