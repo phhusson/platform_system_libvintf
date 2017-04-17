@@ -45,6 +45,10 @@ const std::string &RuntimeInfo::hardwareId() const {
     return mHardwareId;
 }
 
+const std::vector<std::string> &RuntimeInfo::sepolicyFilePaths() const {
+    return mSepolicyFilePaths;
+}
+
 size_t RuntimeInfo::kernelSepolicyVersion() const {
     return mKernelSepolicyVersion;
 }
