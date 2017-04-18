@@ -41,6 +41,13 @@ struct ManifestHal {
     TransportArch transportArch;
     std::map<std::string, ManifestHalInterface> interfaces;
 
+    inline bool hasVersion(Version v) const {
+        return std::find(versions.begin(), versions.end(), v) != versions.end();
+    }
+    inline Transport transport() const {
+        return transportArch.transport;
+    }
+
 private:
     friend struct LibVintfTest;
     friend struct ManifestHalConverter;
