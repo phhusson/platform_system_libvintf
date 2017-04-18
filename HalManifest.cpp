@@ -78,6 +78,14 @@ std::vector<const ManifestHal *> HalManifest::getHals(const std::string &name) c
     }
     return ret;
 }
+std::vector<ManifestHal *> HalManifest::getHals(const std::string &name) {
+    std::vector<ManifestHal *> ret;
+    auto range = mHals.equal_range(name);
+    for (auto it = range.first; it != range.second; ++it) {
+        ret.push_back(&it->second);
+    }
+    return ret;
+}
 
 Transport HalManifest::getTransport(const std::string &package, const Version &v,
             const std::string &interfaceName, const std::string &instanceName) const {
