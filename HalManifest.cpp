@@ -259,6 +259,32 @@ bool HalManifest::checkCompatibility(const CompatibilityMatrix &mat, std::string
     return true;
 }
 
+CompatibilityMatrix HalManifest::generateCompatibleMatrix() const {
+    CompatibilityMatrix matrix;
+
+    for (const ManifestHal &manifestHal : getHals()) {
+        MatrixHal matrixHal{
+            .format = manifestHal.format,
+            .name = manifestHal.name,
+            .optional = true,
+        };
+        for (const Version &manifestVersion : manifestHal.versions) {
+            matrixHal.versionRanges.push_back({manifestVersion.majorVer, manifestVersion.minorVer});
+        }
+        matrix.add(std::move(matrixHal));
+    }
+    if (mType == SchemaType::FRAMEWORK) {
+        matrix.mType = SchemaType::DEVICE;
+        // VNDK does not need to be added for compatibility
+    } else if (mType == SchemaType::DEVICE) {
+        matrix.mType = SchemaType::FRAMEWORK;
+        matrix.framework.mSepolicy = Sepolicy(0u /* kernelSepolicyVersion */,
+                {{device.mSepolicyVersion.majorVer, device.mSepolicyVersion.minorVer}});
+    }
+
+    return matrix;
+}
+
 status_t HalManifest::fetchAllInformation(const std::string &path) {
     std::ifstream in;
     in.open(path);
