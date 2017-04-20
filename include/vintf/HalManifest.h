@@ -91,13 +91,6 @@ public:
     // Add an hal to this manifest so that a HalManifest can be constructed programatically.
     bool add(ManifestHal &&hal);
 
-    // Get any HAL component based on the component name. Return any one
-    // if multiple. Return nullptr if the component does not exist. This is only
-    // for creating HalManifest objects programatically.
-    // The component name looks like:
-    // android.hardware.foo
-    ManifestHal *getAnyHal(const std::string &name);
-
     // Returns all component names.
     std::set<std::string> getHalNames() const;
 
@@ -106,7 +99,12 @@ public:
     // If the component is not found, empty list is returned.
     std::set<std::string> getInterfaceNames(const std::string &name) const;
 
+    // Type of the manifest. FRAMEWORK or DEVICE.
     SchemaType type() const;
+
+    // Get all hals with the name
+    std::vector<const ManifestHal *> getHals(const std::string &name) const;
+    std::vector<ManifestHal *> getHals(const std::string &name);
 
 private:
     friend struct HalManifestConverter;
@@ -120,8 +118,12 @@ private:
     // for (const ManifestHal &e : vm.getHals()) { }
     ConstMultiMapValueIterable<std::string, ManifestHal> getHals() const;
 
-    // Get all hals with the name
-    std::vector<const ManifestHal *> getHals(const std::string &name) const;
+    // Get any HAL component based on the component name. Return any one
+    // if multiple. Return nullptr if the component does not exist. This is only
+    // for creating HalManifest objects programatically.
+    // The component name looks like:
+    // android.hardware.foo
+    ManifestHal *getAnyHal(const std::string &name);
 
     status_t fetchAllInformation(const std::string &path);
 
