@@ -28,6 +28,10 @@
 #include <sys/utsname.h>
 #include <unistd.h>
 
+#include <fstream>
+#include <iostream>
+#include <sstream>
+
 #include <cutils/properties.h>
 #include <selinux/selinux.h>
 #include <zlib.h>
@@ -135,6 +139,14 @@ void RuntimeInfoFetcher::streamConfig(const char *buf, size_t len) {
 
 status_t RuntimeInfoFetcher::fetchCpuInfo() {
     // TODO implement this; 32-bit and 64-bit has different format.
+    std::ifstream in{"/proc/cpuinfo"};
+    if (!in.is_open()) {
+        LOG(WARNING) << "Cannot read /proc/cpuinfo";
+        return UNKNOWN_ERROR;
+    }
+    std::stringstream sstream;
+    sstream << in.rdbuf();
+    mRuntimeInfo->mCpuInfo = sstream.str();
     return OK;
 }
 

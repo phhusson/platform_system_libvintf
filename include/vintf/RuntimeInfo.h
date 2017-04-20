@@ -50,6 +50,9 @@ struct RuntimeInfo {
     // files under /vendor/etc/selinux/
     const std::vector<std::string> &sepolicyFilePaths() const;
 
+    // /proc/cpuinfo
+    const std::string &cpuInfo() const;
+
     // /sys/fs/selinux/policyvers
     size_t kernelSepolicyVersion() const;
 
@@ -83,6 +86,7 @@ private:
     KernelVersion mKernelVersion;
 
     std::vector<std::string> mSepolicyFilePaths;
+    std::string mCpuInfo;
     Version mAvbBootVersion;
     Version mAvbInitVersion;
 
