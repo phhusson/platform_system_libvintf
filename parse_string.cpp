@@ -382,8 +382,12 @@ std::string dump(const RuntimeInfo &ki) {
         << ki.hardwareId() << ";"
         << ki.mAvbBootVersion << "/"
         << ki.mAvbInitVersion << ";"
-        << "kernelSepolicyVersion = " << ki.kernelSepolicyVersion() << ";"
-        << "#CONFIG's loaded = " << ki.mKernelConfigs.size() << ";\n";
+        << "kernelSepolicyVersion = " << ki.kernelSepolicyVersion() << ";\n"
+        << "sepolicy files:\n";
+    for (const auto &file : ki.sepolicyFilePaths()) {
+        oss << "    " << file << "\n";
+    }
+    oss << "\n#CONFIG's loaded = " << ki.mKernelConfigs.size() << ";\n";
     for (const auto &pair : ki.mKernelConfigs) {
         oss << pair.first << "=" << pair.second << "\n";
     }
