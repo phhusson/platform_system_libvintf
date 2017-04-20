@@ -88,6 +88,9 @@ public:
     //     - manifest.sepolicy.version match one of compat-mat.sepolicy.sepolicy-version
     bool checkCompatibility(const CompatibilityMatrix &mat, std::string *error = nullptr) const;
 
+    // Generate a compatibility matrix such that checkCompatibility will return true.
+    CompatibilityMatrix generateCompatibleMatrix() const;
+
     // Add an hal to this manifest so that a HalManifest can be constructed programatically.
     bool add(ManifestHal &&hal);
 
