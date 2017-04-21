@@ -47,6 +47,7 @@ struct RuntimeInfo {
     // utsname.machine
     const std::string &hardwareId() const;
 
+    // files under /vendor/etc/selinux/
     const std::vector<std::string> &sepolicyFilePaths() const;
 
     // /sys/fs/selinux/policyvers
