@@ -387,6 +387,8 @@ std::string dump(const RuntimeInfo &ki) {
     for (const auto &file : ki.sepolicyFilePaths()) {
         oss << "    " << file << "\n";
     }
+    oss << "\ncpu info:\n";
+    oss << ki.cpuInfo();
     oss << "\n#CONFIG's loaded = " << ki.mKernelConfigs.size() << ";\n";
     for (const auto &pair : ki.mKernelConfigs) {
         oss << pair.first << "=" << pair.second << "\n";
