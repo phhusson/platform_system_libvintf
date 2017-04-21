@@ -53,6 +53,10 @@ size_t RuntimeInfo::kernelSepolicyVersion() const {
     return mKernelSepolicyVersion;
 }
 
+const std::string &RuntimeInfo::cpuInfo() const {
+    return mCpuInfo;
+}
+
 bool RuntimeInfo::checkCompatibility(const CompatibilityMatrix &mat,
             std::string *error) const {
     if (mat.mType != SchemaType::FRAMEWORK) {
