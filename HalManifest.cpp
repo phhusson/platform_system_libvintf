@@ -19,16 +19,13 @@
 #include "HalManifest.h"
 
 #include <dirent.h>
-
-#include <fstream>
-#include <iostream>
-#include <sstream>
 #include <mutex>
 
 #include <android-base/logging.h>
 
 #include "parse_string.h"
 #include "parse_xml.h"
+#include "utils.h"
 #include "CompatibilityMatrix.h"
 
 namespace android {
@@ -286,21 +283,7 @@ CompatibilityMatrix HalManifest::generateCompatibleMatrix() const {
 }
 
 status_t HalManifest::fetchAllInformation(const std::string &path) {
-    std::ifstream in;
-    in.open(path);
-    if (!in.is_open()) {
-        LOG(WARNING) << "Cannot open " << path;
-        return INVALID_OPERATION;
-    }
-    std::stringstream ss;
-    ss << in.rdbuf();
-    bool success = gHalManifestConverter(this, ss.str());
-    if (!success) {
-        LOG(ERROR) << "Illformed vendor manifest: " << path << ": "
-                   << gHalManifestConverter.lastError();
-        return BAD_VALUE;
-    }
-    return OK;
+    return details::fetchAllInformation(path, gHalManifestConverter, this);
 }
 
 SchemaType HalManifest::type() const {
