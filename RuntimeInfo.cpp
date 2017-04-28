@@ -107,10 +107,10 @@ bool RuntimeInfo::checkCompatibility(const CompatibilityMatrix &mat,
     }
 
     const Version &matAvb = mat.framework.mAvbMetaVersion;
-    if (mAvbBootVersion.majorVer != matAvb.majorVer ||
-        mAvbBootVersion.minorVer <  matAvb.minorVer ||
-        mAvbInitVersion.majorVer != matAvb.majorVer ||
-        mAvbInitVersion.minorVer <  matAvb.minorVer) {
+    if (mBootAvbVersion.majorVer != matAvb.majorVer ||
+        mBootAvbVersion.minorVer <  matAvb.minorVer ||
+        mBootVbmetaAvbVersion.majorVer != matAvb.majorVer ||
+        mBootVbmetaAvbVersion.minorVer <  matAvb.minorVer) {
         return false;
     }
 
