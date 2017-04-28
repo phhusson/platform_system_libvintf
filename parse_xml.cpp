@@ -690,7 +690,9 @@ struct CompatibilityMatrixConverter : public XmlNodeConverter<CompatibilityMatri
                 return false;
             }
         } else if (object->mType == SchemaType::DEVICE) {
-            if (!parseChild(root, vndkConverter, &object->device.mVndk)) {
+            // <vndk> can be missing because it can be determined at build time, not hard-coded
+            // in the XML file.
+            if (!parseOptionalChild(root, vndkConverter, {}, &object->device.mVndk)) {
                 return false;
             }
         }
