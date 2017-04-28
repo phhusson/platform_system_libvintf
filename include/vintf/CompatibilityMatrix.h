@@ -20,6 +20,8 @@
 #include <map>
 #include <string>
 
+#include <utils/Errors.h>
+
 #include "MatrixHal.h"
 #include "MatrixKernel.h"
 #include "MapValueIterator.h"
@@ -54,10 +56,14 @@ private:
     // for constructing matrix programitically only.
     MatrixHal *getAnyHal(const std::string &name);
 
+    status_t fetchAllInformation(const std::string &path);
+
     friend struct HalManifest;
     friend struct RuntimeInfo;
     friend struct CompatibilityMatrixConverter;
     friend struct LibVintfTest;
+    friend class VintfObject;
+    friend class AssembleVintf;
     friend bool operator==(const CompatibilityMatrix &, const CompatibilityMatrix &);
 
     SchemaType mType;
