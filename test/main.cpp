@@ -62,9 +62,9 @@ public:
         cm.device.mVndk.mVersionRange = range;
         cm.device.mVndk.mLibraries = libs;
     }
-    void setAvb(RuntimeInfo &ki, Version initVersion, Version bootVersion) {
-        ki.mAvbInitVersion = initVersion;
-        ki.mAvbBootVersion = bootVersion;
+    void setAvb(RuntimeInfo &ki, Version vbmeta, Version boot) {
+        ki.mBootVbmetaAvbVersion = vbmeta;
+        ki.mBootAvbVersion = boot;
     }
     void setAvb(CompatibilityMatrix &cm, Version &&avbVersion) {
         cm.framework.mAvbMetaVersion = avbVersion;
@@ -148,7 +148,7 @@ public:
             {"CONFIG_BUILD_ARM64_APPENDED_DTB_IMAGE_NAMES", "\"\""},
             {"CONFIG_ILLEGAL_POINTER_VALUE", "0xdead000000000000"}
         };
-        info.mAvbBootVersion = info.mAvbInitVersion = {2, 1};
+        setAvb(info, {2, 1}, {2, 1});
         return info;
     }
 };
