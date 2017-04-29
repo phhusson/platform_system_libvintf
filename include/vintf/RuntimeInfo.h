@@ -46,9 +46,16 @@ struct RuntimeInfo {
     const std::string &osVersion() const;
     // utsname.machine
     const std::string &hardwareId() const;
+    // extract from utsname.release
+    const KernelVersion &kernelVersion() const;
 
     // files under /vendor/etc/selinux/
     const std::vector<std::string> &sepolicyFilePaths() const;
+
+    const std::map<std::string, std::string> &kernelConfigs() const;
+
+    const Version &bootVbmetaAvbVersion() const;
+    const Version &bootAvbVersion() const;
 
     // /proc/cpuinfo
     const std::string &cpuInfo() const;
