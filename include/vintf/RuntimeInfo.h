@@ -87,8 +87,8 @@ private:
 
     std::vector<std::string> mSepolicyFilePaths;
     std::string mCpuInfo;
-    Version mAvbBootVersion;
-    Version mAvbInitVersion;
+    Version mBootVbmetaAvbVersion;
+    Version mBootAvbVersion;
 
     size_t mKernelSepolicyVersion;
 
