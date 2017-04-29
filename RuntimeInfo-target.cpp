@@ -232,11 +232,11 @@ status_t RuntimeInfoFetcher::fetchSepolicyFiles() {
 status_t RuntimeInfoFetcher::fetchAvb() {
     char prop[PROPERTY_VALUE_MAX];
     property_get("ro.boot.vbmeta.avb_version", prop, "0.0");
-    if (!parse(prop, &mRuntimeInfo->mAvbBootVersion)) {
+    if (!parse(prop, &mRuntimeInfo->mBootVbmetaAvbVersion)) {
         return UNKNOWN_ERROR;
     }
     property_get("ro.boot.avb_version", prop, "0.0");
-    if (!parse(prop, &mRuntimeInfo->mAvbInitVersion)) {
+    if (!parse(prop, &mRuntimeInfo->mBootAvbVersion)) {
         return UNKNOWN_ERROR;
     }
     return OK;
