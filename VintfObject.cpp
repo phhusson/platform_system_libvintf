@@ -34,6 +34,8 @@ struct LockedUniquePtr {
 
 static LockedUniquePtr<HalManifest> gDeviceManifest;
 static LockedUniquePtr<HalManifest> gFrameworkManifest;
+static LockedUniquePtr<CompatibilityMatrix> gDeviceMatrix;
+static LockedUniquePtr<CompatibilityMatrix> gFrameworkMatrix;
 static LockedUniquePtr<RuntimeInfo> gDeviceRuntimeInfo;
 
 template <typename T, typename F>
@@ -63,6 +65,21 @@ const HalManifest *VintfObject::GetFrameworkHalManifest(bool skipCache) {
     return Get(&gFrameworkManifest, skipCache,
             std::bind(&HalManifest::fetchAllInformation, std::placeholders::_1,
                 "/system/manifest.xml"));
+}
+
+
+// static
+const CompatibilityMatrix *VintfObject::GetDeviceCompatibilityMatrix(bool skipCache) {
+    return Get(&gDeviceMatrix, skipCache,
+            std::bind(&CompatibilityMatrix::fetchAllInformation, std::placeholders::_1,
+                "/vendor/compatibility_matrix.xml"));
+}
+
+// static
+const CompatibilityMatrix *VintfObject::GetFrameworkCompatibilityMatrix(bool skipCache) {
+    return Get(&gFrameworkMatrix, skipCache,
+            std::bind(&CompatibilityMatrix::fetchAllInformation, std::placeholders::_1,
+                "/system/compatibility_matrix.xml"));
 }
 
 // static

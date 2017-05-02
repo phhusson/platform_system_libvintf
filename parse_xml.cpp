@@ -684,8 +684,10 @@ struct CompatibilityMatrixConverter : public XmlNodeConverter<CompatibilityMatri
         }
 
         if (object->mType == SchemaType::FRAMEWORK) {
+            // <avb> and <sepolicy> can be missing because it can be determined at build time, not
+            // hard-coded in the XML file.
             if (!parseChildren(root, matrixKernelConverter, &object->framework.mKernels) ||
-                !parseChild(root, sepolicyConverter, &object->framework.mSepolicy) ||
+                !parseOptionalChild(root, sepolicyConverter, {}, &object->framework.mSepolicy) ||
                 !parseOptionalChild(root, avbConverter, {}, &object->framework.mAvbMetaVersion)) {
                 return false;
             }
