@@ -93,11 +93,12 @@ public:
                 CompatibilityMatrix checkMatrix;
                 if (!gCompatibilityMatrixConverter(&checkMatrix, read(checkFile))) {
                     std::cerr << "Cannot parse check file as a compatibility matrix: "
-                              << gCompatibilityMatrixConverter.lastError();
+                              << gCompatibilityMatrixConverter.lastError()
+                              << std::endl;
                     return false;
                 }
                 if (!halManifest.checkCompatibility(checkMatrix, &error)) {
-                    std::cerr << "Not compatible: " << error;
+                    std::cerr << "Not compatible: " << error << std::endl;
                     return false;
                 }
             }
@@ -126,11 +127,12 @@ public:
                 HalManifest checkManifest;
                 if (!gHalManifestConverter(&checkManifest, read(checkFile))) {
                     std::cerr << "Cannot parse check file as a HAL manifest: "
-                              << gHalManifestConverter.lastError();
+                              << gHalManifestConverter.lastError()
+                              << std::endl;
                     return false;
                 }
                 if (!checkManifest.checkCompatibility(matrix, &error)) {
-                    std::cerr << "Not compatible: " << error;
+                    std::cerr << "Not compatible: " << error << std::endl;
                     return false;
                 }
             }
