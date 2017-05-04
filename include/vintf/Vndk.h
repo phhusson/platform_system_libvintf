@@ -42,6 +42,9 @@ struct VndkVersionRange {
 
 struct Vndk {
 
+    const VndkVersionRange &versionRange() const { return mVersionRange; }
+    const std::set<std::string> &libraries() const { return mLibraries; }
+
 private:
     friend struct VndkConverter;
     friend struct HalManifestConverter;
