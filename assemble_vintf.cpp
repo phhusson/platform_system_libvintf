@@ -49,12 +49,18 @@ public:
         return true;
     }
 
+    static std::string read(std::basic_istream<char>& is) {
+        std::stringstream ss;
+        ss << is.rdbuf();
+        return ss.str();
+    }
+
     static bool assemble(std::basic_istream<char>& inFile,
                          std::basic_ostream<char>& outFile,
+                         std::ifstream& checkFile,
                          bool outputMatrix) {
-        std::stringstream ss;
-        ss << inFile.rdbuf();
-        std::string fileContent = ss.str();
+        std::string error;
+        std::string fileContent = read(inFile);
 
         HalManifest halManifest;
         if (gHalManifestConverter(&halManifest, fileContent)) {
@@ -65,9 +71,8 @@ public:
             }
 
             if (outputMatrix) {
-                CompatibilityMatrix mat = halManifest.generateCompatibleMatrix();
-                std::string error;
-                if (!halManifest.checkCompatibility(mat, &error)) {
+                CompatibilityMatrix generatedMatrix = halManifest.generateCompatibleMatrix();
+                if (!halManifest.checkCompatibility(generatedMatrix, &error)) {
                     std::cerr << "FATAL ERROR: cannot generate a compatible matrix: "
                               << error << std::endl;
                 }
@@ -78,11 +83,25 @@ public:
                            "    Many entries other than HALs are zero-filled and\n"
                            "    require human attention. \n"
                            "-->\n"
-                        << gCompatibilityMatrixConverter(mat);
+                        << gCompatibilityMatrixConverter(generatedMatrix);
             } else {
                 outFile << gHalManifestConverter(halManifest);
             }
             outFile.flush();
+
+            if (checkFile.is_open()) {
+                CompatibilityMatrix checkMatrix;
+                if (!gCompatibilityMatrixConverter(&checkMatrix, read(checkFile))) {
+                    std::cerr << "Cannot parse check file as a compatibility matrix: "
+                              << gCompatibilityMatrixConverter.lastError();
+                    return false;
+                }
+                if (!halManifest.checkCompatibility(checkMatrix, &error)) {
+                    std::cerr << "Not compatible: " << error;
+                    return false;
+                }
+            }
+
             return true;
         }
 
@@ -102,6 +121,20 @@ public:
             }
             outFile << gCompatibilityMatrixConverter(matrix);
             outFile.flush();
+
+            if (checkFile.is_open()) {
+                HalManifest checkManifest;
+                if (!gHalManifestConverter(&checkManifest, read(checkFile))) {
+                    std::cerr << "Cannot parse check file as a HAL manifest: "
+                              << gHalManifestConverter.lastError();
+                    return false;
+                }
+                if (!checkManifest.checkCompatibility(matrix, &error)) {
+                    std::cerr << "Not compatible: " << error;
+                    return false;
+                }
+            }
+
             return true;
         }
 
@@ -119,28 +152,42 @@ public:
 
 void help() {
     std::cerr <<
-        "assemble_vintf: Checks if a given manifest / matrix file is valid.\n"
-        "assemble_vintf -h\n"
-        "               Display this help text.\n"
-        "assemble_vintf -i <input file> [-o <output file>] [-m]\n"
-        "               Fill in build-time flags into the given file.\n"
-        "               Input file format is automatically detected.\n"
-        "               If no designated output file, write to stdout.\n"
-        "               If -m is set, a compatible compatibility matrix is\n"
-        "               generated instead; for example, given a device manifest,\n"
-        "               a framework compatibility matrix is generated. This flag\n"
-        "               is ignored when input is a compatibility matrix itself.\n";
+"assemble_vintf: Checks if a given manifest / matrix file is valid and \n"
+"    fill in build-time flags into the given file.\n"
+"assemble_vintf -h\n"
+"               Display this help text.\n"
+"assemble_vintf -i <input file> [-o <output file>] [-m] [-c [<check file>]]\n"
+"               Fill in build-time flags into the given file.\n"
+"    -i <input file>\n"
+"               Input file. Format is automatically detected.\n"
+"    -o <input file>\n"
+"               Optional output file. If not specified, write to stdout.\n"
+"    -m\n"
+"               a compatible compatibility matrix is\n"
+"               generated instead; for example, given a device manifest,\n"
+"               a framework compatibility matrix is generated. This flag\n"
+"               is ignored when input is a compatibility matrix.\n"
+"    -c [<check file>]\n"
+"               After writing the output file, check compatibility between\n"
+"               output file and check file.\n"
+"               If -c is set but the check file is not specified, a warning\n"
+"               message is written to stderr. Return 0.\n"
+"               If the check file is specified but is not compatible, an error\n"
+"               message is written to stderr. Return 1.\n";
 }
 
 int main(int argc, char **argv) {
     std::ifstream inFile;
     std::ofstream outFile;
+    std::ifstream checkFile;
     std::ostream* outFileRef = &std::cout;
     bool outputMatrix = false;
+    std::string inFilePath;
     int res;
-    while((res = getopt(argc, argv, "hi:o:m")) >= 0) {
+    while((res = getopt(argc, argv, "hi:o:mc:")) >= 0) {
         switch (res) {
             case 'i': {
+                inFilePath = optarg;
                 inFile.open(optarg);
                 if (!inFile.is_open()) {
                     std::cerr << "Failed to open " << optarg << std::endl;
@@ -161,6 +208,19 @@ int main(int argc, char **argv) {
                 outputMatrix = true;
             } break;
 
+            case 'c': {
+                if (strlen(optarg) != 0) {
+                    checkFile.open(optarg);
+                    if (!checkFile.is_open()) {
+                        std::cerr << "Failed to open " << optarg << std::endl;
+                        return 1;
+                    }
+                } else {
+                    std::cerr << "WARNING: no compatibility check is done on "
+                              << inFilePath << std::endl;
+                }
+            } break;
+
             case 'h':
             default: {
                 help();
@@ -175,7 +235,10 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    return ::android::vintf::AssembleVintf::assemble(inFile, *outFileRef, outputMatrix)
-            ? 0 : 1;
+    bool success = ::android::vintf::AssembleVintf::assemble(
+            inFile, *outFileRef, checkFile, outputMatrix);
+
+
+    return success ? 0 : 1;
 }
 
