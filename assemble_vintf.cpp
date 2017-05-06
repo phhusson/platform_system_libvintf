@@ -88,7 +88,18 @@ public:
 
         CompatibilityMatrix matrix;
         if (gCompatibilityMatrixConverter(&matrix, fileContent)) {
-            // TODO (b/37342627): get BOARD_VNDK_VERSION and put it here.
+            KernelSepolicyVersion kernelSepolicyVers;
+            Version sepolicyVers;
+            if (matrix.mType == SchemaType::FRAMEWORK) {
+                if (!getFlag("BOARD_SEPOLICY_VERS", &sepolicyVers)) {
+                    return false;
+                }
+                if (!getFlag("POLICYVERS", &kernelSepolicyVers)) {
+                    return false;
+                }
+                matrix.framework.mSepolicy = Sepolicy(kernelSepolicyVers,
+                        {{sepolicyVers.majorVer,sepolicyVers.minorVer}});
+            }
             outFile << gCompatibilityMatrixConverter(matrix);
             outFile.flush();
             return true;

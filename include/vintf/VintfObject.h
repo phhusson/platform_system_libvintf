@@ -17,6 +17,7 @@
 #ifndef ANDROID_VINTF_VINTF_OBJECT_H_
 #define ANDROID_VINTF_VINTF_OBJECT_H_
 
+#include "CompatibilityMatrix.h"
 #include "HalManifest.h"
 #include "RuntimeInfo.h"
 
@@ -59,6 +60,18 @@ public:
      * in /system/manfiest.xml.
      */
     static const HalManifest *GetFrameworkHalManifest(bool skipCache = false);
+
+    /*
+     * Return the API that access the device-side compatibility matrix stored
+     * in /vendor/compatibility_matrix.xml.
+     */
+    static const CompatibilityMatrix *GetDeviceCompatibilityMatrix(bool skipCache = false);
+
+    /*
+     * Return the API that access the device-side compatibility matrix stored
+     * in /system/compatibility_matrix.xml.
+     */
+    static const CompatibilityMatrix *GetFrameworkCompatibilityMatrix(bool skipCache = false);
 
     /*
      * Return the API that access device runtime info.
