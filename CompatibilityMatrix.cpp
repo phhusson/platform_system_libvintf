@@ -16,6 +16,8 @@
 
 #include "CompatibilityMatrix.h"
 
+#include "utils.h"
+
 namespace android {
 namespace vintf {
 
@@ -61,6 +63,11 @@ const MatrixKernel *CompatibilityMatrix::findKernel(const KernelVersion &v) cons
 
 SchemaType CompatibilityMatrix::type() const {
     return mType;
+}
+
+
+status_t CompatibilityMatrix::fetchAllInformation(const std::string &path) {
+    return details::fetchAllInformation(path, gCompatibilityMatrixConverter, this);
 }
 
 bool operator==(const CompatibilityMatrix &lft, const CompatibilityMatrix &rgt) {
