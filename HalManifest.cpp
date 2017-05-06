@@ -89,26 +89,26 @@ Transport HalManifest::getTransport(const std::string &package, const Version &v
 
     for (const ManifestHal *hal : getHals(package)) {
         if (std::find(hal->versions.begin(), hal->versions.end(), v) == hal->versions.end()) {
-            LOG(INFO) << "HalManifest::getTransport(" << to_string(mType) << "): Cannot find "
+            LOG(DEBUG) << "HalManifest::getTransport(" << to_string(mType) << "): Cannot find "
                       << to_string(v) << " in supported versions of " << package;
             continue;
         }
         auto it = hal->interfaces.find(interfaceName);
         if (it == hal->interfaces.end()) {
-            LOG(INFO) << "HalManifest::getTransport(" << to_string(mType) << "): Cannot find interface '"
+            LOG(DEBUG) << "HalManifest::getTransport(" << to_string(mType) << "): Cannot find interface '"
                       << interfaceName << "' in " << package << "@" << to_string(v);
             continue;
         }
         const auto &instances = it->second.instances;
         if (instances.find(instanceName) == instances.end()) {
-            LOG(INFO) << "HalManifest::getTransport(" << to_string(mType) << "): Cannot find instance '"
+            LOG(DEBUG) << "HalManifest::getTransport(" << to_string(mType) << "): Cannot find instance '"
                       << instanceName << "' in "
                       << package << "@" << to_string(v) << "::" << interfaceName;
             continue;
         }
         return hal->transportArch.transport;
     }
-    LOG(INFO) << "HalManifest::getTransport(" << to_string(mType) << "): Cannot get transport for "
+    LOG(DEBUG) << "HalManifest::getTransport(" << to_string(mType) << "): Cannot get transport for "
                  << package << "@" << v << "::" << interfaceName << "/" << instanceName;
     return Transport::EMPTY;
 
