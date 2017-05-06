@@ -49,6 +49,16 @@ std::set<std::string> HalManifest::getHalNames() const {
     return names;
 }
 
+std::set<std::string> HalManifest::getHalNamesAndVersions() const {
+    std::set<std::string> names{};
+    for (const auto &hal : getHals()) {
+        for (const auto &version : hal.versions) {
+            names.insert(hal.name + "@" + to_string(version));
+        }
+    }
+    return names;
+}
+
 std::set<std::string> HalManifest::getInterfaceNames(const std::string &name) const {
     std::set<std::string> interfaceNames{};
     for (const ManifestHal *hal : getHals(name)) {
@@ -288,6 +298,16 @@ status_t HalManifest::fetchAllInformation(const std::string &path) {
 
 SchemaType HalManifest::type() const {
     return mType;
+}
+
+const Version &HalManifest::sepolicyVersion() const {
+    CHECK(mType == SchemaType::DEVICE);
+    return device.mSepolicyVersion;
+}
+
+const std::vector<Vndk> &HalManifest::vndks() const {
+    CHECK(mType == SchemaType::FRAMEWORK);
+    return framework.mVndks;
 }
 
 bool operator==(const HalManifest &lft, const HalManifest &rgt) {
