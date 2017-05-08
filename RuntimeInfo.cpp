@@ -49,11 +49,6 @@ const KernelVersion &RuntimeInfo::kernelVersion() const {
     return mKernelVersion;
 }
 
-
-const std::vector<std::string> &RuntimeInfo::sepolicyFilePaths() const {
-    return mSepolicyFilePaths;
-}
-
 const std::map<std::string, std::string> &RuntimeInfo::kernelConfigs() const {
     return mKernelConfigs;
 }
