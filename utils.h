@@ -30,18 +30,48 @@ namespace android {
 namespace vintf {
 namespace details {
 
-template<typename T>
-status_t fetchAllInformation(const std::string &path,
-        const XmlConverter<T> &converter, T *outObject) {
-    std::ifstream in;
-    in.open(path);
-    if (!in.is_open()) {
-        LOG(WARNING) << "Cannot open " << path;
-        return INVALID_OPERATION;
+// Return the file from the given location as a string.
+//
+// This class can be used to create a mock for overriding.
+class FileFetcher {
+   public:
+    virtual ~FileFetcher() {}
+    virtual status_t fetch(const std::string& path, std::string& fetched) {
+        std::ifstream in;
+
+        in.open(path);
+        if (!in.is_open()) {
+            LOG(WARNING) << "Cannot open " << path;
+            return INVALID_OPERATION;
+        }
+
+        std::stringstream ss;
+        ss << in.rdbuf();
+        fetched = ss.str();
+
+        return OK;
     }
-    std::stringstream ss;
-    ss << in.rdbuf();
-    bool success = converter(outObject, ss.str());
+};
+
+extern FileFetcher* gFetcher;
+
+template <typename T>
+status_t fetchAllInformation(const std::string& path, const XmlConverter<T>& converter,
+                             T* outObject) {
+    std::string info;
+
+    if (gFetcher == nullptr) {
+        // Should never happen.
+        return NO_INIT;
+    }
+
+    status_t result = gFetcher->fetch(path, info);
+
+    if (result != OK) {
+        return result;
+    }
+
+    bool success = converter(outObject, info);
     if (!success) {
         LOG(ERROR) << "Illformed file: " << path << ": "
                    << converter.lastError();
