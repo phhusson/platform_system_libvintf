@@ -67,7 +67,6 @@ private:
     status_t fetchKernelConfigs();
     status_t fetchCpuInfo();
     status_t fetchKernelSepolicyVers();
-    status_t fetchSepolicyFiles();
     status_t fetchAvb();
     status_t parseKernelVersion();
     RuntimeInfo *mRuntimeInfo;
@@ -200,35 +199,6 @@ status_t RuntimeInfoFetcher::parseKernelVersion() {
     return OK;
 }
 
-static const std::string gSepolicyFilesDir{"/vendor/etc/selinux/"};
-
-// Grab sepolicy file paths.
-status_t RuntimeInfoFetcher::fetchSepolicyFiles() {
-    mRuntimeInfo->mSepolicyFilePaths.clear();
-    DIR *dir = opendir(gSepolicyFilesDir.c_str());
-    if (dir == NULL) {
-        LOG(ERROR) << "Could not open directory \""
-                   << gSepolicyFilesDir << "\"";
-        return -errno;
-    }
-    struct dirent *e;
-    status_t status = OK;
-    errno = 0;
-    while ((e = readdir(dir))) {
-        if (e->d_type == DT_REG || e->d_type == DT_LNK) {
-            mRuntimeInfo->mSepolicyFilePaths.push_back(
-                    gSepolicyFilesDir + e->d_name);
-        }
-    }
-    if (errno != 0) {
-        LOG(ERROR) << "Could not read directory \""
-                   << gSepolicyFilesDir << "\"";
-        status = -errno;
-    }
-    (void)closedir(dir);
-    return status;
-}
-
 status_t RuntimeInfoFetcher::fetchAvb() {
     char prop[PROPERTY_VALUE_MAX];
     property_get("ro.boot.vbmeta.avb_version", prop, "0.0");
@@ -245,22 +215,19 @@ status_t RuntimeInfoFetcher::fetchAvb() {
 status_t RuntimeInfoFetcher::fetchAllInformation() {
     status_t err;
     if ((err = fetchVersion()) != OK) {
-        LOG(ERROR) << "Cannot fetch or parse /proc/version: " << strerror(-err);
+        LOG(WARNING) << "Cannot fetch or parse /proc/version: " << strerror(-err);
     }
     if ((err = fetchKernelConfigs()) != OK) {
-        LOG(ERROR) << "Cannot fetch or parse /proc/config.gz: " << strerror(-err);
+        LOG(WARNING) << "Cannot fetch or parse /proc/config.gz: " << strerror(-err);
     }
     if ((err = fetchCpuInfo()) != OK) {
-        LOG(ERROR) << "Cannot fetch /proc/cpuinfo: " << strerror(-err);
+        LOG(WARNING) << "Cannot fetch /proc/cpuinfo: " << strerror(-err);
     }
     if ((err = fetchKernelSepolicyVers()) != OK) {
-        LOG(ERROR) << "Cannot fetch kernel sepolicy version: " << strerror(-err);
-    }
-    if ((err = fetchSepolicyFiles()) != OK) {
-        LOG(ERROR) << "Cannot fetch sepolicy file paths: " << strerror(-err);
+        LOG(WARNING) << "Cannot fetch kernel sepolicy version: " << strerror(-err);
     }
     if ((err = fetchAvb()) != OK) {
-        LOG(ERROR) << "Cannot fetch sepolicy avb version: " << strerror(-err);
+        LOG(WARNING) << "Cannot fetch sepolicy avb version: " << strerror(-err);
     }
     return OK;
 }
