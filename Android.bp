@@ -46,6 +46,7 @@ cc_library {
         "MatrixKernel.cpp",
         "TransportArch.cpp",
         "VintfObject.cpp",
+        "utils.cpp",
     ],
 
     target: {
@@ -88,4 +89,44 @@ cc_binary_host {
     srcs: [
         "assemble_vintf.cpp"
     ],
+}
+
+cc_library {
+    name: "libvintftest",
+    host_supported: true,
+    shared_libs: [
+        "libbase",
+        "liblog",
+        "libselinux",
+        "libtinyxml2",
+    ],
+    export_include_dirs: ["include/vintf", "include", "test", "."],
+    local_include_dirs: ["include/vintf", "test", "."],
+
+    srcs: [
+        "parse_string.cpp",
+        "parse_xml.cpp",
+        "CompatibilityMatrix.cpp",
+        "HalManifest.cpp",
+        "KernelConfigTypedValue.cpp",
+        "RuntimeInfo.cpp",
+        "ManifestHal.cpp",
+        "MatrixHal.cpp",
+        "MatrixKernel.cpp",
+        "TransportArch.cpp",
+        "VintfObject.cpp",
+        "test/RuntimeInfo-fake.cpp",
+        "test/utils-fake.cpp",
+    ],
+
+    target: {
+        android: {
+            shared_libs: [
+                "libcutils",
+                "libutils",
+                "libz"
+            ],
+            cflags: ["-DLIBVINTF_TARGET"],
+        },
+    }
 }
