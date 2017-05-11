@@ -613,6 +613,7 @@ TEST_F(LibVintfTest, RuntimeInfo) {
     {
         setAvb(badAvb, {1, 0}, {2, 1});
         EXPECT_FALSE(badAvb.checkCompatibility(cm, &error));
+        EXPECT_STREQ(error.c_str(), "Vbmeta version 1.0 does not match framework matrix 2.1");
     }
     {
         setAvb(badAvb, {2, 1}, {3, 0});
@@ -880,6 +881,9 @@ TEST_F(LibVintfTest, Compat2) {
             [&](auto) { return &devManifest; },
             runtimeInfoFunc,
             &error)) << error;
+    EXPECT_STREQ(error.c_str(),
+                 "Runtime info and framework compatibility matrix are incompatible: "
+                 "AVB version 2.1 does not match framework matrix 2.2");
     EXPECT_FALSE(systemMounted);
     EXPECT_TRUE(vendorMounted);
     EXPECT_FALSE(systemUmounted);
