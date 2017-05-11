@@ -119,10 +119,23 @@ bool RuntimeInfo::checkCompatibility(const CompatibilityMatrix &mat,
     }
 
     const Version &matAvb = mat.framework.mAvbMetaVersion;
-    if (mBootAvbVersion.majorVer != matAvb.majorVer ||
-        mBootAvbVersion.minorVer <  matAvb.minorVer ||
-        mBootVbmetaAvbVersion.majorVer != matAvb.majorVer ||
-        mBootVbmetaAvbVersion.minorVer <  matAvb.minorVer) {
+    if (mBootAvbVersion.majorVer != matAvb.majorVer || mBootAvbVersion.minorVer < matAvb.minorVer) {
+        if (error != nullptr) {
+            std::stringstream ss;
+            ss << "AVB version " << mBootAvbVersion << " does not match framework matrix "
+               << matAvb;
+            *error = ss.str();
+        }
+        return false;
+    }
+    if (mBootVbmetaAvbVersion.majorVer != matAvb.majorVer ||
+        mBootVbmetaAvbVersion.minorVer < matAvb.minorVer) {
+        if (error != nullptr) {
+            std::stringstream ss;
+            ss << "Vbmeta version " << mBootVbmetaAvbVersion << " does not match framework matrix "
+               << matAvb;
+            *error = ss.str();
+        }
         return false;
     }
 
