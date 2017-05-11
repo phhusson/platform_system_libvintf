@@ -176,9 +176,9 @@ struct UpdatedInfo {
     const RuntimeInfo *runtimeInfo;
 };
 
-// Parse all information from package;
-// Get missing information from the device;
-// Do compatibility check.
+// Checks given compatibility info against info on the device. If no
+// compatability info is given then the device info will be checked against
+// itself.
 int32_t checkCompatibility(const std::vector<std::string> &xmls, bool mount,
         std::function<status_t(void)> mountSystem,
         std::function<status_t(void)> umountSystem,
@@ -193,11 +193,6 @@ int32_t checkCompatibility(const std::vector<std::string> &xmls, bool mount,
     ParseStatus parseStatus;
     PackageInfo pkg; // All information from package.
     UpdatedInfo updated; // All files and runtime info after the update.
-
-    if (xmls.empty()) {
-        ADD_MESSAGE("nothing to update");
-        return BAD_VALUE;
-    }
 
     // parse all information from package
     for (const auto &xml : xmls) {
@@ -232,10 +227,18 @@ int32_t checkCompatibility(const std::vector<std::string> &xmls, bool mount,
             std::bind(GetDeviceHalManifest, true /* skipCache */))) != OK) {
         return status;
     }
+    if ((status = getMissing(
+             pkg.fwk.matrix.get(), mount, mountVendor, umountVendor, &updated.fwk.matrix,
+             std::bind(VintfObject::GetFrameworkCompatibilityMatrix, true /* skipCache */))) !=
+        OK) {
+        return status;
+    }
+    if ((status = getMissing(
+             pkg.dev.matrix.get(), mount, mountSystem, umountSystem, &updated.dev.matrix,
+             std::bind(VintfObject::GetDeviceCompatibilityMatrix, true /* skipCache */))) != OK) {
+        return status;
+    }
     updated.runtimeInfo = GetRuntimeInfo(true /* skipCache */);
-    // TODO(b/37321309) get matrices from the device as well.
-    updated.fwk.matrix = pkg.fwk.matrix.get();
-    updated.dev.matrix = pkg.dev.matrix.get();
 
     // null checks for files and runtime info after the update
     // TODO(b/37321309) if a compat mat is missing, it is not matched and considered compatible.
