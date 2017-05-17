@@ -30,3 +30,26 @@ cc_test {
         "-g",
     ],
 }
+
+cc_test {
+    name: "vintf_object_test",
+    host_supported: true,
+    native_coverage: true,
+    srcs: [
+        "vintf_object_tests.cpp",
+    ],
+    shared_libs: [
+        "libbase",
+        "libcutils",
+        "liblog",
+        "libvintftest",
+    ],
+    static_libs: [
+        "libgtest",
+        "libgmock",
+    ],
+    cflags: [
+        "-O0",
+        "-g",
+    ],
+}

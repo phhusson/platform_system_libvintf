@@ -34,6 +34,8 @@ struct LockedUniquePtr {
 
 static LockedUniquePtr<HalManifest> gDeviceManifest;
 static LockedUniquePtr<HalManifest> gFrameworkManifest;
+static LockedUniquePtr<CompatibilityMatrix> gDeviceMatrix;
+static LockedUniquePtr<CompatibilityMatrix> gFrameworkMatrix;
 static LockedUniquePtr<RuntimeInfo> gDeviceRuntimeInfo;
 
 template <typename T, typename F>
@@ -63,6 +65,21 @@ const HalManifest *VintfObject::GetFrameworkHalManifest(bool skipCache) {
     return Get(&gFrameworkManifest, skipCache,
             std::bind(&HalManifest::fetchAllInformation, std::placeholders::_1,
                 "/system/manifest.xml"));
+}
+
+
+// static
+const CompatibilityMatrix *VintfObject::GetDeviceCompatibilityMatrix(bool skipCache) {
+    return Get(&gDeviceMatrix, skipCache,
+            std::bind(&CompatibilityMatrix::fetchAllInformation, std::placeholders::_1,
+                "/vendor/compatibility_matrix.xml"));
+}
+
+// static
+const CompatibilityMatrix *VintfObject::GetFrameworkCompatibilityMatrix(bool skipCache) {
+    return Get(&gFrameworkMatrix, skipCache,
+            std::bind(&CompatibilityMatrix::fetchAllInformation, std::placeholders::_1,
+                "/system/compatibility_matrix.xml"));
 }
 
 // static
@@ -159,9 +176,9 @@ struct UpdatedInfo {
     const RuntimeInfo *runtimeInfo;
 };
 
-// Parse all information from package;
-// Get missing information from the device;
-// Do compatibility check.
+// Checks given compatibility info against info on the device. If no
+// compatability info is given then the device info will be checked against
+// itself.
 int32_t checkCompatibility(const std::vector<std::string> &xmls, bool mount,
         std::function<status_t(void)> mountSystem,
         std::function<status_t(void)> umountSystem,
@@ -176,11 +193,6 @@ int32_t checkCompatibility(const std::vector<std::string> &xmls, bool mount,
     ParseStatus parseStatus;
     PackageInfo pkg; // All information from package.
     UpdatedInfo updated; // All files and runtime info after the update.
-
-    if (xmls.empty()) {
-        ADD_MESSAGE("nothing to update");
-        return BAD_VALUE;
-    }
 
     // parse all information from package
     for (const auto &xml : xmls) {
@@ -215,10 +227,18 @@ int32_t checkCompatibility(const std::vector<std::string> &xmls, bool mount,
             std::bind(GetDeviceHalManifest, true /* skipCache */))) != OK) {
         return status;
     }
+    if ((status = getMissing(
+             pkg.fwk.matrix.get(), mount, mountSystem, umountSystem, &updated.fwk.matrix,
+             std::bind(VintfObject::GetFrameworkCompatibilityMatrix, true /* skipCache */))) !=
+        OK) {
+        return status;
+    }
+    if ((status = getMissing(
+             pkg.dev.matrix.get(), mount, mountVendor, umountVendor, &updated.dev.matrix,
+             std::bind(VintfObject::GetDeviceCompatibilityMatrix, true /* skipCache */))) != OK) {
+        return status;
+    }
     updated.runtimeInfo = GetRuntimeInfo(true /* skipCache */);
-    // TODO(b/37321309) get matrices from the device as well.
-    updated.fwk.matrix = pkg.fwk.matrix.get();
-    updated.dev.matrix = pkg.dev.matrix.get();
 
     // null checks for files and runtime info after the update
     // TODO(b/37321309) if a compat mat is missing, it is not matched and considered compatible.
@@ -247,23 +267,28 @@ int32_t checkCompatibility(const std::vector<std::string> &xmls, bool mount,
     // TODO(b/37321309) outer if checks can be removed if we consider missing matrices as errors.
     if (updated.dev.manifest && updated.fwk.matrix) {
         if (!updated.dev.manifest->checkCompatibility(*updated.fwk.matrix, error)) {
-            error->insert(0, "Device manifest and framework compatibility matrix "
-                             "are incompatible: ");
+            if (error)
+                error->insert(0, "Device manifest and framework compatibility matrix "
+                                 "are incompatible: ");
             return INCOMPATIBLE;
         }
     }
     if (updated.fwk.manifest && updated.dev.matrix) {
         if (!updated.fwk.manifest->checkCompatibility(*updated.dev.matrix, error)) {
-            error->insert(0, "Framework manifest and device compatibility matrix "
-                             "are incompatible: ");
+            if (error)
+                error->insert(0, "Framework manifest and device compatibility matrix "
+                                 "are incompatible: ");
             return INCOMPATIBLE;
         }
     }
     if (updated.runtimeInfo && updated.fwk.matrix) {
         if (!updated.runtimeInfo->checkCompatibility(*updated.fwk.matrix, error)) {
-            error->insert(0, "Runtime info and framework compatibility matrix "
-                             "are incompatible: ");
-            return INCOMPATIBLE;
+            if (error)
+                error->insert(0, "Runtime info and framework compatibility matrix "
+                                 "are incompatible: ");
+            // TODO(b/38325029): OTA should check compatibility of kernel version
+            // and AVB version.
+            // return INCOMPATIBLE;
         }
     }
 

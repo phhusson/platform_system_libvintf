@@ -684,13 +684,17 @@ struct CompatibilityMatrixConverter : public XmlNodeConverter<CompatibilityMatri
         }
 
         if (object->mType == SchemaType::FRAMEWORK) {
+            // <avb> and <sepolicy> can be missing because it can be determined at build time, not
+            // hard-coded in the XML file.
             if (!parseChildren(root, matrixKernelConverter, &object->framework.mKernels) ||
-                !parseChild(root, sepolicyConverter, &object->framework.mSepolicy) ||
+                !parseOptionalChild(root, sepolicyConverter, {}, &object->framework.mSepolicy) ||
                 !parseOptionalChild(root, avbConverter, {}, &object->framework.mAvbMetaVersion)) {
                 return false;
             }
         } else if (object->mType == SchemaType::DEVICE) {
-            if (!parseChild(root, vndkConverter, &object->device.mVndk)) {
+            // <vndk> can be missing because it can be determined at build time, not hard-coded
+            // in the XML file.
+            if (!parseOptionalChild(root, vndkConverter, {}, &object->device.mVndk)) {
                 return false;
             }
         }

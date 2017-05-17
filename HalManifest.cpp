@@ -19,16 +19,13 @@
 #include "HalManifest.h"
 
 #include <dirent.h>
-
-#include <fstream>
-#include <iostream>
-#include <sstream>
 #include <mutex>
 
 #include <android-base/logging.h>
 
 #include "parse_string.h"
 #include "parse_xml.h"
+#include "utils.h"
 #include "CompatibilityMatrix.h"
 
 namespace android {
@@ -48,6 +45,16 @@ std::set<std::string> HalManifest::getHalNames() const {
     std::set<std::string> names{};
     for (const auto &hal : mHals) {
         names.insert(hal.first);
+    }
+    return names;
+}
+
+std::set<std::string> HalManifest::getHalNamesAndVersions() const {
+    std::set<std::string> names{};
+    for (const auto &hal : getHals()) {
+        for (const auto &version : hal.versions) {
+            names.insert(hal.name + "@" + to_string(version));
+        }
     }
     return names;
 }
@@ -91,27 +98,34 @@ Transport HalManifest::getTransport(const std::string &package, const Version &v
             const std::string &interfaceName, const std::string &instanceName) const {
 
     for (const ManifestHal *hal : getHals(package)) {
-        if (std::find(hal->versions.begin(), hal->versions.end(), v) == hal->versions.end()) {
-            LOG(INFO) << "HalManifest::getTransport(" << to_string(mType) << "): Cannot find "
+        bool found = false;
+        for (auto& ver : hal->versions) {
+            if (ver.majorVer == v.majorVer && ver.minorVer >= v.minorVer) {
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            LOG(DEBUG) << "HalManifest::getTransport(" << to_string(mType) << "): Cannot find "
                       << to_string(v) << " in supported versions of " << package;
             continue;
         }
         auto it = hal->interfaces.find(interfaceName);
         if (it == hal->interfaces.end()) {
-            LOG(INFO) << "HalManifest::getTransport(" << to_string(mType) << "): Cannot find interface '"
+            LOG(DEBUG) << "HalManifest::getTransport(" << to_string(mType) << "): Cannot find interface '"
                       << interfaceName << "' in " << package << "@" << to_string(v);
             continue;
         }
         const auto &instances = it->second.instances;
         if (instances.find(instanceName) == instances.end()) {
-            LOG(INFO) << "HalManifest::getTransport(" << to_string(mType) << "): Cannot find instance '"
+            LOG(DEBUG) << "HalManifest::getTransport(" << to_string(mType) << "): Cannot find instance '"
                       << instanceName << "' in "
                       << package << "@" << to_string(v) << "::" << interfaceName;
             continue;
         }
         return hal->transportArch.transport;
     }
-    LOG(INFO) << "HalManifest::getTransport(" << to_string(mType) << "): Cannot get transport for "
+    LOG(DEBUG) << "HalManifest::getTransport(" << to_string(mType) << "): Cannot get transport for "
                  << package << "@" << v << "::" << interfaceName << "/" << instanceName;
     return Transport::EMPTY;
 
@@ -286,25 +300,21 @@ CompatibilityMatrix HalManifest::generateCompatibleMatrix() const {
 }
 
 status_t HalManifest::fetchAllInformation(const std::string &path) {
-    std::ifstream in;
-    in.open(path);
-    if (!in.is_open()) {
-        LOG(WARNING) << "Cannot open " << path;
-        return INVALID_OPERATION;
-    }
-    std::stringstream ss;
-    ss << in.rdbuf();
-    bool success = gHalManifestConverter(this, ss.str());
-    if (!success) {
-        LOG(ERROR) << "Illformed vendor manifest: " << path << ": "
-                   << gHalManifestConverter.lastError();
-        return BAD_VALUE;
-    }
-    return OK;
+    return details::fetchAllInformation(path, gHalManifestConverter, this);
 }
 
 SchemaType HalManifest::type() const {
     return mType;
+}
+
+const Version &HalManifest::sepolicyVersion() const {
+    CHECK(mType == SchemaType::DEVICE);
+    return device.mSepolicyVersion;
+}
+
+const std::vector<Vndk> &HalManifest::vndks() const {
+    CHECK(mType == SchemaType::FRAMEWORK);
+    return framework.mVndks;
 }
 
 bool operator==(const HalManifest &lft, const HalManifest &rgt) {

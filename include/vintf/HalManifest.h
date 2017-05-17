@@ -97,6 +97,11 @@ public:
     // Returns all component names.
     std::set<std::string> getHalNames() const;
 
+    // Returns all component names and versions, e.g.
+    // "android.hardware.camera.device@1.0", "android.hardware.camera.device@3.2",
+    // "android.hardware.nfc@1.0"]
+    std::set<std::string> getHalNamesAndVersions() const;
+
     // Given a component name (e.g. "android.hardware.camera"),
     // return a list of interface names of that component.
     // If the component is not found, empty list is returned.
@@ -108,6 +113,14 @@ public:
     // Get all hals with the name
     std::vector<const ManifestHal *> getHals(const std::string &name) const;
     std::vector<ManifestHal *> getHals(const std::string &name);
+
+    // device.mSepolicyVersion. Assume type == device.
+    // Abort if type != device.
+    const Version &sepolicyVersion() const;
+
+    // framework.mVndks. Assume type == framework.
+    // Abort if type != framework.
+    const std::vector<Vndk> &vndks() const;
 
 private:
     friend struct HalManifestConverter;

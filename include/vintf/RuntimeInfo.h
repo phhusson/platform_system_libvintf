@@ -49,9 +49,6 @@ struct RuntimeInfo {
     // extract from utsname.release
     const KernelVersion &kernelVersion() const;
 
-    // files under /vendor/etc/selinux/
-    const std::vector<std::string> &sepolicyFilePaths() const;
-
     const std::map<std::string, std::string> &kernelConfigs() const;
 
     const Version &bootVbmetaAvbVersion() const;
