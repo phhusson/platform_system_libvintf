@@ -98,7 +98,14 @@ Transport HalManifest::getTransport(const std::string &package, const Version &v
             const std::string &interfaceName, const std::string &instanceName) const {
 
     for (const ManifestHal *hal : getHals(package)) {
-        if (std::find(hal->versions.begin(), hal->versions.end(), v) == hal->versions.end()) {
+        bool found = false;
+        for (auto& ver : hal->versions) {
+            if (ver.majorVer == v.majorVer && ver.minorVer >= v.minorVer) {
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
             LOG(DEBUG) << "HalManifest::getTransport(" << to_string(mType) << "): Cannot find "
                       << to_string(v) << " in supported versions of " << package;
             continue;
