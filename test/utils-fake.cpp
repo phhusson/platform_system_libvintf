@@ -20,9 +20,11 @@ namespace android {
 namespace vintf {
 namespace details {
 
-// Do not create the MockFileFetcher here as InitGoogleMock must be called
+// Do not create the mock objects here as InitGoogleMock must be called
 // first.
 FileFetcher* gFetcher = nullptr;
+
+PartitionMounter* gPartitionMounter = nullptr;
 
 }  // namespace details
 }  // namespace vintf
