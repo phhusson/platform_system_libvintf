@@ -55,6 +55,17 @@ class FileFetcher {
 
 extern FileFetcher* gFetcher;
 
+class PartitionMounter {
+   public:
+    virtual ~PartitionMounter() {}
+    virtual status_t mountSystem() const { return OK; }
+    virtual status_t mountVendor() const { return OK; }
+    virtual status_t umountSystem() const { return OK; }
+    virtual status_t umountVendor() const { return OK; }
+};
+
+extern PartitionMounter* gPartitionMounter;
+
 template <typename T>
 status_t fetchAllInformation(const std::string& path, const XmlConverter<T>& converter,
                              T* outObject) {
