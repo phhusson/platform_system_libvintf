@@ -47,6 +47,12 @@ int main(int, char **) {
     if (fcm != nullptr)
         std::cout << gCompatibilityMatrixConverter(*fcm);
 
+    std::cout << "======== Runtime Info =========" << std::endl;
+
+    const RuntimeInfo* ki = VintfObject::GetRuntimeInfo();
+    if (ki != nullptr) std::cout << dump(*ki);
+    std::cout << std::endl;
+
     std::cout << "======== Compatibility check =========" << std::endl;
     std::cout << "Device HAL Manifest? " << (vm != nullptr) << std::endl
               << "Device Compatibility Matrix? " << (vcm != nullptr) << std::endl
@@ -69,11 +75,17 @@ int main(int, char **) {
             std::cout << ", " << error;
         std::cout << std::endl;
     }
+    if (ki && fcm) {
+        bool compatible = ki->checkCompatibility(*fcm, &error);
+        std::cout << "Runtime info <==> Framework Compatibility Matrix? " << compatible;
+        if (!compatible) std::cout << ", " << error;
+        std::cout << std::endl;
+    }
 
-    std::cout << "======== Runtime Info =========" << std::endl;
-
-    const RuntimeInfo *ki = VintfObject::GetRuntimeInfo();
-    if (ki != nullptr)
-        std::cout << dump(*ki);
-    std::cout << std::endl;
+    {
+        auto compatible = VintfObject::CheckCompatibility({}, &error);
+        std::cout << "VintfObject::CheckCompatibility (0 == compatible)? " << compatible;
+        if (compatible != COMPATIBLE) std::cout << ", " << error;
+        std::cout << std::endl;
+    }
 }
