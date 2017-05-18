@@ -23,7 +23,7 @@
 #include <map>
 
 #include "HalFormat.h"
-#include "ManifestHalInterface.h"
+#include "HalInterface.h"
 #include "TransportArch.h"
 #include "Version.h"
 
@@ -39,7 +39,7 @@ struct ManifestHal {
     std::string name;
     std::vector<Version> versions;
     TransportArch transportArch;
-    std::map<std::string, ManifestHalInterface> interfaces;
+    std::map<std::string, HalInterface> interfaces;
 
     inline bool hasVersion(Version v) const {
         return std::find(versions.begin(), versions.end(), v) != versions.end();

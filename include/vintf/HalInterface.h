@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_VINTF_MANIFEST_HAL_INTERFACE_H_
-#define ANDROID_VINTF_MANIFEST_HAL_INTERFACE_H_
+#ifndef ANDROID_VINTF_HAL_INTERFACE_H_
+#define ANDROID_VINTF_HAL_INTERFACE_H_
 
 #include <set>
 #include <string>
@@ -23,8 +23,8 @@
 namespace android {
 namespace vintf {
 
-// manifest.hal.interface element
-struct ManifestHalInterface {
+// manifest.hal.interface element / compatibility-matrix.hal.interface element
+struct HalInterface {
     std::string name;
     std::set<std::string> instances;
 };
@@ -32,4 +32,4 @@ struct ManifestHalInterface {
 } // namespace vintf
 } // namespace android
 
-#endif // ANDROID_VINTF_MANIFEST_HAL_INTERFACE_H_
+#endif // ANDROID_VINTF_HAL_INTERFACE_H_
