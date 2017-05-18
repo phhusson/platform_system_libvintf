@@ -84,6 +84,16 @@ public:
     bool isValid(const ManifestHal &mh) {
         return mh.isValid();
     }
+
+    std::map<std::string, HalInterface> testHalInterfaces() {
+        HalInterface intf;
+        intf.name = "IFoo";
+        intf.instances.insert("default");
+        std::map<std::string, HalInterface> map;
+        map[intf.name] = intf;
+        return map;
+    }
+
     HalManifest testDeviceManifest() {
         HalManifest vm;
         vm.mType = SchemaType::DEVICE;
@@ -296,16 +306,32 @@ TEST_F(LibVintfTest, VersionConverter) {
     EXPECT_EQ(v, v2);
 }
 
+static bool insert(std::map<std::string, HalInterface>* map, HalInterface&& intf) {
+    std::string name{intf.name};
+    return map->emplace(std::move(name), std::move(intf)).second;
+}
+
 TEST_F(LibVintfTest, MatrixHalConverter) {
     MatrixHal mh{HalFormat::NATIVE, "android.hardware.camera",
             {{VersionRange(1,2,3), VersionRange(4,5,6)}},
-            false /* optional */};
+            false /* optional */, {}};
+    EXPECT_TRUE(insert(&mh.interfaces, {"IBetterCamera", {"default", "great"}}));
+    EXPECT_TRUE(insert(&mh.interfaces, {"ICamera", {"default"}}));
     std::string xml = gMatrixHalConverter(mh);
     EXPECT_EQ(xml,
         "<hal format=\"native\" optional=\"false\">\n"
         "    <name>android.hardware.camera</name>\n"
         "    <version>1.2-3</version>\n"
         "    <version>4.5-6</version>\n"
+        "    <interface>\n"
+        "        <name>IBetterCamera</name>\n"
+        "        <instance>default</instance>\n"
+        "        <instance>great</instance>\n"
+        "    </interface>\n"
+        "    <interface>\n"
+        "        <name>ICamera</name>\n"
+        "        <instance>default</instance>\n"
+        "    </interface>\n"
         "</hal>\n");
     MatrixHal mh2;
     EXPECT_TRUE(gMatrixHalConverter(&mh2, xml));
@@ -396,14 +422,14 @@ TEST_F(LibVintfTest, KernelConfigTypedValueConverter) {
             "<value type=\"int\">18446744073709551616</value>\n"));
 }
 
-TEST_F(LibVintfTest, CompatibilityMatrixCoverter) {
+TEST_F(LibVintfTest, CompatibilityMatrixConverter) {
     CompatibilityMatrix cm;
     EXPECT_TRUE(add(cm, MatrixHal{HalFormat::NATIVE, "android.hardware.camera",
             {{VersionRange(1,2,3), VersionRange(4,5,6)}},
-            false /* optional */}));
+            false /* optional */, testHalInterfaces()}));
     EXPECT_TRUE(add(cm, MatrixHal{HalFormat::NATIVE, "android.hardware.nfc",
             {{VersionRange(4,5,6), VersionRange(10,11,12)}},
-            true /* optional */}));
+            true /* optional */, testHalInterfaces()}));
     EXPECT_TRUE(add(cm, MatrixKernel{KernelVersion(3, 18, 22),
             {KernelConfig{"CONFIG_FOO", Tristate::YES}, KernelConfig{"CONFIG_BAR", "stringvalue"}}}));
     EXPECT_TRUE(add(cm, MatrixKernel{KernelVersion(4, 4, 1),
@@ -417,11 +443,19 @@ TEST_F(LibVintfTest, CompatibilityMatrixCoverter) {
             "        <name>android.hardware.camera</name>\n"
             "        <version>1.2-3</version>\n"
             "        <version>4.5-6</version>\n"
+            "        <interface>\n"
+            "            <name>IFoo</name>\n"
+            "            <instance>default</instance>\n"
+            "        </interface>\n"
             "    </hal>\n"
             "    <hal format=\"native\" optional=\"true\">\n"
             "        <name>android.hardware.nfc</name>\n"
             "        <version>4.5-6</version>\n"
             "        <version>10.11-12</version>\n"
+            "        <interface>\n"
+            "            <name>IFoo</name>\n"
+            "            <instance>default</instance>\n"
+            "        </interface>\n"
             "    </hal>\n"
             "    <kernel version=\"3.18.22\">\n"
             "        <config>\n"
@@ -461,7 +495,7 @@ TEST_F(LibVintfTest, DeviceCompatibilityMatrixCoverter) {
     CompatibilityMatrix cm;
     EXPECT_TRUE(add(cm, MatrixHal{HalFormat::NATIVE, "android.hidl.manager",
             {{VersionRange(1,0)}},
-            false /* optional */}));
+            false /* optional */, testHalInterfaces()}));
     set(cm, SchemaType::DEVICE);
     set(cm, VndkVersionRange{25,0,1,5}, {"libjpeg.so", "libbase.so"});
     std::string xml = gCompatibilityMatrixConverter(cm);
@@ -470,6 +504,10 @@ TEST_F(LibVintfTest, DeviceCompatibilityMatrixCoverter) {
         "    <hal format=\"native\" optional=\"false\">\n"
         "        <name>android.hidl.manager</name>\n"
         "        <version>1.0</version>\n"
+        "        <interface>\n"
+        "            <name>IFoo</name>\n"
+        "            <instance>default</instance>\n"
+        "        </interface>\n"
         "    </hal>\n"
         "    <vndk>\n"
         "        <version>25.0.1-5</version>\n"

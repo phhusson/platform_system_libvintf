@@ -14,23 +14,22 @@
  * limitations under the License.
  */
 
-#include "MatrixHal.h"
+#include <set>
+#include <string>
+
+#include "HalInterface.h"
 
 namespace android {
 namespace vintf {
 
-bool MatrixHal::operator==(const MatrixHal &other) const {
-    if (format != other.format)
+bool operator==(const HalInterface& lft, const HalInterface& rgt) {
+    if (lft.name != rgt.name)
         return false;
-    if (name != other.name)
+    if (lft.instances != rgt.instances)
         return false;
-    if (versionRanges != other.versionRanges)
-        return false;
-    if (interfaces != other.interfaces)
-        return false;
-    // do not compare optional
     return true;
 }
 
 } // namespace vintf
 } // namespace android
+
