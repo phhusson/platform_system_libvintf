@@ -20,9 +20,11 @@ namespace android {
 namespace vintf {
 namespace details {
 
-FileFetcher fetcher;
+static FileFetcher fetcher;
 FileFetcher* gFetcher = &fetcher;
 
+static PartitionMounter partitionMounter;
+PartitionMounter* gPartitionMounter = &partitionMounter;
 }  // namespace details
 }  // namespace vintf
 }  // namespace android
