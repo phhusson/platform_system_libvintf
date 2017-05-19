@@ -18,8 +18,9 @@
 
 #include <android-base/properties.h>
 #include <sys/mount.h>
+#include <fs_mgr.h>
 
-#include "fs_mgr.h"
+#include "utils.h"
 
 namespace android {
 namespace vintf {
@@ -36,54 +37,52 @@ static status_t mountAt(const FstabMgr &fstab, const char* path, const char* mou
     return result == 0 ? OK : -errno;
 }
 
-FstabMgr defaultFstabMgr() {
+static FstabMgr defaultFstabMgr() {
     return FstabMgr{fs_mgr_read_fstab_default(), &fs_mgr_free_fstab};
 }
 
-status_t mountSystem() {
-    FstabMgr fstab = defaultFstabMgr();
-    if (fstab == NULL) {
-        return UNKNOWN_ERROR;
+class RecoveryPartitionMounter : public PartitionMounter {
+   public:
+    status_t mountSystem() const override {
+        FstabMgr fstab = defaultFstabMgr();
+        if (fstab == NULL) {
+            return UNKNOWN_ERROR;
+        }
+        if (android::base::GetBoolProperty("ro.build.system_root_image", false)) {
+            return mountAt(fstab, "/", "/system_root");
+        } else {
+            return mountAt(fstab, "/system", "/system");
+        }
     }
-    if (android::base::GetBoolProperty("ro.build.system_root_image", false)) {
-        return mountAt(fstab, "/", "/system_root");
-    } else {
-        return mountAt(fstab, "/system", "/system");
-    }
-}
 
-status_t mountVendor() {
-    FstabMgr fstab = defaultFstabMgr();
-    if (fstab == NULL) {
-        return UNKNOWN_ERROR;
+    status_t mountVendor() const override {
+        FstabMgr fstab = defaultFstabMgr();
+        if (fstab == NULL) {
+            return UNKNOWN_ERROR;
+        }
+        return mountAt(fstab, "/vendor", "/vendor");
     }
-    return mountAt(fstab, "/vendor", "/vendor");
-}
 
-status_t umountSystem() {
-    if (android::base::GetBoolProperty("ro.build.system_root_image", false)) {
-        return umount("/system_root");
-    } else {
-        return umount("/system");
+    status_t umountSystem() const override {
+        if (android::base::GetBoolProperty("ro.build.system_root_image", false)) {
+            return umount("/system_root");
+        } else {
+            return umount("/system");
+        }
     }
-}
 
-status_t umountVendor() {
-    return umount("/vendor");
-}
+    status_t umountVendor() const override {
+        return umount("/vendor");
+    }
+};
 
 } // namespace details
 
 // static
 int32_t VintfObjectRecovery::CheckCompatibility(
         const std::vector<std::string> &xmls, std::string *error) {
-    return details::checkCompatibility(xmls, true /* mount */,
-            &details::mountSystem, &details::umountSystem,
-            &details::mountVendor, &details::umountVendor,
-            &VintfObject::GetFrameworkHalManifest,
-            &VintfObject::GetDeviceHalManifest,
-            &VintfObject::GetRuntimeInfo,
-            error);
+    static details::RecoveryPartitionMounter mounter;
+    return details::checkCompatibility(xmls, true /* mount */, mounter, error);
 }
 
 

@@ -18,6 +18,7 @@
 
 #include "CompatibilityMatrix.h"
 #include "parse_xml.h"
+#include "utils.h"
 
 #include <functional>
 #include <memory>
@@ -90,10 +91,6 @@ const RuntimeInfo *VintfObject::GetRuntimeInfo(bool skipCache) {
 
 namespace details {
 
-static status_t fakeMountUmount() {
-    return OK;
-}
-
 enum class ParseStatus {
     OK,
     PARSE_ERROR,
@@ -135,7 +132,6 @@ static ParseStatus tryParse(const std::string &xml, const XmlConverter<T> &parse
 template<typename T, typename GetFunction>
 static status_t getMissing(const T *pkg, bool mount,
         std::function<status_t(void)> mountFunction,
-        std::function<status_t(void)> umountFunction,
         const T **updated,
         GetFunction getFunction) {
     if (pkg != nullptr) {
@@ -145,9 +141,6 @@ static status_t getMissing(const T *pkg, bool mount,
             (void)mountFunction(); // ignore mount errors
         }
         *updated = getFunction();
-        if (mount) {
-            (void)umountFunction(); // ignore umount errors
-        }
     }
     return OK;
 }
@@ -180,14 +173,7 @@ struct UpdatedInfo {
 // compatability info is given then the device info will be checked against
 // itself.
 int32_t checkCompatibility(const std::vector<std::string> &xmls, bool mount,
-        std::function<status_t(void)> mountSystem,
-        std::function<status_t(void)> umountSystem,
-        std::function<status_t(void)> mountVendor,
-        std::function<status_t(void)> umountVendor,
-        std::function<const HalManifest *(bool)> GetFrameworkHalManifest,
-        std::function<const HalManifest *(bool)> GetDeviceHalManifest,
-        std::function<const RuntimeInfo *(bool)> GetRuntimeInfo,
-        std::string *error) {
+        const PartitionMounter &mounter, std::string *error) {
 
     status_t status;
     ParseStatus parseStatus;
@@ -217,28 +203,37 @@ int32_t checkCompatibility(const std::vector<std::string> &xmls, bool mount,
     }
 
     // get missing info from device
-    if ((status = getMissing(pkg.fwk.manifest.get(), mount, mountSystem, umountSystem,
-            &updated.fwk.manifest,
-            std::bind(GetFrameworkHalManifest, true /* skipCache */))) != OK) {
-        return status;
-    }
-    if ((status = getMissing(pkg.dev.manifest.get(), mount, mountVendor, umountVendor,
-            &updated.dev.manifest,
-            std::bind(GetDeviceHalManifest, true /* skipCache */))) != OK) {
+    // use functions instead of std::bind because std::bind doesn't work well with mock objects
+    auto mountSystem = [&mounter] { return mounter.mountSystem(); };
+    auto mountVendor = [&mounter] { return mounter.mountVendor(); };
+    if ((status = getMissing(
+             pkg.fwk.manifest.get(), mount, mountSystem, &updated.fwk.manifest,
+             std::bind(VintfObject::GetFrameworkHalManifest, true /* skipCache */))) != OK) {
         return status;
     }
     if ((status = getMissing(
-             pkg.fwk.matrix.get(), mount, mountSystem, umountSystem, &updated.fwk.matrix,
+             pkg.dev.manifest.get(), mount, mountVendor, &updated.dev.manifest,
+             std::bind(VintfObject::GetDeviceHalManifest, true /* skipCache */))) != OK) {
+        return status;
+    }
+    if ((status = getMissing(
+             pkg.fwk.matrix.get(), mount, mountSystem, &updated.fwk.matrix,
              std::bind(VintfObject::GetFrameworkCompatibilityMatrix, true /* skipCache */))) !=
         OK) {
         return status;
     }
     if ((status = getMissing(
-             pkg.dev.matrix.get(), mount, mountVendor, umountVendor, &updated.dev.matrix,
+             pkg.dev.matrix.get(), mount, mountVendor, &updated.dev.matrix,
              std::bind(VintfObject::GetDeviceCompatibilityMatrix, true /* skipCache */))) != OK) {
         return status;
     }
-    updated.runtimeInfo = GetRuntimeInfo(true /* skipCache */);
+
+    if (mount) {
+        (void)mounter.umountSystem(); // ignore errors
+        (void)mounter.umountVendor(); // ignore errors
+    }
+
+    updated.runtimeInfo = VintfObject::GetRuntimeInfo(true /* skipCache */);
 
     // null checks for files and runtime info after the update
     // TODO(b/37321309) if a compat mat is missing, it is not matched and considered compatible.
@@ -301,11 +296,7 @@ int32_t checkCompatibility(const std::vector<std::string> &xmls, bool mount,
 int32_t VintfObject::CheckCompatibility(
         const std::vector<std::string> &xmls, std::string *error) {
     return details::checkCompatibility(xmls, false /* mount */,
-            &details::fakeMountUmount, &details::fakeMountUmount,
-            &details::fakeMountUmount, &details::fakeMountUmount,
-            &VintfObject::GetFrameworkHalManifest,
-            &VintfObject::GetDeviceHalManifest,
-            &VintfObject::GetRuntimeInfo,
+            *details::gPartitionMounter,
             error);
 }
 
