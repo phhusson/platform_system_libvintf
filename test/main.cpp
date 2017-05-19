@@ -681,6 +681,240 @@ TEST_F(LibVintfTest, MissingAvb) {
     EXPECT_EQ(getAvb(cm), Version(0, 0));
 }
 
+// This is the test extracted from VINTF Object doc
+TEST_F(LibVintfTest, HalCompat) {
+    CompatibilityMatrix matrix;
+    std::string error;
+
+    std::string matrixXml =
+            "<compatibility-matrix version=\"1.0\" type=\"framework\">\n"
+            "    <hal format=\"hidl\" optional=\"false\">\n"
+            "        <name>android.hardware.foo</name>\n"
+            "        <version>1.0</version>\n"
+            "        <version>3.1-2</version>\n"
+            "        <interface>\n"
+            "            <name>IFoo</name>\n"
+            "            <instance>default</instance>\n"
+            "            <instance>specific</instance>\n"
+            "        </interface>\n"
+            "    </hal>\n"
+            "    <hal format=\"hidl\" optional=\"false\">\n"
+            "        <name>android.hardware.foo</name>\n"
+            "        <version>2.0</version>\n"
+            "        <interface>\n"
+            "            <name>IBar</name>\n"
+            "            <instance>default</instance>\n"
+            "        </interface>\n"
+            "    </hal>\n"
+            "    <sepolicy>\n"
+            "        <kernel-sepolicy-version>30</kernel-sepolicy-version>\n"
+            "        <sepolicy-version>25.5</sepolicy-version>\n"
+            "    </sepolicy>\n"
+            "</compatibility-matrix>\n";
+    EXPECT_TRUE(gCompatibilityMatrixConverter(&matrix, matrixXml))
+            << gCompatibilityMatrixConverter.lastError();
+
+    {
+        std::string manifestXml =
+                "<manifest version=\"1.0\" type=\"device\">\n"
+                "    <hal format=\"hidl\">\n"
+                "        <name>android.hardware.foo</name>\n"
+                "        <transport>hwbinder</transport>\n"
+                "        <version>1.0</version>\n"
+                "        <interface>\n"
+                "            <name>IFoo</name>\n"
+                "            <instance>default</instance>\n"
+                "            <instance>specific</instance>\n"
+                "        </interface>\n"
+                "    </hal>\n"
+                "    <hal format=\"hidl\">\n"
+                "        <name>android.hardware.foo</name>\n"
+                "        <transport>hwbinder</transport>\n"
+                "        <version>2.0</version>\n"
+                "        <interface>\n"
+                "            <name>IBar</name>\n"
+                "            <instance>default</instance>\n"
+                "        </interface>\n"
+                "    </hal>\n"
+                "    <sepolicy>\n"
+                "        <version>25.5</version>\n"
+                "    </sepolicy>\n"
+                "</manifest>\n";
+
+        HalManifest manifest;
+        EXPECT_TRUE(gHalManifestConverter(&manifest, manifestXml));
+        EXPECT_TRUE(manifest.checkCompatibility(matrix, &error)) << error;
+    }
+
+    {
+        std::string manifestXml =
+                "<manifest version=\"1.0\" type=\"device\">\n"
+                "    <hal format=\"hidl\">\n"
+                "        <name>android.hardware.foo</name>\n"
+                "        <transport>hwbinder</transport>\n"
+                "        <version>1.0</version>\n"
+                "        <interface>\n"
+                "            <name>IFoo</name>\n"
+                "            <instance>default</instance>\n"
+                "            <instance>specific</instance>\n"
+                "        </interface>\n"
+                "    </hal>\n"
+                "    <sepolicy>\n"
+                "        <version>25.5</version>\n"
+                "    </sepolicy>\n"
+                "</manifest>\n";
+        HalManifest manifest;
+        EXPECT_TRUE(gHalManifestConverter(&manifest, manifestXml));
+        EXPECT_FALSE(manifest.checkCompatibility(matrix, &error))
+                << "should not be compatible because IBar is missing";
+    }
+
+    {
+        std::string manifestXml =
+                "<manifest version=\"1.0\" type=\"device\">\n"
+                "    <hal format=\"hidl\">\n"
+                "        <name>android.hardware.foo</name>\n"
+                "        <transport>hwbinder</transport>\n"
+                "        <version>1.0</version>\n"
+                "        <interface>\n"
+                "            <name>IFoo</name>\n"
+                "            <instance>default</instance>\n"
+                "        </interface>\n"
+                "    </hal>\n"
+                "    <hal format=\"hidl\">\n"
+                "        <name>android.hardware.foo</name>\n"
+                "        <transport>hwbinder</transport>\n"
+                "        <version>2.0</version>\n"
+                "        <interface>\n"
+                "            <name>IBar</name>\n"
+                "            <instance>default</instance>\n"
+                "        </interface>\n"
+                "    </hal>\n"
+                "    <sepolicy>\n"
+                "        <version>25.5</version>\n"
+                "    </sepolicy>\n"
+                "</manifest>\n";
+        HalManifest manifest;
+        EXPECT_TRUE(gHalManifestConverter(&manifest, manifestXml));
+        EXPECT_FALSE(manifest.checkCompatibility(matrix, &error))
+                << "should not be compatible because IFoo/default is missing";
+    }
+
+    {
+        std::string manifestXml =
+                "<manifest version=\"1.0\" type=\"device\">\n"
+                "    <hal format=\"hidl\">\n"
+                "        <name>android.hardware.foo</name>\n"
+                "        <transport>hwbinder</transport>\n"
+                "        <version>3.3</version>\n"
+                "        <interface>\n"
+                "            <name>IFoo</name>\n"
+                "            <instance>default</instance>\n"
+                "            <instance>specific</instance>\n"
+                "        </interface>\n"
+                "    </hal>\n"
+                "    <hal format=\"hidl\">\n"
+                "        <name>android.hardware.foo</name>\n"
+                "        <transport>hwbinder</transport>\n"
+                "        <version>2.0</version>\n"
+                "        <interface>\n"
+                "            <name>IBar</name>\n"
+                "            <instance>default</instance>\n"
+                "        </interface>\n"
+                "    </hal>\n"
+                "    <sepolicy>\n"
+                "        <version>25.5</version>\n"
+                "    </sepolicy>\n"
+                "</manifest>\n";
+        HalManifest manifest;
+        EXPECT_TRUE(gHalManifestConverter(&manifest, manifestXml));
+        EXPECT_TRUE(manifest.checkCompatibility(matrix, &error)) << error;
+    }
+
+    {
+        std::string manifestXml =
+                "<manifest version=\"1.0\" type=\"device\">\n"
+                "    <hal format=\"hidl\">\n"
+                "        <name>android.hardware.foo</name>\n"
+                "        <transport>hwbinder</transport>\n"
+                "        <version>1.0</version>\n"
+                "        <interface>\n"
+                "            <name>IFoo</name>\n"
+                "            <instance>default</instance>\n"
+                "        </interface>\n"
+                "    </hal>\n"
+                "    <hal format=\"hidl\">\n"
+                "        <name>android.hardware.foo</name>\n"
+                "        <transport>hwbinder</transport>\n"
+                "        <version>3.2</version>\n"
+                "        <interface>\n"
+                "            <name>IFoo</name>\n"
+                "            <instance>specific</instance>\n"
+                "        </interface>\n"
+                "    </hal>\n"
+                "    <hal format=\"hidl\">\n"
+                "        <name>android.hardware.foo</name>\n"
+                "        <transport>hwbinder</transport>\n"
+                "        <version>2.0</version>\n"
+                "        <interface>\n"
+                "            <name>IBar</name>\n"
+                "            <instance>default</instance>\n"
+                "        </interface>\n"
+                "    </hal>\n"
+                "    <sepolicy>\n"
+                "        <version>25.5</version>\n"
+                "    </sepolicy>\n"
+                "</manifest>\n";
+        HalManifest manifest;
+        EXPECT_TRUE(gHalManifestConverter(&manifest, manifestXml));
+        EXPECT_FALSE(manifest.checkCompatibility(matrix, &error))
+                << "should not be compatible even though @1.0::IFoo/default "
+                << "and @3.2::IFoo/specific present";
+    }
+
+    {
+        std::string manifestXml =
+                "<manifest version=\"1.0\" type=\"device\">\n"
+                "    <hal format=\"hidl\">\n"
+                "        <name>android.hardware.foo</name>\n"
+                "        <transport>hwbinder</transport>\n"
+                "        <version>1.0</version>\n"
+                "        <interface>\n"
+                "            <name>IFoo</name>\n"
+                "            <instance>default</instance>\n"
+                "        </interface>\n"
+                "    </hal>\n"
+                "    <hal format=\"hidl\">\n"
+                "        <name>android.hardware.foo</name>\n"
+                "        <transport>hwbinder</transport>\n"
+                "        <version>1.0</version>\n"
+                "        <interface>\n"
+                "            <name>IFoo</name>\n"
+                "            <instance>specific</instance>\n"
+                "        </interface>\n"
+                "    </hal>\n"
+                "    <hal format=\"hidl\">\n"
+                "        <name>android.hardware.foo</name>\n"
+                "        <transport>hwbinder</transport>\n"
+                "        <version>2.0</version>\n"
+                "        <interface>\n"
+                "            <name>IBar</name>\n"
+                "            <instance>default</instance>\n"
+                "        </interface>\n"
+                "    </hal>\n"
+                "    <sepolicy>\n"
+                "        <version>25.5</version>\n"
+                "    </sepolicy>\n"
+                "</manifest>\n";
+        HalManifest manifest;
+        EXPECT_TRUE(gHalManifestConverter(&manifest, manifestXml));
+        EXPECT_FALSE(manifest.checkCompatibility(matrix, &error))
+                << "should be compatible even though @1.0::IFoo/default "
+                << "and @1.0::IFoo/specific are splitted in two <hal>: "
+                << error;
+    }
+}
+
 TEST_F(LibVintfTest, Compat) {
     std::string manifestXml =
         "<manifest version=\"1.0\" type=\"device\">\n"
@@ -728,11 +962,24 @@ TEST_F(LibVintfTest, Compat) {
         "        <name>android.hardware.camera</name>\n"
         "        <version>2.0-5</version>\n"
         "        <version>3.4-16</version>\n"
+        "        <interface>\n"
+        "            <name>IBetterCamera</name>\n"
+        "            <instance>camera</instance>\n"
+        "        </interface>\n"
+        "        <interface>\n"
+        "            <name>ICamera</name>\n"
+        "            <instance>default</instance>\n"
+        "            <instance>legacy/0</instance>\n"
+        "        </interface>\n"
         "    </hal>\n"
         "    <hal format=\"hidl\" optional=\"false\">\n"
         "        <name>android.hardware.nfc</name>\n"
         "        <version>1.0</version>\n"
         "        <version>2.0</version>\n"
+        "        <interface>\n"
+        "            <name>INfc</name>\n"
+        "            <instance>nfc_nci</instance>\n"
+        "        </interface>\n"
         "    </hal>\n"
         "    <hal format=\"hidl\" optional=\"true\">\n"
         "        <name>android.hardware.foo</name>\n"

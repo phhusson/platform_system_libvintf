@@ -32,6 +32,7 @@
 namespace android {
 namespace vintf {
 
+struct MatrixHal;
 struct CompatibilityMatrix;
 
 // A HalManifest is reported by the hardware and query-able from
@@ -142,6 +143,9 @@ private:
     ManifestHal *getAnyHal(const std::string &name);
 
     status_t fetchAllInformation(const std::string &path);
+
+    // Check if all instances in matrixHal is supported in this manifest.
+    bool isCompatible(const MatrixHal& matrixHal) const;
 
     SchemaType mType;
 
