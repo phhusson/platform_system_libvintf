@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <android-base/logging.h>
+
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <stdio.h>
@@ -193,6 +195,13 @@ void setupMockFetcher(const std::string& vendorManifestXml, const std::string& s
         }));
 }
 
+static MockPartitionMounter &mounter() {
+    return *static_cast<MockPartitionMounter *>(gPartitionMounter);
+}
+static MockFileFetcher &fetcher() {
+    return *static_cast<MockFileFetcher*>(gFetcher);
+}
+
 // Test fixture that provides compatible metadata from the mock device.
 class VintfObjectCompatibleTest : public testing::Test {
    protected:
@@ -200,6 +209,11 @@ class VintfObjectCompatibleTest : public testing::Test {
         setupMockFetcher(vendorManifestXml1, systemMatrixXml1, systemManifestXml1,
                          vendorMatrixXml1);
     }
+    virtual void TearDown() {
+        Mock::VerifyAndClear(&mounter());
+        Mock::VerifyAndClear(&fetcher());
+    }
+
 };
 
 // Tests that local info is checked.
@@ -207,11 +221,38 @@ TEST_F(VintfObjectCompatibleTest, TestDeviceCompatibility) {
     std::string error;
     std::vector<std::string> packageInfo;
 
+    EXPECT_CALL(fetcher(), fetch(StrEq("/vendor/manifest.xml"), _));
+    EXPECT_CALL(fetcher(), fetch(StrEq("/system/manifest.xml"), _));
+    EXPECT_CALL(fetcher(), fetch(StrEq("/vendor/compatibility_matrix.xml"), _));
+    EXPECT_CALL(fetcher(), fetch(StrEq("/system/compatibility_matrix.xml"), _));
+    EXPECT_CALL(mounter(), mountSystem()).Times(0);
+    EXPECT_CALL(mounter(), umountSystem()).Times(0);
+    EXPECT_CALL(mounter(), mountVendor()).Times(0);
+    EXPECT_CALL(mounter(), umountVendor()).Times(0);
+
     int result = VintfObject::CheckCompatibility(packageInfo, &error);
 
     ASSERT_EQ(result, 0) << "Fail message:" << error.c_str();
     // Check that nothing was ignored.
     ASSERT_STREQ(error.c_str(), "");
+    EXPECT_FALSE(mounter().systemMounted());
+    EXPECT_FALSE(mounter().vendorMounted());
+}
+
+TEST_F(VintfObjectCompatibleTest, TestDeviceCompatibilityMount) {
+    std::string error;
+    std::vector<std::string> packageInfo;
+
+    EXPECT_CALL(mounter(), mountSystem()).Times(2);
+    EXPECT_CALL(mounter(), umountSystem()).Times(1); // Should only umount once
+    EXPECT_CALL(mounter(), mountVendor()).Times(2);
+    EXPECT_CALL(mounter(), umountVendor()).Times(1);
+
+    int result = details::checkCompatibility(packageInfo, true /* mount */, mounter(), &error);
+
+    ASSERT_EQ(result, 0) << "Fail message:" << error.c_str();
+    EXPECT_FALSE(mounter().systemMounted());
+    EXPECT_FALSE(mounter().vendorMounted());
 }
 
 // Tests that input info is checked against device and passes.
@@ -219,10 +260,37 @@ TEST_F(VintfObjectCompatibleTest, TestInputVsDeviceSuccess) {
     std::string error;
     std::vector<std::string> packageInfo = {systemMatrixXml1};
 
+    EXPECT_CALL(fetcher(), fetch(StrEq("/vendor/manifest.xml"), _));
+    EXPECT_CALL(fetcher(), fetch(StrEq("/system/manifest.xml"), _));
+    EXPECT_CALL(fetcher(), fetch(StrEq("/vendor/compatibility_matrix.xml"), _));
+    EXPECT_CALL(fetcher(), fetch(StrEq("/system/compatibility_matrix.xml"), _)).Times(0);
+    EXPECT_CALL(mounter(), mountSystem()).Times(0);
+    EXPECT_CALL(mounter(), umountSystem()).Times(0);
+    EXPECT_CALL(mounter(), mountVendor()).Times(0);
+    EXPECT_CALL(mounter(), umountVendor()).Times(0);
+
     int result = VintfObject::CheckCompatibility(packageInfo, &error);
 
     ASSERT_EQ(result, 0) << "Fail message:" << error.c_str();
     ASSERT_STREQ(error.c_str(), "");
+    EXPECT_FALSE(mounter().systemMounted());
+    EXPECT_FALSE(mounter().vendorMounted());
+}
+
+TEST_F(VintfObjectCompatibleTest, TestInputVsDeviceSuccessMount) {
+    std::string error;
+    std::vector<std::string> packageInfo = {systemMatrixXml1};
+
+    EXPECT_CALL(mounter(), mountSystem()).Times(1); // Should only mount once for manifest
+    EXPECT_CALL(mounter(), umountSystem()).Times(1);
+    EXPECT_CALL(mounter(), mountVendor()).Times(2);
+    EXPECT_CALL(mounter(), umountVendor()).Times(1);
+
+    int result = details::checkCompatibility(packageInfo, true /* mount */, mounter(), &error);
+
+    ASSERT_EQ(result, 0) << "Fail message:" << error.c_str();
+    EXPECT_FALSE(mounter().systemMounted());
+    EXPECT_FALSE(mounter().vendorMounted());
 }
 
 // Tests that input info is checked against device and fails.
@@ -249,12 +317,92 @@ TEST_F(VintfObjectCompatibleTest, TestInputSuccess) {
     ASSERT_STREQ(error.c_str(), "");
 }
 
+TEST_F(VintfObjectCompatibleTest, TestFrameworkOnlyOta) {
+    std::string error;
+    std::vector<std::string> packageInfo = {systemMatrixXml1, systemManifestXml1};
+
+    EXPECT_CALL(fetcher(), fetch(StrEq("/vendor/manifest.xml"), _));
+    EXPECT_CALL(fetcher(), fetch(StrEq("/system/manifest.xml"), _)).Times(0);
+    EXPECT_CALL(fetcher(), fetch(StrEq("/vendor/compatibility_matrix.xml"), _));
+    EXPECT_CALL(fetcher(), fetch(StrEq("/system/compatibility_matrix.xml"), _)).Times(0);
+    EXPECT_CALL(mounter(), mountSystem()).Times(0);
+    EXPECT_CALL(mounter(), umountSystem()).Times(0);
+    EXPECT_CALL(mounter(), mountVendor()).Times(0);
+    EXPECT_CALL(mounter(), umountVendor()).Times(0);
+
+    int result = VintfObject::CheckCompatibility(packageInfo, &error);
+
+    ASSERT_EQ(result, 0) << "Fail message:" << error.c_str();
+    ASSERT_STREQ(error.c_str(), "");
+    EXPECT_FALSE(mounter().systemMounted());
+    EXPECT_FALSE(mounter().vendorMounted());
+}
+
+TEST_F(VintfObjectCompatibleTest, TestFrameworkOnlyOtaMount) {
+    std::string error;
+    std::vector<std::string> packageInfo = {systemMatrixXml1, systemManifestXml1};
+
+    EXPECT_CALL(mounter(), mountSystem()).Times(0);
+    EXPECT_CALL(mounter(), umountSystem()).Times(1);
+    EXPECT_CALL(mounter(), mountVendor()).Times(2);
+    EXPECT_CALL(mounter(), umountVendor()).Times(1);
+
+    int result = details::checkCompatibility(packageInfo, true /* mount */, mounter(), &error);
+
+    ASSERT_EQ(result, 0) << "Fail message:" << error.c_str();
+    EXPECT_FALSE(mounter().systemMounted());
+    EXPECT_FALSE(mounter().vendorMounted());
+}
+
+TEST_F(VintfObjectCompatibleTest, TestFullOta) {
+    std::string error;
+    std::vector<std::string> packageInfo = {systemMatrixXml1, systemManifestXml1,
+            vendorMatrixXml1, vendorManifestXml1};
+
+    EXPECT_CALL(fetcher(), fetch(StrEq("/vendor/manifest.xml"), _)).Times(0);
+    EXPECT_CALL(fetcher(), fetch(StrEq("/system/manifest.xml"), _)).Times(0);
+    EXPECT_CALL(fetcher(), fetch(StrEq("/vendor/compatibility_matrix.xml"), _)).Times(0);
+    EXPECT_CALL(fetcher(), fetch(StrEq("/system/compatibility_matrix.xml"), _)).Times(0);
+    EXPECT_CALL(mounter(), mountSystem()).Times(0);
+    EXPECT_CALL(mounter(), umountSystem()).Times(0);
+    EXPECT_CALL(mounter(), mountVendor()).Times(0);
+    EXPECT_CALL(mounter(), umountVendor()).Times(0);
+
+    int result = VintfObject::CheckCompatibility(packageInfo, &error);
+
+    ASSERT_EQ(result, 0) << "Fail message:" << error.c_str();
+    ASSERT_STREQ(error.c_str(), "");
+    EXPECT_FALSE(mounter().systemMounted());
+    EXPECT_FALSE(mounter().vendorMounted());
+}
+
+TEST_F(VintfObjectCompatibleTest, TestFullOnlyOtaMount) {
+    std::string error;
+    std::vector<std::string> packageInfo = {systemMatrixXml1, systemManifestXml1,
+            vendorMatrixXml1, vendorManifestXml1};
+
+    EXPECT_CALL(mounter(), mountSystem()).Times(0);
+    EXPECT_CALL(mounter(), umountSystem()).Times(1);
+    EXPECT_CALL(mounter(), mountVendor()).Times(0);
+    EXPECT_CALL(mounter(), umountVendor()).Times(1);
+
+    int result = details::checkCompatibility(packageInfo, true /* mount */, mounter(), &error);
+
+    ASSERT_EQ(result, 0) << "Fail message:" << error.c_str();
+    EXPECT_FALSE(mounter().systemMounted());
+    EXPECT_FALSE(mounter().vendorMounted());
+}
+
 // Test fixture that provides incompatible metadata from the mock device.
 class VintfObjectIncompatibleTest : public testing::Test {
    protected:
     virtual void SetUp() {
         setupMockFetcher(vendorManifestXml1, systemMatrixXml2, systemManifestXml1,
                          vendorMatrixXml1);
+    }
+    virtual void TearDown() {
+        Mock::VerifyAndClear(&mounter());
+        Mock::VerifyAndClear(&fetcher());
     }
 };
 
@@ -263,11 +411,10 @@ TEST_F(VintfObjectIncompatibleTest, TestDeviceCompatibility) {
     std::string error;
     std::vector<std::string> packageInfo;
 
-    MockFileFetcher* fetcher = static_cast<MockFileFetcher*>(gFetcher);
-    EXPECT_CALL(*fetcher, fetch(StrEq("/vendor/manifest.xml"), _));
-    EXPECT_CALL(*fetcher, fetch(StrEq("/system/manifest.xml"), _));
-    EXPECT_CALL(*fetcher, fetch(StrEq("/vendor/compatibility_matrix.xml"), _));
-    EXPECT_CALL(*fetcher, fetch(StrEq("/system/compatibility_matrix.xml"), _));
+    EXPECT_CALL(fetcher(), fetch(StrEq("/vendor/manifest.xml"), _));
+    EXPECT_CALL(fetcher(), fetch(StrEq("/system/manifest.xml"), _));
+    EXPECT_CALL(fetcher(), fetch(StrEq("/vendor/compatibility_matrix.xml"), _));
+    EXPECT_CALL(fetcher(), fetch(StrEq("/system/compatibility_matrix.xml"), _));
 
     int result = VintfObject::CheckCompatibility(packageInfo, &error);
 
@@ -279,11 +426,10 @@ TEST_F(VintfObjectIncompatibleTest, TestInputVsDeviceSuccess) {
     std::string error;
     std::vector<std::string> packageInfo = {systemMatrixXml1};
 
-    MockFileFetcher* fetcher = static_cast<MockFileFetcher*>(gFetcher);
-    EXPECT_CALL(*fetcher, fetch(StrEq("/vendor/manifest.xml"), _));
-    EXPECT_CALL(*fetcher, fetch(StrEq("/system/manifest.xml"), _));
-    EXPECT_CALL(*fetcher, fetch(StrEq("/vendor/compatibility_matrix.xml"), _));
-    EXPECT_CALL(*fetcher, fetch(StrEq("/system/compatibility_matrix.xml"), _)).Times(0);
+    EXPECT_CALL(fetcher(), fetch(StrEq("/vendor/manifest.xml"), _));
+    EXPECT_CALL(fetcher(), fetch(StrEq("/system/manifest.xml"), _));
+    EXPECT_CALL(fetcher(), fetch(StrEq("/vendor/compatibility_matrix.xml"), _));
+    EXPECT_CALL(fetcher(), fetch(StrEq("/system/compatibility_matrix.xml"), _)).Times(0);
 
     int result = VintfObject::CheckCompatibility(packageInfo, &error);
 
@@ -295,7 +441,10 @@ int main(int argc, char** argv) {
     ::testing::InitGoogleMock(&argc, argv);
 
     NiceMock<MockFileFetcher> fetcher;
-    gFetcher = static_cast<FileFetcher*>(&fetcher);
+    gFetcher = &fetcher;
+
+    NiceMock<MockPartitionMounter> mounter;
+    gPartitionMounter = &mounter;
 
     return RUN_ALL_TESTS();
 }

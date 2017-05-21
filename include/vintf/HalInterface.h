@@ -14,23 +14,24 @@
  * limitations under the License.
  */
 
-#include "MatrixHal.h"
+#ifndef ANDROID_VINTF_HAL_INTERFACE_H_
+#define ANDROID_VINTF_HAL_INTERFACE_H_
+
+#include <set>
+#include <string>
 
 namespace android {
 namespace vintf {
 
-bool MatrixHal::operator==(const MatrixHal &other) const {
-    if (format != other.format)
-        return false;
-    if (name != other.name)
-        return false;
-    if (versionRanges != other.versionRanges)
-        return false;
-    if (interfaces != other.interfaces)
-        return false;
-    // do not compare optional
-    return true;
-}
+// manifest.hal.interface element / compatibility-matrix.hal.interface element
+struct HalInterface {
+    std::string name;
+    std::set<std::string> instances;
+};
+
+bool operator==(const HalInterface&, const HalInterface&);
 
 } // namespace vintf
 } // namespace android
+
+#endif // ANDROID_VINTF_HAL_INTERFACE_H_

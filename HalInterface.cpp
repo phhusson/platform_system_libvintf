@@ -14,22 +14,22 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_VINTF_MANIFEST_HAL_INTERFACE_H_
-#define ANDROID_VINTF_MANIFEST_HAL_INTERFACE_H_
-
 #include <set>
 #include <string>
+
+#include "HalInterface.h"
 
 namespace android {
 namespace vintf {
 
-// manifest.hal.interface element
-struct ManifestHalInterface {
-    std::string name;
-    std::set<std::string> instances;
-};
+bool operator==(const HalInterface& lft, const HalInterface& rgt) {
+    if (lft.name != rgt.name)
+        return false;
+    if (lft.instances != rgt.instances)
+        return false;
+    return true;
+}
 
 } // namespace vintf
 } // namespace android
 
-#endif // ANDROID_VINTF_MANIFEST_HAL_INTERFACE_H_
