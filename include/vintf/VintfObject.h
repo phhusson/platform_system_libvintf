@@ -101,14 +101,9 @@ enum : int32_t {
 
 // exposed for testing and VintfObjectRecovery.
 namespace details {
+class PartitionMounter;
 int32_t checkCompatibility(const std::vector<std::string> &xmls, bool mount,
-        std::function<status_t(void)> mountSystem,
-        std::function<status_t(void)> umountSystem,
-        std::function<status_t(void)> mountVendor,
-        std::function<status_t(void)> umountVendor,
-        std::function<const HalManifest *(bool)> GetFrameworkHalManifest,
-        std::function<const HalManifest *(bool)> GetDeviceHalManifest,
-        std::function<const RuntimeInfo *(bool)> GetRuntimeInfo,
+        const PartitionMounter& partitionMounter,
         std::string *error);
 } // namespace details
 
