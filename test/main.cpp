@@ -274,6 +274,67 @@ TEST_F(LibVintfTest, HalManifestOptional) {
             "</manifest>"));
 }
 
+TEST_F(LibVintfTest, HalManifestDuplicate) {
+    HalManifest vm;
+    EXPECT_FALSE(gHalManifestConverter(&vm,
+                                       "<manifest version=\"1.0\" type=\"device\">"
+                                       "    <hal>"
+                                       "        <name>android.hidl.manager</name>"
+                                       "        <transport>hwbinder</transport>"
+                                       "        <version>1.0</version>"
+                                       "        <version>1.1</version>"
+                                       "    </hal>"
+                                       "</manifest>"))
+        << "Should not allow duplicated major version in <hal>";
+    EXPECT_FALSE(gHalManifestConverter(&vm,
+                                       "<manifest version=\"1.0\" type=\"device\">"
+                                       "    <hal>"
+                                       "        <name>android.hidl.manager</name>"
+                                       "        <transport>hwbinder</transport>"
+                                       "        <version>1.0</version>"
+                                       "    </hal>"
+                                       "    <hal>"
+                                       "        <name>android.hidl.manager</name>"
+                                       "        <transport arch=\"32+64\">passthrough</transport>"
+                                       "        <version>1.1</version>"
+                                       "    </hal>"
+                                       "</manifest>"))
+        << "Should not allow duplicated major version across <hal>";
+}
+
+TEST_F(LibVintfTest, HalManifestGetTransport) {
+    HalManifest vm;
+    EXPECT_TRUE(gHalManifestConverter(&vm,
+                                      "<manifest version=\"1.0\" type=\"device\">"
+                                      "    <hal>"
+                                      "        <name>android.hidl.manager</name>"
+                                      "        <transport>hwbinder</transport>"
+                                      "        <version>1.0</version>"
+                                      "        <interface>"
+                                      "            <name>IServiceManager</name>"
+                                      "            <instance>default</instance>"
+                                      "        </interface>"
+                                      "    </hal>"
+                                      "    <hal>"
+                                      "        <name>android.hidl.manager</name>"
+                                      "        <transport arch=\"32+64\">passthrough</transport>"
+                                      "        <version>2.1</version>"
+                                      "        <interface>"
+                                      "            <name>IServiceManager</name>"
+                                      "            <instance>default</instance>"
+                                      "        </interface>"
+                                      "    </hal>"
+                                      "</manifest>"));
+    EXPECT_EQ(Transport::PASSTHROUGH,
+              vm.getTransport("android.hidl.manager", {2, 1}, "IServiceManager", "default"));
+    EXPECT_EQ(Transport::PASSTHROUGH,
+              vm.getTransport("android.hidl.manager", {2, 0}, "IServiceManager", "default"));
+    EXPECT_EQ(Transport::EMPTY,
+              vm.getTransport("android.hidl.manager", {2, 2}, "IServiceManager", "default"));
+    EXPECT_EQ(Transport::HWBINDER,
+              vm.getTransport("android.hidl.manager", {1, 0}, "IServiceManager", "default"));
+}
+
 TEST_F(LibVintfTest, HalManifestInstances) {
     HalManifest vm = testDeviceManifest();
     EXPECT_EQ(vm.getInstances("android.hardware.camera", "ICamera"),
@@ -882,14 +943,6 @@ TEST_F(LibVintfTest, HalCompat) {
                 "        <interface>\n"
                 "            <name>IFoo</name>\n"
                 "            <instance>default</instance>\n"
-                "        </interface>\n"
-                "    </hal>\n"
-                "    <hal format=\"hidl\">\n"
-                "        <name>android.hardware.foo</name>\n"
-                "        <transport>hwbinder</transport>\n"
-                "        <version>1.0</version>\n"
-                "        <interface>\n"
-                "            <name>IFoo</name>\n"
                 "            <instance>specific</instance>\n"
                 "        </interface>\n"
                 "    </hal>\n"
@@ -907,11 +960,9 @@ TEST_F(LibVintfTest, HalCompat) {
                 "    </sepolicy>\n"
                 "</manifest>\n";
         HalManifest manifest;
-        EXPECT_TRUE(gHalManifestConverter(&manifest, manifestXml));
-        EXPECT_FALSE(manifest.checkCompatibility(matrix, &error))
-                << "should be compatible even though @1.0::IFoo/default "
-                << "and @1.0::IFoo/specific are splitted in two <hal>: "
-                << error;
+        EXPECT_TRUE(gHalManifestConverter(&manifest, manifestXml))
+            << gHalManifestConverter.lastError();
+        EXPECT_TRUE(manifest.checkCompatibility(matrix, &error)) << error;
     }
 }
 
@@ -936,7 +987,6 @@ TEST_F(LibVintfTest, Compat) {
         "        <name>android.hardware.nfc</name>\n"
         "        <transport>hwbinder</transport>\n"
         "        <version>1.0</version>\n"
-        "        <version>2.0</version>\n"
         "        <interface>\n"
         "            <name>INfc</name>\n"
         "            <instance>nfc_nci</instance>\n"
@@ -949,6 +999,7 @@ TEST_F(LibVintfTest, Compat) {
         "        <interface>\n"
         "            <name>INfc</name>\n"
         "            <instance>default</instance>\n"
+        "            <instance>nfc_nci</instance>\n"
         "        </interface>\n"
         "    </hal>\n"
         "    <sepolicy>\n"
