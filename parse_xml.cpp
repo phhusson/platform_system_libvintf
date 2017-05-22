@@ -439,6 +439,30 @@ struct KernelConfigConverter : public XmlNodeConverter<KernelConfig> {
 
 const KernelConfigConverter kernelConfigConverter{};
 
+struct HalInterfaceConverter : public XmlNodeConverter<HalInterface> {
+    std::string elementName() const override { return "interface"; }
+    void mutateNode(const HalInterface &intf, NodeType *root, DocType *d) const override {
+        appendTextElement(root, "name", intf.name, d);
+        appendTextElements(root, "instance", intf.instances, d);
+    }
+    bool buildObject(HalInterface *intf, NodeType *root) const override {
+        std::vector<std::string> instances;
+        if (!parseTextElement(root, "name", &intf->name) ||
+            !parseTextElements(root, "instance", &instances)) {
+            return false;
+        }
+        intf->instances.clear();
+        intf->instances.insert(instances.begin(), instances.end());
+        if (intf->instances.size() != instances.size()) {
+            this->mLastError = "Duplicated instances in " + intf->name;
+            return false;
+        }
+        return true;
+    }
+};
+
+const HalInterfaceConverter halInterfaceConverter{};
+
 struct MatrixHalConverter : public XmlNodeConverter<MatrixHal> {
     std::string elementName() const override { return "hal"; }
     void mutateNode(const MatrixHal &hal, NodeType *root, DocType *d) const override {
@@ -477,30 +501,6 @@ struct MatrixKernelConverter : public XmlNodeConverter<MatrixKernel> {
 
 const MatrixKernelConverter matrixKernelConverter{};
 
-struct ManfiestHalInterfaceConverter : public XmlNodeConverter<ManifestHalInterface> {
-    std::string elementName() const override { return "interface"; }
-    void mutateNode(const ManifestHalInterface &intf, NodeType *root, DocType *d) const override {
-        appendTextElement(root, "name", intf.name, d);
-        appendTextElements(root, "instance", intf.instances, d);
-    }
-    bool buildObject(ManifestHalInterface *intf, NodeType *root) const override {
-        std::vector<std::string> instances;
-        if (!parseTextElement(root, "name", &intf->name) ||
-            !parseTextElements(root, "instance", &instances)) {
-            return false;
-        }
-        intf->instances.clear();
-        intf->instances.insert(instances.begin(), instances.end());
-        if (intf->instances.size() != instances.size()) {
-            this->mLastError = "Duplicated instances in " + intf->name;
-            return false;
-        }
-        return true;
-    }
-};
-
-const ManfiestHalInterfaceConverter manfiestHalInterfaceConverter{};
-
 struct ManifestHalConverter : public XmlNodeConverter<ManifestHal> {
     std::string elementName() const override { return "hal"; }
     void mutateNode(const ManifestHal &hal, NodeType *root, DocType *d) const override {
@@ -510,15 +510,15 @@ struct ManifestHalConverter : public XmlNodeConverter<ManifestHal> {
             appendChild(root, transportArchConverter(hal.transportArch, d));
         }
         appendChildren(root, versionConverter, hal.versions, d);
-        appendChildren(root, manfiestHalInterfaceConverter, iterateValues(hal.interfaces), d);
+        appendChildren(root, halInterfaceConverter, iterateValues(hal.interfaces), d);
     }
     bool buildObject(ManifestHal *object, NodeType *root) const override {
-        std::vector<ManifestHalInterface> interfaces;
+        std::vector<HalInterface> interfaces;
         if (!parseOptionalAttr(root, "format", HalFormat::HIDL, &object->format) ||
             !parseTextElement(root, "name", &object->name) ||
             !parseChild(root, transportArchConverter, &object->transportArch) ||
             !parseChildren(root, versionConverter, &object->versions) ||
-            !parseChildren(root, manfiestHalInterfaceConverter, &interfaces)) {
+            !parseChildren(root, halInterfaceConverter, &interfaces)) {
             return false;
         }
         object->interfaces.clear();
