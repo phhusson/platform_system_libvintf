@@ -17,10 +17,12 @@
 #ifndef ANDROID_VINTF_MATRIX_HAL_H
 #define ANDROID_VINTF_MATRIX_HAL_H
 
+#include <map>
 #include <string>
 #include <vector>
 
 #include "HalFormat.h"
+#include "HalInterface.h"
 #include "VersionRange.h"
 
 namespace android {
@@ -35,6 +37,7 @@ struct MatrixHal {
     std::string name;
     std::vector<VersionRange> versionRanges;
     bool optional = false;
+    std::map<std::string, HalInterface> interfaces;
 };
 
 } // namespace vintf

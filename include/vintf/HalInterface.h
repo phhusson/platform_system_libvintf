@@ -29,6 +29,8 @@ struct HalInterface {
     std::set<std::string> instances;
 };
 
+bool operator==(const HalInterface&, const HalInterface&);
+
 } // namespace vintf
 } // namespace android
 

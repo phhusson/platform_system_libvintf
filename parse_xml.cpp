@@ -470,13 +470,24 @@ struct MatrixHalConverter : public XmlNodeConverter<MatrixHal> {
         appendAttr(root, "optional", hal.optional);
         appendTextElement(root, "name", hal.name, d);
         appendChildren(root, versionRangeConverter, hal.versionRanges, d);
+        appendChildren(root, halInterfaceConverter, iterateValues(hal.interfaces), d);
     }
     bool buildObject(MatrixHal *object, NodeType *root) const override {
+        std::vector<HalInterface> interfaces;
         if (!parseOptionalAttr(root, "format", HalFormat::HIDL, &object->format) ||
             !parseOptionalAttr(root, "optional", false /* defaultValue */, &object->optional) ||
             !parseTextElement(root, "name", &object->name) ||
-            !parseChildren(root, versionRangeConverter, &object->versionRanges)) {
+            !parseChildren(root, versionRangeConverter, &object->versionRanges) ||
+            !parseChildren(root, halInterfaceConverter, &interfaces)) {
             return false;
+        }
+        for (auto&& interface : interfaces) {
+            std::string name{interface.name};
+            auto res = object->interfaces.emplace(std::move(name), std::move(interface));
+            if (!res.second) {
+                this->mLastError = "Duplicated instance entry " + res.first->first;
+                return false;
+            }
         }
         return true;
     }
