@@ -158,8 +158,11 @@ struct XmlNodeConverter : public XmlConverter<Object> {
     }
     inline bool deserialize(Object *o, const std::string &xml) const {
         DocType *doc = createDocument(xml);
-        bool ret = doc != nullptr
-            && deserialize(o, getRootChild(doc));
+        if (doc == nullptr) {
+            this->mLastError = "Not a valid XML";
+            return false;
+        }
+        bool ret = deserialize(o, getRootChild(doc));
         deleteDocument(doc);
         return ret;
     }
