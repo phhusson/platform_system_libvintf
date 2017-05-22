@@ -47,14 +47,6 @@ public:
 
 };
 
-// exposed for testing purposes.
-namespace details {
-status_t mountSystem();
-status_t mountVendor();
-status_t umountSystem();
-status_t umountVendor();
-}
-
 } // namespace vintf
 } // namespace android
 
