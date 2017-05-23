@@ -131,6 +131,9 @@ private:
     friend std::string dump(const HalManifest &vm);
     friend bool operator==(const HalManifest &lft, const HalManifest &rgt);
 
+    // Check before add()
+    bool shouldAdd(const ManifestHal& toAdd) const;
+
     // Return an iterable to all ManifestHal objects. Call it as follows:
     // for (const ManifestHal &e : vm.getHals()) { }
     ConstMultiMapValueIterable<std::string, ManifestHal> getHals() const;
