@@ -20,7 +20,9 @@
 #include "HalManifest.h"
 
 #include <dirent.h>
+
 #include <mutex>
+#include <set>
 
 #include "parse_string.h"
 #include "parse_xml.h"
@@ -32,11 +34,32 @@ namespace vintf {
 
 constexpr Version HalManifest::kVersion;
 
-bool HalManifest::add(ManifestHal &&hal) {
+// Check <version> tag for all <hal> with the same name.
+bool HalManifest::shouldAdd(const ManifestHal& hal) const {
     if (!hal.isValid()) {
         return false;
     }
-    mHals.emplace(hal.name, std::move(hal));
+    auto existingHals = mHals.equal_range(hal.name);
+    std::set<size_t> existingMajorVersions;
+    for (auto it = existingHals.first; it != existingHals.second; ++it) {
+        for (const auto& v : it->second.versions) {
+            // Assume integrity on existingHals, so no check on emplace().second
+            existingMajorVersions.insert(v.majorVer);
+        }
+    }
+    for (const auto& v : hal.versions) {
+        if (!existingMajorVersions.emplace(v.majorVer).second /* no insertion */) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool HalManifest::add(ManifestHal&& hal) {
+    if (!shouldAdd(hal)) {
+        return false;
+    }
+    mHals.emplace(hal.name, std::move(hal));  // always succeed
     return true;
 }
 
