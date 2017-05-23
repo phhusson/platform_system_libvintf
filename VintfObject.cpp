@@ -286,9 +286,7 @@ int32_t checkCompatibility(const std::vector<std::string> &xmls, bool mount,
             if (error)
                 error->insert(0, "Runtime info and framework compatibility matrix "
                                  "are incompatible: ");
-            // TODO(b/38325029): OTA should check compatibility of kernel version
-            // and AVB version.
-            // return INCOMPATIBLE;
+            return INCOMPATIBLE;
         }
     }
 
