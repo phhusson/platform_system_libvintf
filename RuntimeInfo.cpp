@@ -118,6 +118,8 @@ bool RuntimeInfo::checkCompatibility(const CompatibilityMatrix &mat,
         }
     }
 
+    // TODO(b/38325029) enable avb check when avb version is injected to fwk matrix.
+#if 0
     const Version &matAvb = mat.framework.mAvbMetaVersion;
     if (mBootAvbVersion.majorVer != matAvb.majorVer || mBootAvbVersion.minorVer < matAvb.minorVer) {
         if (error != nullptr) {
@@ -138,6 +140,7 @@ bool RuntimeInfo::checkCompatibility(const CompatibilityMatrix &mat,
         }
         return false;
     }
+#endif
 
     return true;
 }
