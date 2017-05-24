@@ -706,7 +706,8 @@ TEST_F(LibVintfTest, RuntimeInfo) {
         CompatibilityMatrix cm = testMatrix(std::move(kernel));
         EXPECT_FALSE(ki.checkCompatibility(cm)) << "Value shouldn't match for integer";
     }
-
+// TODO(b/38325029) enable avb check when avb version is injected to fwk matrix.
+#if 0
     RuntimeInfo badAvb = testRuntimeInfo();
     CompatibilityMatrix cm = testMatrix(MatrixKernel(KernelVersion{3, 18, 31}, {}));
     {
@@ -726,6 +727,7 @@ TEST_F(LibVintfTest, RuntimeInfo) {
         setAvb(badAvb, {2, 3}, {2, 1});
         EXPECT_TRUE(badAvb.checkCompatibility(cm, &error));
     }
+#endif
 }
 
 TEST_F(LibVintfTest, MissingAvb) {
