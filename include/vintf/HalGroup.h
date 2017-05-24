@@ -15,6 +15,15 @@ template <typename Hal>
 struct HalGroup {
    public:
     virtual ~HalGroup() {}
+    // Move all hals from another HalGroup to this.
+    bool addAll(HalGroup&& other) {
+        for (auto& pair : other.mHals) {
+            if (!add(std::move(pair.second))) {
+                return false;
+            }
+        }
+        return true;
+    }
 
     // Add an hal to this HalGroup so that it can be constructed programatically.
     bool add(Hal&& hal) {
