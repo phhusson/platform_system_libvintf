@@ -22,19 +22,19 @@
 
 #include <utils/Errors.h>
 
+#include "HalGroup.h"
+#include "MapValueIterator.h"
 #include "MatrixHal.h"
 #include "MatrixKernel.h"
-#include "MapValueIterator.h"
-#include "Sepolicy.h"
 #include "SchemaType.h"
+#include "Sepolicy.h"
 #include "Vndk.h"
 
 namespace android {
 namespace vintf {
 
 // Compatibility matrix defines what hardware does the framework requires.
-struct CompatibilityMatrix {
-
+struct CompatibilityMatrix : public HalGroup<MatrixHal> {
     // Create a framework compatibility matrix.
     CompatibilityMatrix() : mType(SchemaType::FRAMEWORK) {};
 
@@ -49,13 +49,6 @@ private:
     // Find a MatrixKernel entry that has version v. nullptr if not found.
     const MatrixKernel *findKernel(const KernelVersion &v) const;
 
-    // Return an iterable to all MatrixHal objects. Call it as follows:
-    // for (const MatrixHal &e : cm.getHals()) { }
-    ConstMultiMapValueIterable<std::string, MatrixHal> getHals() const;
-
-    // for constructing matrix programitically only.
-    MatrixHal *getAnyHal(const std::string &name);
-
     status_t fetchAllInformation(const std::string &path);
 
     friend struct HalManifest;
@@ -67,9 +60,6 @@ private:
     friend bool operator==(const CompatibilityMatrix &, const CompatibilityMatrix &);
 
     SchemaType mType;
-
-    // sorted map from component name to the entry.
-    std::multimap<std::string, MatrixHal> mHals;
 
     // entries only for framework compatibility matrix.
     struct {

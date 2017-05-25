@@ -138,27 +138,54 @@ public:
         return true;
     }
 
+    enum AssembleStatus { SUCCESS, FAIL_AND_EXIT, TRY_NEXT };
+    template <typename Schema, typename AssembleFunc>
+    AssembleStatus tryAssemble(const XmlConverter<Schema>& converter, const std::string& schemaName,
+                               AssembleFunc assemble) {
+        Schema schema;
+        if (!converter(&schema, read(mInFiles.front()))) {
+            return TRY_NEXT;
+        }
+        auto firstType = schema.type();
+        for (auto it = mInFiles.begin() + 1; it != mInFiles.end(); ++it) {
+            Schema additionalSchema;
+            if (!converter(&additionalSchema, read(*it))) {
+                std::cerr << "File \"" << mInFilePaths[std::distance(mInFiles.begin(), it)]
+                          << "\" is not a valid " << firstType << " " << schemaName
+                          << " (but the first file is a valid " << firstType << " " << schemaName
+                          << "). Error: " << converter.lastError() << std::endl;
+                return FAIL_AND_EXIT;
+            }
+            if (additionalSchema.type() != firstType) {
+                std::cerr << "File \"" << mInFilePaths[std::distance(mInFiles.begin(), it)]
+                          << "\" is a " << additionalSchema.type() << " " << schemaName
+                          << " (but a " << firstType << " " << schemaName << " is expected)."
+                          << std::endl;
+                return FAIL_AND_EXIT;
+            }
+            schema.addAll(std::move(additionalSchema));
+        }
+        return assemble(&schema) ? SUCCESS : FAIL_AND_EXIT;
+    }
+
     bool assemble() {
-        if (!mInFile.is_open()) {
+        using std::placeholders::_1;
+        if (mInFiles.empty()) {
             std::cerr << "Missing input file." << std::endl;
             return false;
         }
 
-        std::string fileContent = read(mInFile);
+        auto status = tryAssemble(gHalManifestConverter, "manifest",
+                                  std::bind(&AssembleVintf::assembleHalManifest, this, _1));
+        if (status == SUCCESS) return true;
+        if (status == FAIL_AND_EXIT) return false;
 
-        HalManifest halManifest;
-        if (gHalManifestConverter(&halManifest, fileContent)) {
-            if (assembleHalManifest(&halManifest)) {
-                return true;
-            }
-        }
+        resetInFiles();
 
-        CompatibilityMatrix matrix;
-        if (gCompatibilityMatrixConverter(&matrix, fileContent)) {
-            if (assembleCompatibilityMatrix(&matrix)) {
-                return true;
-            }
-        }
+        status = tryAssemble(gCompatibilityMatrixConverter, "compatibility matrix",
+                             std::bind(&AssembleVintf::assembleCompatibilityMatrix, this, _1));
+        if (status == SUCCESS) return true;
+        if (status == FAIL_AND_EXIT) return false;
 
         std::cerr << "Input file has unknown format." << std::endl
                   << "Error when attempting to convert to manifest: "
@@ -175,8 +202,10 @@ public:
     }
 
     bool openInFile(const char* path) {
-        mInFile.open(path);
-        return mInFile.is_open();
+        mInFilePaths.push_back(path);
+        mInFiles.push_back({});
+        mInFiles.back().open(path);
+        return mInFiles.back().is_open();
     }
 
     bool openCheckFile(const char* path) {
@@ -184,10 +213,18 @@ public:
         return mCheckFile.is_open();
     }
 
+    void resetInFiles() {
+        for (auto& inFile : mInFiles) {
+            inFile.clear();
+            inFile.seekg(0);
+        }
+    }
+
     void setOutputMatrix() { mOutputMatrix = true; }
 
    private:
-    std::ifstream mInFile;
+    std::vector<std::string> mInFilePaths;
+    std::vector<std::ifstream> mInFiles;
     std::unique_ptr<std::ofstream> mOutFileRef;
     std::ifstream mCheckFile;
     bool mOutputMatrix = false;
@@ -201,11 +238,14 @@ void help() {
                  "    fill in build-time flags into the given file.\n"
                  "assemble_vintf -h\n"
                  "               Display this help text.\n"
-                 "assemble_vintf -i <input file> [-o <output file>] [-m] [-c [<check file>]]\n"
-                 "               [--kernel=<version>:<android-base.cfg>]\n"
+                 "assemble_vintf -i <input file>[:<input file>[...]] [-o <output file>] [-m]\n"
+                 "               [-c [<check file>]]\n"
                  "               Fill in build-time flags into the given file.\n"
-                 "    -i <input file>\n"
-                 "               Input file. Format is automatically detected.\n"
+                 "    -i <input file>[:<input file>[...]]\n"
+                 "               A list of input files. Format is automatically detected for the\n"
+                 "               first file, and the remaining files must have the same format.\n"
+                 "               Files other than the first file should only have <hal> defined;\n"
+                 "               other entries are ignored.\n"
                  "    -o <output file>\n"
                  "               Optional output file. If not specified, write to stdout.\n"
                  "    -m\n"
@@ -225,21 +265,25 @@ void help() {
 int main(int argc, char **argv) {
     const struct option longopts[] = {{0, 0, 0, 0}};
 
-    std::string inFilePath;
+    std::string outFilePath;
     ::android::vintf::AssembleVintf assembleVintf;
     int res;
     int optind;
     while ((res = getopt_long(argc, argv, "hi:o:mc:", longopts, &optind)) >= 0) {
         switch (res) {
             case 'i': {
-                inFilePath = optarg;
-                if (!assembleVintf.openInFile(optarg)) {
-                    std::cerr << "Failed to open " << optarg << std::endl;
-                    return 1;
+                char* inFilePath = strtok(optarg, ":");
+                while (inFilePath != NULL) {
+                    if (!assembleVintf.openInFile(inFilePath)) {
+                        std::cerr << "Failed to open " << optarg << std::endl;
+                        return 1;
+                    }
+                    inFilePath = strtok(NULL, ":");
                 }
             } break;
 
             case 'o': {
+                outFilePath = optarg;
                 if (!assembleVintf.openOutFile(optarg)) {
                     std::cerr << "Failed to open " << optarg << std::endl;
                     return 1;
@@ -258,7 +302,7 @@ int main(int argc, char **argv) {
                     }
                 } else {
                     std::cerr << "WARNING: no compatibility check is done on "
-                              << inFilePath << std::endl;
+                              << (outFilePath.empty() ? "output" : outFilePath) << std::endl;
                 }
             } break;
 
