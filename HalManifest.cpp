@@ -55,14 +55,6 @@ bool HalManifest::shouldAdd(const ManifestHal& hal) const {
     return true;
 }
 
-bool HalManifest::add(ManifestHal&& hal) {
-    if (!shouldAdd(hal)) {
-        return false;
-    }
-    mHals.emplace(hal.name, std::move(hal));  // always succeed
-    return true;
-}
-
 std::set<std::string> HalManifest::getHalNames() const {
     std::set<std::string> names{};
     for (const auto &hal : mHals) {
@@ -89,14 +81,6 @@ std::set<std::string> HalManifest::getInterfaceNames(const std::string &name) co
         }
     }
     return interfaceNames;
-}
-
-ManifestHal *HalManifest::getAnyHal(const std::string &name) {
-    auto it = mHals.find(name);
-    if (it == mHals.end()) {
-        return nullptr;
-    }
-    return &(it->second);
 }
 
 std::vector<const ManifestHal *> HalManifest::getHals(const std::string &name) const {
@@ -154,7 +138,7 @@ Transport HalManifest::getTransport(const std::string &package, const Version &v
 }
 
 ConstMultiMapValueIterable<std::string, ManifestHal> HalManifest::getHals() const {
-    return ConstMultiMapValueIterable<std::string, ManifestHal>(mHals);
+    return HalGroup<ManifestHal>::getHals();
 }
 
 std::set<Version> HalManifest::getSupportedVersions(const std::string &name) const {
