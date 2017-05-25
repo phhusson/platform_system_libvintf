@@ -23,6 +23,7 @@
 #include <utils/Errors.h>
 #include <vector>
 
+#include "HalGroup.h"
 #include "ManifestHal.h"
 #include "MapValueIterator.h"
 #include "SchemaType.h"
@@ -37,9 +38,8 @@ struct CompatibilityMatrix;
 
 // A HalManifest is reported by the hardware and query-able from
 // framework code. This is the API for the framework.
-struct HalManifest {
-public:
-
+struct HalManifest : public HalGroup<ManifestHal> {
+   public:
     // manifest.version
     constexpr static Version kVersion{1, 0};
 
@@ -92,9 +92,6 @@ public:
     // Generate a compatibility matrix such that checkCompatibility will return true.
     CompatibilityMatrix generateCompatibleMatrix() const;
 
-    // Add an hal to this manifest so that a HalManifest can be constructed programatically.
-    bool add(ManifestHal &&hal);
-
     // Returns all component names.
     std::set<std::string> getHalNames() const;
 
@@ -123,7 +120,11 @@ public:
     // Abort if type != framework.
     const std::vector<Vndk> &vndks() const;
 
-private:
+   protected:
+    // Check before add()
+    bool shouldAdd(const ManifestHal& toAdd) const override;
+
+   private:
     friend struct HalManifestConverter;
     friend class VintfObject;
     friend class AssembleVintf;
@@ -131,19 +132,9 @@ private:
     friend std::string dump(const HalManifest &vm);
     friend bool operator==(const HalManifest &lft, const HalManifest &rgt);
 
-    // Check before add()
-    bool shouldAdd(const ManifestHal& toAdd) const;
-
     // Return an iterable to all ManifestHal objects. Call it as follows:
     // for (const ManifestHal &e : vm.getHals()) { }
     ConstMultiMapValueIterable<std::string, ManifestHal> getHals() const;
-
-    // Get any HAL component based on the component name. Return any one
-    // if multiple. Return nullptr if the component does not exist. This is only
-    // for creating HalManifest objects programatically.
-    // The component name looks like:
-    // android.hardware.foo
-    ManifestHal *getAnyHal(const std::string &name);
 
     status_t fetchAllInformation(const std::string &path);
 
@@ -151,10 +142,6 @@ private:
     bool isCompatible(const MatrixHal& matrixHal) const;
 
     SchemaType mType;
-
-    // sorted map from component name to the component.
-    // The component name looks like: android.hardware.foo
-    std::multimap<std::string, ManifestHal> mHals;
 
     // entries for device hal manifest only
     struct {
