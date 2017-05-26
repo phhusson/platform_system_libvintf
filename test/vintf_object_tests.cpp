@@ -206,6 +206,7 @@ static MockFileFetcher &fetcher() {
 class VintfObjectCompatibleTest : public testing::Test {
    protected:
     virtual void SetUp() {
+        mounter().reset();
         setupMockFetcher(vendorManifestXml1, systemMatrixXml1, systemManifestXml1,
                          vendorMatrixXml1);
     }
@@ -397,6 +398,7 @@ TEST_F(VintfObjectCompatibleTest, TestFullOnlyOtaMount) {
 class VintfObjectIncompatibleTest : public testing::Test {
    protected:
     virtual void SetUp() {
+        mounter().reset();
         setupMockFetcher(vendorManifestXml1, systemMatrixXml2, systemManifestXml1,
                          vendorMatrixXml1);
     }
