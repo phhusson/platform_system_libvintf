@@ -94,8 +94,7 @@ private:
     Version mBootVbmetaAvbVersion;
     Version mBootAvbVersion;
 
-    size_t mKernelSepolicyVersion;
-
+    size_t mKernelSepolicyVersion = 0u;
 };
 
 } // namespace vintf
