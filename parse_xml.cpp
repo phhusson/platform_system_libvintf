@@ -488,7 +488,9 @@ struct MatrixHalConverter : public XmlNodeConverter<MatrixHal> {
             std::string name{interface.name};
             auto res = object->interfaces.emplace(std::move(name), std::move(interface));
             if (!res.second) {
-                this->mLastError = "Duplicated instance entry " + res.first->first;
+                this->mLastError = "Duplicated interface entry \"" + res.first->first +
+                                   "\"; if additional instances are needed, add them to the "
+                                   "existing <interface> node.";
                 return false;
             }
         }
@@ -540,7 +542,9 @@ struct ManifestHalConverter : public XmlNodeConverter<ManifestHal> {
             auto res = object->interfaces.emplace(interface.name,
                                                   std::move(interface));
             if (!res.second) {
-                this->mLastError = "Duplicated instance entry " + res.first->first;
+                this->mLastError = "Duplicated interface entry \"" + res.first->first +
+                                   "\"; if additional instances are needed, add them to the "
+                                   "existing <interface> node.";
                 return false;
             }
         }
