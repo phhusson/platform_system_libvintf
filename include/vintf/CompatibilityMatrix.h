@@ -29,12 +29,13 @@
 #include "SchemaType.h"
 #include "Sepolicy.h"
 #include "Vndk.h"
+#include "XmlFileGroup.h"
 
 namespace android {
 namespace vintf {
 
 // Compatibility matrix defines what hardware does the framework requires.
-struct CompatibilityMatrix : public HalGroup<MatrixHal> {
+struct CompatibilityMatrix : public HalGroup<MatrixHal>, public XmlFileGroup<MatrixXmlFile> {
     // Create a framework compatibility matrix.
     CompatibilityMatrix() : mType(SchemaType::FRAMEWORK) {};
 
