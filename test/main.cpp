@@ -163,6 +163,18 @@ public:
     }
 };
 
+TEST_F(LibVintfTest, ArchOperatorOr) {
+    Arch a = Arch::ARCH_EMPTY;
+    a |= Arch::ARCH_32;
+    EXPECT_EQ(Arch::ARCH_32, a);
+
+    a |= Arch::ARCH_64;
+    EXPECT_EQ(Arch::ARCH_32_64, a);
+
+    a = Arch::ARCH_EMPTY;
+    a |= Arch::ARCH_64;
+    EXPECT_EQ(Arch::ARCH_64, a);
+}
 
 TEST_F(LibVintfTest, Stringify) {
     HalManifest vm = testDeviceManifest();
