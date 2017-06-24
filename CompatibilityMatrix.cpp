@@ -16,6 +16,7 @@
 
 #include "CompatibilityMatrix.h"
 
+#include "parse_string.h"
 #include "utils.h"
 
 namespace android {
@@ -55,6 +56,25 @@ SchemaType CompatibilityMatrix::type() const {
 
 status_t CompatibilityMatrix::fetchAllInformation(const std::string &path) {
     return details::fetchAllInformation(path, gCompatibilityMatrixConverter, this);
+}
+
+std::string CompatibilityMatrix::getXmlSchemaPath(const std::string& xmlFileName,
+                                                  const Version& version) const {
+    using std::literals::string_literals::operator""s;
+    auto range = getXmlFiles(xmlFileName);
+    for (auto it = range.first; it != range.second; ++it) {
+        const MatrixXmlFile& matrixXmlFile = it->second;
+        if (matrixXmlFile.versionRange().contains(version)) {
+            if (!matrixXmlFile.overriddenPath().empty()) {
+                return matrixXmlFile.overriddenPath();
+            }
+            return "/"s + (type() == SchemaType::DEVICE ? "vendor" : "system") + "/etc/" +
+                   xmlFileName + "_V" + std::to_string(matrixXmlFile.versionRange().majorVer) +
+                   "_" + std::to_string(matrixXmlFile.versionRange().maxMinor) + "." +
+                   to_string(matrixXmlFile.format());
+        }
+    }
+    return "";
 }
 
 bool operator==(const CompatibilityMatrix &lft, const CompatibilityMatrix &rgt) {
