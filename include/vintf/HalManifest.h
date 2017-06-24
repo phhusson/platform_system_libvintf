@@ -29,6 +29,7 @@
 #include "SchemaType.h"
 #include "Version.h"
 #include "Vndk.h"
+#include "XmlFileGroup.h"
 
 namespace android {
 namespace vintf {
@@ -38,7 +39,7 @@ struct CompatibilityMatrix;
 
 // A HalManifest is reported by the hardware and query-able from
 // framework code. This is the API for the framework.
-struct HalManifest : public HalGroup<ManifestHal> {
+struct HalManifest : public HalGroup<ManifestHal>, public XmlFileGroup<ManifestXmlFile> {
    public:
     // manifest.version
     constexpr static Version kVersion{1, 0};
@@ -123,6 +124,7 @@ struct HalManifest : public HalGroup<ManifestHal> {
    protected:
     // Check before add()
     bool shouldAdd(const ManifestHal& toAdd) const override;
+    bool shouldAddXmlFile(const ManifestXmlFile& toAdd) const override;
 
    private:
     friend struct HalManifestConverter;
@@ -140,6 +142,9 @@ struct HalManifest : public HalGroup<ManifestHal> {
 
     // Check if all instances in matrixHal is supported in this manifest.
     bool isCompatible(const MatrixHal& matrixHal) const;
+
+    std::vector<std::string> checkIncompatibleXmlFiles(const CompatibilityMatrix& mat,
+                                                       bool includeOptional = true) const;
 
     SchemaType mType;
 
