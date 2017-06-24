@@ -265,6 +265,13 @@ struct XmlNodeConverter : public XmlConverter<Object> {
         return true;
     }
 
+    inline bool parseOptionalTextElement(NodeType* root, const std::string& elementName,
+                                         std::string&& defaultValue, std::string* s) const {
+        NodeType* child = getChild(root, elementName);
+        *s = child == nullptr ? std::move(defaultValue) : getText(child);
+        return true;
+    }
+
     inline bool parseTextElements(NodeType *root, const std::string &elementName,
             std::vector<std::string> *v) const {
         auto nodes = getChildren(root, elementName);
@@ -610,17 +617,40 @@ struct HalManifestSepolicyConverter : public XmlNodeConverter<Version> {
 };
 const HalManifestSepolicyConverter halManifestSepolicyConverter{};
 
+struct ManifestXmlFileConverter : public XmlNodeConverter<ManifestXmlFile> {
+    std::string elementName() const override { return "xmlfile"; }
+    void mutateNode(const ManifestXmlFile& f, NodeType* root, DocType* d) const override {
+        appendTextElement(root, "name", f.name(), d);
+        appendChild(root, versionConverter(f.version(), d));
+        if (!f.overriddenPath().empty()) {
+            appendTextElement(root, "path", f.overriddenPath(), d);
+        }
+    }
+    bool buildObject(ManifestXmlFile* object, NodeType* root) const override {
+        if (!parseTextElement(root, "name", &object->mName) ||
+            !parseChild(root, versionConverter, &object->mVersion) ||
+            !parseOptionalTextElement(root, "path", {}, &object->mOverriddenPath)) {
+            return false;
+        }
+        return true;
+    }
+};
+const ManifestXmlFileConverter manifestXmlFileConverter{};
+
 struct HalManifestConverter : public XmlNodeConverter<HalManifest> {
     std::string elementName() const override { return "manifest"; }
     void mutateNode(const HalManifest &m, NodeType *root, DocType *d) const override {
         appendAttr(root, "version", HalManifest::kVersion);
         appendAttr(root, "type", m.mType);
+
         appendChildren(root, manifestHalConverter, m.getHals(), d);
         if (m.mType == SchemaType::DEVICE) {
             appendChild(root, halManifestSepolicyConverter(m.device.mSepolicyVersion, d));
         } else if (m.mType == SchemaType::FRAMEWORK) {
             appendChildren(root, vndkConverter, m.framework.mVndks, d);
         }
+
+        appendChildren(root, manifestXmlFileConverter, m.getXmlFiles(), d);
     }
     bool buildObject(HalManifest *object, NodeType *root) const override {
         Version version;
@@ -661,6 +691,20 @@ struct HalManifestConverter : public XmlNodeConverter<HalManifest> {
                 return false;
             }
         }
+
+        std::vector<ManifestXmlFile> xmlFiles;
+        if (!parseChildren(root, manifestXmlFileConverter, &xmlFiles)) {
+            return false;
+        }
+        for (auto&& xmlFile : xmlFiles) {
+            std::string description{xmlFile.name()};
+            if (!object->addXmlFile(std::move(xmlFile))) {
+                this->mLastError = "Duplicated manifest.xmlfile entry " + description +
+                                   "; entries cannot have duplicated name and version";
+                return false;
+            }
+        }
+
         return true;
     }
 };
@@ -679,6 +723,30 @@ struct AvbConverter : public XmlNodeConverter<Version> {
 };
 const AvbConverter avbConverter{};
 
+struct MatrixXmlFileConverter : public XmlNodeConverter<MatrixXmlFile> {
+    std::string elementName() const override { return "xmlfile"; }
+    void mutateNode(const MatrixXmlFile& f, NodeType* root, DocType* d) const override {
+        appendTextElement(root, "name", f.name(), d);
+        appendAttr(root, "format", f.format());
+        appendAttr(root, "optional", f.optional());
+        appendChild(root, versionRangeConverter(f.versionRange(), d));
+        if (!f.overriddenPath().empty()) {
+            appendTextElement(root, "path", f.overriddenPath(), d);
+        }
+    }
+    bool buildObject(MatrixXmlFile* object, NodeType* root) const override {
+        if (!parseTextElement(root, "name", &object->mName) ||
+            !parseAttr(root, "format", &object->mFormat) ||
+            !parseOptionalAttr(root, "optional", false, &object->mOptional) ||
+            !parseChild(root, versionRangeConverter, &object->mVersionRange) ||
+            !parseOptionalTextElement(root, "path", {}, &object->mOverriddenPath)) {
+            return false;
+        }
+        return true;
+    }
+};
+const MatrixXmlFileConverter matrixXmlFileConverter{};
+
 struct CompatibilityMatrixConverter : public XmlNodeConverter<CompatibilityMatrix> {
     std::string elementName() const override { return "compatibility-matrix"; }
     void mutateNode(const CompatibilityMatrix &m, NodeType *root, DocType *d) const override {
@@ -692,6 +760,8 @@ struct CompatibilityMatrixConverter : public XmlNodeConverter<CompatibilityMatri
         } else if (m.mType == SchemaType::DEVICE) {
             appendChild(root, vndkConverter(m.device.mVndk, d));
         }
+
+        appendChildren(root, matrixXmlFileConverter, m.getXmlFiles(), d);
     }
     bool buildObject(CompatibilityMatrix *object, NodeType *root) const override {
         Version version;
@@ -728,6 +798,24 @@ struct CompatibilityMatrixConverter : public XmlNodeConverter<CompatibilityMatri
                 return false;
             }
         }
+
+        std::vector<MatrixXmlFile> xmlFiles;
+        if (!parseChildren(root, matrixXmlFileConverter, &xmlFiles)) {
+            return false;
+        }
+        for (auto&& xmlFile : xmlFiles) {
+            if (!xmlFile.optional()) {
+                this->mLastError = "compatibility-matrix.xmlfile entry " + xmlFile.name() +
+                                   " has to be optional for compatibility matrix version 1.0";
+                return false;
+            }
+            std::string description{xmlFile.name()};
+            if (!object->addXmlFile(std::move(xmlFile))) {
+                this->mLastError = "Duplicated compatibility-matrix.xmlfile entry " + description;
+                return false;
+            }
+        }
+
         return true;
     }
 };
