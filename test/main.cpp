@@ -1198,6 +1198,116 @@ TEST_F(LibVintfTest, CompatibilityMatrixConverterXmlFile2) {
         gCompatibilityMatrixConverter.lastError());
 }
 
+TEST_F(LibVintfTest, ManifestXmlFilePathDevice) {
+    std::string manifestXml =
+        "<manifest version=\"1.0\" type=\"device\">"
+        "    <xmlfile>"
+        "        <name>media_profile</name>"
+        "        <version>1.0</version>"
+        "    </xmlfile>"
+        "</manifest>";
+    HalManifest manifest;
+    EXPECT_TRUE(gHalManifestConverter(&manifest, manifestXml));
+    EXPECT_EQ(manifest.getXmlFilePath("media_profile", {1, 0}),
+              "/vendor/etc/media_profile_V1_0.xml");
+}
+
+TEST_F(LibVintfTest, ManifestXmlFilePathFramework) {
+    std::string manifestXml =
+        "<manifest version=\"1.0\" type=\"framework\">"
+        "    <xmlfile>"
+        "        <name>media_profile</name>"
+        "        <version>1.0</version>"
+        "    </xmlfile>"
+        "</manifest>";
+    HalManifest manifest;
+    EXPECT_TRUE(gHalManifestConverter(&manifest, manifestXml));
+    EXPECT_EQ(manifest.getXmlFilePath("media_profile", {1, 0}),
+              "/system/etc/media_profile_V1_0.xml");
+}
+
+TEST_F(LibVintfTest, ManifestXmlFilePathOverride) {
+    std::string manifestXml =
+        "<manifest version=\"1.0\" type=\"device\">"
+        "    <xmlfile>"
+        "        <name>media_profile</name>"
+        "        <version>1.0</version>"
+        "        <path>/vendor/etc/foo.xml</path>"
+        "    </xmlfile>"
+        "</manifest>";
+    HalManifest manifest;
+    EXPECT_TRUE(gHalManifestConverter(&manifest, manifestXml));
+    EXPECT_EQ(manifest.getXmlFilePath("media_profile", {1, 0}), "/vendor/etc/foo.xml");
+}
+
+TEST_F(LibVintfTest, ManifestXmlFilePathMissing) {
+    std::string manifestXml =
+        "<manifest version=\"1.0\" type=\"device\">"
+        "    <xmlfile>"
+        "        <name>media_profile</name>"
+        "        <version>1.1</version>"
+        "    </xmlfile>"
+        "</manifest>";
+    HalManifest manifest;
+    EXPECT_TRUE(gHalManifestConverter(&manifest, manifestXml));
+    EXPECT_EQ(manifest.getXmlFilePath("media_profile", {1, 0}), "");
+}
+
+TEST_F(LibVintfTest, MatrixXmlFilePathFramework) {
+    std::string matrixXml =
+        "<compatibility-matrix version=\"1.0\" type=\"framework\">"
+        "    <xmlfile format=\"dtd\" optional=\"true\">"
+        "        <name>media_profile</name>"
+        "        <version>2.0-1</version>"
+        "    </xmlfile>"
+        "</compatibility-matrix>";
+    CompatibilityMatrix matrix;
+    EXPECT_TRUE(gCompatibilityMatrixConverter(&matrix, matrixXml));
+    EXPECT_EQ(matrix.getXmlSchemaPath("media_profile", {2, 1}),
+              "/system/etc/media_profile_V2_1.dtd");
+}
+
+TEST_F(LibVintfTest, MatrixXmlFilePathDevice) {
+    std::string matrixXml =
+        "<compatibility-matrix version=\"1.0\" type=\"device\">"
+        "    <xmlfile format=\"xsd\" optional=\"true\">"
+        "        <name>media_profile</name>"
+        "        <version>2.0-1</version>"
+        "    </xmlfile>"
+        "</compatibility-matrix>";
+    CompatibilityMatrix matrix;
+    EXPECT_TRUE(gCompatibilityMatrixConverter(&matrix, matrixXml));
+    EXPECT_EQ(matrix.getXmlSchemaPath("media_profile", {2, 0}),
+              "/vendor/etc/media_profile_V2_1.xsd");
+}
+
+TEST_F(LibVintfTest, MatrixXmlFilePathOverride) {
+    std::string matrixXml =
+        "<compatibility-matrix version=\"1.0\" type=\"framework\">"
+        "    <xmlfile format=\"xsd\" optional=\"true\">"
+        "        <name>media_profile</name>"
+        "        <version>2.0-1</version>"
+        "        <path>/system/etc/foo.xsd</path>"
+        "    </xmlfile>"
+        "</compatibility-matrix>";
+    CompatibilityMatrix matrix;
+    EXPECT_TRUE(gCompatibilityMatrixConverter(&matrix, matrixXml));
+    EXPECT_EQ(matrix.getXmlSchemaPath("media_profile", {2, 0}), "/system/etc/foo.xsd");
+}
+
+TEST_F(LibVintfTest, MatrixXmlFilePathMissing) {
+    std::string matrixXml =
+        "<compatibility-matrix version=\"1.0\" type=\"framework\">"
+        "    <xmlfile format=\"dtd\" optional=\"true\">"
+        "        <name>media_profile</name>"
+        "        <version>2.1</version>"
+        "    </xmlfile>"
+        "</compatibility-matrix>";
+    CompatibilityMatrix matrix;
+    EXPECT_TRUE(gCompatibilityMatrixConverter(&matrix, matrixXml));
+    EXPECT_EQ(matrix.getXmlSchemaPath("media_profile", {2, 0}), "");
+}
+
 } // namespace vintf
 } // namespace android
 
