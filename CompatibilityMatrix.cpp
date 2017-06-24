@@ -58,14 +58,12 @@ status_t CompatibilityMatrix::fetchAllInformation(const std::string &path) {
 }
 
 bool operator==(const CompatibilityMatrix &lft, const CompatibilityMatrix &rgt) {
-    return lft.mType == rgt.mType &&
-           lft.mHals == rgt.mHals &&
-           (lft.mType != SchemaType::DEVICE || (
-                lft.device.mVndk == rgt.device.mVndk)) &&
-           (lft.mType != SchemaType::FRAMEWORK || (
-                lft.framework.mKernels == rgt.framework.mKernels &&
-                lft.framework.mSepolicy == rgt.framework.mSepolicy &&
-                lft.framework.mAvbMetaVersion == rgt.framework.mAvbMetaVersion));
+    return lft.mType == rgt.mType && lft.mHals == rgt.mHals && lft.mXmlFiles == rgt.mXmlFiles &&
+           (lft.mType != SchemaType::DEVICE || (lft.device.mVndk == rgt.device.mVndk)) &&
+           (lft.mType != SchemaType::FRAMEWORK ||
+            (lft.framework.mKernels == rgt.framework.mKernels &&
+             lft.framework.mSepolicy == rgt.framework.mSepolicy &&
+             lft.framework.mAvbMetaVersion == rgt.framework.mAvbMetaVersion));
 }
 
 } // namespace vintf

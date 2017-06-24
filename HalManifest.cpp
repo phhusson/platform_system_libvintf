@@ -55,6 +55,16 @@ bool HalManifest::shouldAdd(const ManifestHal& hal) const {
     return true;
 }
 
+bool HalManifest::shouldAddXmlFile(const ManifestXmlFile& xmlFile) const {
+    auto existingXmlFiles = getXmlFiles(xmlFile.name());
+    for (auto it = existingXmlFiles.first; it != existingXmlFiles.second; ++it) {
+        if (xmlFile.version() == it->second.version()) {
+            return false;
+        }
+    }
+    return true;
+}
+
 std::set<std::string> HalManifest::getHalNames() const {
     std::set<std::string> names{};
     for (const auto &hal : mHals) {
@@ -365,12 +375,10 @@ const std::vector<Vndk> &HalManifest::vndks() const {
 }
 
 bool operator==(const HalManifest &lft, const HalManifest &rgt) {
-    return lft.mType == rgt.mType &&
-           lft.mHals == rgt.mHals &&
-           (lft.mType != SchemaType::DEVICE || (
-                lft.device.mSepolicyVersion == rgt.device.mSepolicyVersion)) &&
-           (lft.mType != SchemaType::FRAMEWORK || (
-                lft.framework.mVndks == rgt.framework.mVndks));
+    return lft.mType == rgt.mType && lft.mHals == rgt.mHals && lft.mXmlFiles == rgt.mXmlFiles &&
+           (lft.mType != SchemaType::DEVICE ||
+            (lft.device.mSepolicyVersion == rgt.device.mSepolicyVersion)) &&
+           (lft.mType != SchemaType::FRAMEWORK || (lft.framework.mVndks == rgt.framework.mVndks));
 }
 
 } // namespace vintf
