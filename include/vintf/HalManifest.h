@@ -121,6 +121,12 @@ struct HalManifest : public HalGroup<ManifestHal>, public XmlFileGroup<ManifestX
     // Abort if type != framework.
     const std::vector<Vndk> &vndks() const;
 
+    // If the corresponding <xmlfile> with the given version exists,
+    // - Return the overridden <path> if it is present,
+    // - otherwise the default value: /{system,vendor}/etc/<name>_V<major>_<minor>.xml
+    // Otherwise if the <xmlfile> entry does not exist, "" is returned.
+    std::string getXmlFilePath(const std::string& xmlFileName, const Version& version) const;
+
    protected:
     // Check before add()
     bool shouldAdd(const ManifestHal& toAdd) const override;
