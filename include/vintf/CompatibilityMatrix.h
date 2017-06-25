@@ -29,12 +29,13 @@
 #include "SchemaType.h"
 #include "Sepolicy.h"
 #include "Vndk.h"
+#include "XmlFileGroup.h"
 
 namespace android {
 namespace vintf {
 
 // Compatibility matrix defines what hardware does the framework requires.
-struct CompatibilityMatrix : public HalGroup<MatrixHal> {
+struct CompatibilityMatrix : public HalGroup<MatrixHal>, public XmlFileGroup<MatrixXmlFile> {
     // Create a framework compatibility matrix.
     CompatibilityMatrix() : mType(SchemaType::FRAMEWORK) {};
 
@@ -42,7 +43,18 @@ struct CompatibilityMatrix : public HalGroup<MatrixHal> {
 
     constexpr static Version kVersion{1, 0};
 
-private:
+    // If the corresponding <xmlfile> with the given version exists, for the first match,
+    // - Return the overridden <path> if it is present,
+    // - otherwise the default value: /{system,vendor}/etc/<name>_V<major>_<minor-max>.<format>
+    // Otherwise if the <xmlfile> entry does not exist, "" is returned.
+    // For example, if the matrix says ["audio@1.0-5" -> "foo.xml", "audio@1.3-7" -> bar.xml]
+    // getXmlSchemaPath("audio", 1.0) -> foo.xml
+    // getXmlSchemaPath("audio", 1.5) -> foo.xml
+    // getXmlSchemaPath("audio", 1.7) -> bar.xml
+    // (Normally, version ranges do not overlap, and the only match is returned.)
+    std::string getXmlSchemaPath(const std::string& xmlFileName, const Version& version) const;
+
+   private:
     bool add(MatrixHal &&hal);
     bool add(MatrixKernel &&kernel);
 

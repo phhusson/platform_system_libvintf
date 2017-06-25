@@ -55,6 +55,16 @@ bool HalManifest::shouldAdd(const ManifestHal& hal) const {
     return true;
 }
 
+bool HalManifest::shouldAddXmlFile(const ManifestXmlFile& xmlFile) const {
+    auto existingXmlFiles = getXmlFiles(xmlFile.name());
+    for (auto it = existingXmlFiles.first; it != existingXmlFiles.second; ++it) {
+        if (xmlFile.version() == it->second.version()) {
+            return false;
+        }
+    }
+    return true;
+}
+
 std::set<std::string> HalManifest::getHalNames() const {
     std::set<std::string> names{};
     for (const auto &hal : mHals) {
@@ -364,13 +374,29 @@ const std::vector<Vndk> &HalManifest::vndks() const {
     return framework.mVndks;
 }
 
+std::string HalManifest::getXmlFilePath(const std::string& xmlFileName,
+                                        const Version& version) const {
+    using std::literals::string_literals::operator""s;
+    auto range = getXmlFiles(xmlFileName);
+    for (auto it = range.first; it != range.second; ++it) {
+        const ManifestXmlFile& manifestXmlFile = it->second;
+        if (manifestXmlFile.version() == version) {
+            if (!manifestXmlFile.overriddenPath().empty()) {
+                return manifestXmlFile.overriddenPath();
+            }
+            return "/"s + (type() == SchemaType::DEVICE ? "vendor" : "system") + "/etc/" +
+                   xmlFileName + "_V" + std::to_string(version.majorVer) + "_" +
+                   std::to_string(version.minorVer) + ".xml";
+        }
+    }
+    return "";
+}
+
 bool operator==(const HalManifest &lft, const HalManifest &rgt) {
-    return lft.mType == rgt.mType &&
-           lft.mHals == rgt.mHals &&
-           (lft.mType != SchemaType::DEVICE || (
-                lft.device.mSepolicyVersion == rgt.device.mSepolicyVersion)) &&
-           (lft.mType != SchemaType::FRAMEWORK || (
-                lft.framework.mVndks == rgt.framework.mVndks));
+    return lft.mType == rgt.mType && lft.mHals == rgt.mHals && lft.mXmlFiles == rgt.mXmlFiles &&
+           (lft.mType != SchemaType::DEVICE ||
+            (lft.device.mSepolicyVersion == rgt.device.mSepolicyVersion)) &&
+           (lft.mType != SchemaType::FRAMEWORK || (lft.framework.mVndks == rgt.framework.mVndks));
 }
 
 } // namespace vintf
