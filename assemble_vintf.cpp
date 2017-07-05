@@ -118,6 +118,12 @@ public:
             }
             matrix->framework.mSepolicy =
                 Sepolicy(kernelSepolicyVers, {{sepolicyVers.majorVer, sepolicyVers.minorVer}});
+
+            Version avbMetaVersion;
+            if (!getFlag("BOARD_AVB_VBMETA_VERSION", &avbMetaVersion)) {
+                return false;
+            }
+            matrix->framework.mAvbMetaVersion = avbMetaVersion;
         }
         out() << gCompatibilityMatrixConverter(*matrix);
         out().flush();
