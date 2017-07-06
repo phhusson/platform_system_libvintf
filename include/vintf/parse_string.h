@@ -79,6 +79,10 @@ bool parseRange(const std::string &s, KernelConfigRangeValue *range);
 // kctv->value.
 bool parseKernelConfigValue(const std::string &s, KernelConfigTypedValue *kctv);
 
+// Parse the KernelConfigTypedValue in s (type is guessed) and store it in kctv.
+// Do not expect quotes in strings.
+bool parseKernelConfigTypedValue(const std::string& s, KernelConfigTypedValue* kctv);
+
 // A string that describes the whole object, with versions of all
 // its components. For debugging and testing purposes only. This is not
 // the XML string.
