@@ -24,8 +24,11 @@
 #include <sstream>
 #include <string>
 
+#include <vintf/KernelConfigParser.h>
 #include <vintf/parse_string.h>
 #include <vintf/parse_xml.h>
+
+#define BUFFER_SIZE sysconf(_SC_PAGESIZE)
 
 namespace android {
 namespace vintf {
@@ -54,6 +57,38 @@ public:
         std::stringstream ss;
         ss << is.rdbuf();
         return ss.str();
+    }
+
+    static bool parseFileForKernelConfigs(const std::string& path, std::vector<KernelConfig>* out) {
+        std::ifstream ifs{path};
+        if (!ifs.is_open()) {
+            std::cerr << "File '" << path << "' does not exist or cannot be read." << std::endl;
+            return false;
+        }
+        KernelConfigParser parser(true /* processComments */);
+        std::string content = read(ifs);
+        status_t err = parser.process(content.c_str(), content.size());
+        if (err != OK) {
+            std::cerr << parser.error().rdbuf();
+            return false;
+        }
+        err = parser.finish();
+        if (err != OK) {
+            std::cerr << parser.error().rdbuf();
+            return false;
+        }
+
+        for (auto& configPair : parser.configs()) {
+            out->push_back({});
+            KernelConfig& config = out->back();
+            config.first = std::move(configPair.first);
+            if (!parseKernelConfigTypedValue(configPair.second, &config.second)) {
+                std::cerr << "Unknown value type for key = '" << config.first << "', value = '"
+                          << configPair.second << "'\n";
+                return false;
+            }
+        }
+        return true;
     }
 
     std::basic_ostream<char>& out() const {
@@ -115,6 +150,24 @@ public:
             }
             if (!getFlag("POLICYVERS", &kernelSepolicyVers)) {
                 return false;
+            }
+            for (const auto& pair : mKernels) {
+                std::vector<KernelConfig> configs;
+                if (!parseFileForKernelConfigs(pair.second, &configs)) {
+                    return false;
+                }
+                bool added = false;
+                for (auto& e : matrix->framework.mKernels) {
+                    if (e.minLts() == pair.first) {
+                        e.mConfigs.insert(e.mConfigs.end(), configs.begin(), configs.end());
+                        added = true;
+                        break;
+                    }
+                }
+                if (!added) {
+                    matrix->framework.mKernels.push_back(
+                        MatrixKernel{KernelVersion{pair.first}, std::move(configs)});
+                }
             }
             matrix->framework.mSepolicy =
                 Sepolicy(kernelSepolicyVers, {{sepolicyVers.majorVer, sepolicyVers.minorVer}});
@@ -222,12 +275,30 @@ public:
 
     void setOutputMatrix() { mOutputMatrix = true; }
 
+    bool addKernel(const std::string& kernelArg) {
+        auto ind = kernelArg.find(':');
+        if (ind == std::string::npos) {
+            std::cerr << "Unrecognized --kernel option '" << kernelArg << "'" << std::endl;
+            return false;
+        }
+        std::string kernelVerStr{kernelArg.begin(), kernelArg.begin() + ind};
+        std::string kernelConfigPath{kernelArg.begin() + ind + 1, kernelArg.end()};
+        Version kernelVer;
+        if (!parse(kernelVerStr, &kernelVer)) {
+            std::cerr << "Unrecognized kernel version '" << kernelVerStr << "'" << std::endl;
+            return false;
+        }
+        mKernels.push_back({{kernelVer.majorVer, kernelVer.minorVer, 0u}, kernelConfigPath});
+        return true;
+    }
+
    private:
     std::vector<std::string> mInFilePaths;
     std::vector<std::ifstream> mInFiles;
     std::unique_ptr<std::ofstream> mOutFileRef;
     std::ifstream mCheckFile;
     bool mOutputMatrix = false;
+    std::vector<std::pair<KernelVersion, std::string>> mKernels;
 };
 
 }  // namespace vintf
@@ -259,11 +330,16 @@ void help() {
                  "               If -c is set but the check file is not specified, a warning\n"
                  "               message is written to stderr. Return 0.\n"
                  "               If the check file is specified but is not compatible, an error\n"
-                 "               message is written to stderr. Return 1.\n";
+                 "               message is written to stderr. Return 1.\n"
+                 "    --kernel=<version>:<android-base.cfg>\n"
+                 "               Add a kernel entry to framework compatibility matrix.\n"
+                 "               Ignored for other input format.\n"
+                 "               <version> has format: 3.18\n"
+                 "               <android-base.cfg> is the location of android-base.cfg\n";
 }
 
 int main(int argc, char **argv) {
-    const struct option longopts[] = {{0, 0, 0, 0}};
+    const struct option longopts[] = {{"kernel", required_argument, NULL, 'k'}, {0, 0, 0, 0}};
 
     std::string outFilePath;
     ::android::vintf::AssembleVintf assembleVintf;
@@ -303,6 +379,13 @@ int main(int argc, char **argv) {
                 } else {
                     std::cerr << "WARNING: no compatibility check is done on "
                               << (outFilePath.empty() ? "output" : outFilePath) << std::endl;
+                }
+            } break;
+
+            case 'k': {
+                if (!assembleVintf.addKernel(optarg)) {
+                    std::cerr << "ERROR: Unrecognized --kernel argument." << std::endl;
+                    return 1;
                 }
             } break;
 
