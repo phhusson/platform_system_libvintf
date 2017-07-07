@@ -168,6 +168,21 @@ bool parseKernelConfigValue(const std::string &s, KernelConfigTypedValue *kctv) 
     }
 }
 
+bool parseKernelConfigTypedValue(const std::string& s, KernelConfigTypedValue* kctv) {
+    if (parseKernelConfigInt(s, &kctv->mIntegerValue)) {
+        kctv->mType = KernelConfigType::INTEGER;
+        return true;
+    }
+    if (parse(s, &kctv->mTristateValue)) {
+        kctv->mType = KernelConfigType::TRISTATE;
+        return true;
+    }
+    // Do not test for KernelConfigType::RANGE.
+    kctv->mType = KernelConfigType::STRING;
+    kctv->mStringValue = s;
+    return true;
+}
+
 bool parse(const std::string &s, Version *ver) {
     std::vector<std::string> v = SplitString(s, '.');
     if (v.size() != 2) {
