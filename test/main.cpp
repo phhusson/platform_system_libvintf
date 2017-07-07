@@ -1362,6 +1362,66 @@ TEST_F(LibVintfTest, KernelConfigParser2) {
     EXPECT_EQ(configs.find("CONFIG_NOT_SET2")->second, "n");
 }
 
+TEST_F(LibVintfTest, KernelConfigParserSpace) {
+    // usage in android-base.cfg
+    const std::string data =
+        "   #   CONFIG_NOT_SET is not set   \n"
+        "  CONFIG_ONE=1   # 'tis a one!\n"
+        " CONFIG_TWO=2 #'tis a two!   \n"
+        " CONFIG_THREE=3#'tis a three!   \n"
+        " CONFIG_233=233#'tis a three!   \n"
+        "#yey! random comments\n"
+        "CONFIG_Y=y   \n"
+        " CONFIG_YES=y#YES!   \n"
+        "CONFIG_STR=string\n"
+        "CONFIG_HELLO=hello world!  #still works\n"
+        "CONFIG_WORLD=hello world!       \n"
+        "CONFIG_GOOD   =   good morning!  #comments here\n"
+        "    CONFIG_MORNING   =   good morning!  \n";
+    auto pair = processData(data, true /* processComments */);
+    ASSERT_EQ(OK, pair.second) << pair.first.error();
+    const auto& configs = pair.first.configs();
+
+    EXPECT_EQ(configs.find("CONFIG_ONE")->second, "1");
+    EXPECT_EQ(configs.find("CONFIG_TWO")->second, "2");
+    EXPECT_EQ(configs.find("CONFIG_THREE")->second, "3");
+    EXPECT_EQ(configs.find("CONFIG_Y")->second, "y");
+    EXPECT_EQ(configs.find("CONFIG_STR")->second, "string");
+    EXPECT_EQ(configs.find("CONFIG_HELLO")->second, "hello world!")
+        << "Value should be \"hello world!\" without trailing spaces";
+    EXPECT_EQ(configs.find("CONFIG_WORLD")->second, "hello world!")
+        << "Value should be \"hello world!\" without trailing spaces";
+    EXPECT_EQ(configs.find("CONFIG_GOOD")->second, "good morning!")
+        << "Value should be \"good morning!\" without leading or trailing spaces";
+    EXPECT_EQ(configs.find("CONFIG_MORNING")->second, "good morning!")
+        << "Value should be \"good morning!\" without leading or trailing spaces";
+    EXPECT_EQ(configs.find("CONFIG_NOT_SET")->second, "n");
+}
+
+// Run KernelConfigParserInvalidTest on processComments = {true, false}
+class KernelConfigParserInvalidTest : public ::testing::TestWithParam<bool> {};
+
+TEST_P(KernelConfigParserInvalidTest, NonSet1) {
+    const std::string data = "# CONFIG_NOT_EXIST is not sat\n";
+    auto pair = processData(data, GetParam() /* processComments */);
+    ASSERT_EQ(OK, pair.second) << pair.first.error();
+    const auto& configs = pair.first.configs();
+    EXPECT_EQ(configs.find("CONFIG_NOT_EXIST"), configs.end())
+        << "CONFIG_NOT_EXIST should not exist because of typo";
+}
+
+TEST_P(KernelConfigParserInvalidTest, InvalidLine1) {
+    const std::string data = "FOO_CONFIG=foo\n";
+    ASSERT_NE(OK, processData(data, GetParam() /* processComments */).second);
+}
+
+TEST_P(KernelConfigParserInvalidTest, InvalidLine2) {
+    const std::string data = "CONFIG_BAR-BAZ=foo\n";
+    ASSERT_NE(OK, processData(data, GetParam() /* processComments */).second);
+}
+
+INSTANTIATE_TEST_CASE_P(KernelConfigParser, KernelConfigParserInvalidTest, ::testing::Bool());
+
 } // namespace vintf
 } // namespace android
 
