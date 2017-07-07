@@ -1310,16 +1310,19 @@ TEST_F(LibVintfTest, MatrixXmlFilePathMissing) {
     EXPECT_EQ(matrix.getXmlSchemaPath("media_profile", {2, 0}), "");
 }
 
-static KernelConfigParser processData(const std::string& data, bool processComments) {
+std::pair<KernelConfigParser, status_t> processData(const std::string& data, bool processComments) {
     KernelConfigParser parser(processComments);
     const char* p = data.c_str();
     size_t n = 0;
     size_t chunkSize;
+    status_t status = OK;
     for (; n < data.size(); p += chunkSize, n += chunkSize) {
         chunkSize = std::min<size_t>(5, data.size() - n);
-        parser.process(p, chunkSize);
+        if ((status = parser.process(p, chunkSize)) != OK) {
+            break;
+        }
     }
-    return parser;
+    return {std::move(parser), status};
 }
 
 TEST_F(LibVintfTest, KernelConfigParser) {
@@ -1329,8 +1332,9 @@ TEST_F(LibVintfTest, KernelConfigParser) {
         "CONFIG_ONE=1\n"
         "CONFIG_Y=y\n"
         "CONFIG_STR=\"string\"\n";
-    KernelConfigParser parser = processData(data, false /* processComments */);
-    const auto& configs = parser.configs();
+    auto pair = processData(data, false /* processComments */);
+    ASSERT_EQ(OK, pair.second) << pair.first.error();
+    const auto& configs = pair.first.configs();
 
     EXPECT_EQ(configs.find("CONFIG_ONE")->second, "1");
     EXPECT_EQ(configs.find("CONFIG_Y")->second, "y");
@@ -1347,8 +1351,9 @@ TEST_F(LibVintfTest, KernelConfigParser2) {
         "CONFIG_STR=string\n"
         "# ignore_thiscomment\n"
         "# CONFIG_NOT_SET2 is not set\n";
-    KernelConfigParser parser = processData(data, true /* processComments */);
-    const auto& configs = parser.configs();
+    auto pair = processData(data, true /* processComments */);
+    ASSERT_EQ(OK, pair.second) << pair.first.error();
+    const auto& configs = pair.first.configs();
 
     EXPECT_EQ(configs.find("CONFIG_ONE")->second, "1");
     EXPECT_EQ(configs.find("CONFIG_Y")->second, "y");
