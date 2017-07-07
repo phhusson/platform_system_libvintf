@@ -16,12 +16,14 @@
 
 #define LOG_TAG "LibHidlTest"
 
+#include <algorithm>
 #include <functional>
 
+#include <vintf/CompatibilityMatrix.h>
+#include <vintf/KernelConfigParser.h>
+#include <vintf/VintfObject.h>
 #include <vintf/parse_string.h>
 #include <vintf/parse_xml.h>
-#include <vintf/CompatibilityMatrix.h>
-#include <vintf/VintfObject.h>
 
 #include <android-base/logging.h>
 #include <android-base/parseint.h>
@@ -1306,6 +1308,53 @@ TEST_F(LibVintfTest, MatrixXmlFilePathMissing) {
     CompatibilityMatrix matrix;
     EXPECT_TRUE(gCompatibilityMatrixConverter(&matrix, matrixXml));
     EXPECT_EQ(matrix.getXmlSchemaPath("media_profile", {2, 0}), "");
+}
+
+static KernelConfigParser processData(const std::string& data, bool processComments) {
+    KernelConfigParser parser(processComments);
+    const char* p = data.c_str();
+    size_t n = 0;
+    size_t chunkSize;
+    for (; n < data.size(); p += chunkSize, n += chunkSize) {
+        chunkSize = std::min<size_t>(5, data.size() - n);
+        parser.process(p, chunkSize);
+    }
+    return parser;
+}
+
+TEST_F(LibVintfTest, KernelConfigParser) {
+    // usage in /proc/config.gz
+    const std::string data =
+        "# CONFIG_NOT_SET is not set\n"
+        "CONFIG_ONE=1\n"
+        "CONFIG_Y=y\n"
+        "CONFIG_STR=\"string\"\n";
+    KernelConfigParser parser = processData(data, false /* processComments */);
+    const auto& configs = parser.configs();
+
+    EXPECT_EQ(configs.find("CONFIG_ONE")->second, "1");
+    EXPECT_EQ(configs.find("CONFIG_Y")->second, "y");
+    EXPECT_EQ(configs.find("CONFIG_STR")->second, "\"string\"");
+    EXPECT_EQ(configs.find("CONFIG_NOT_SET"), configs.end());
+}
+
+TEST_F(LibVintfTest, KernelConfigParser2) {
+    // usage in android-base.cfg
+    const std::string data =
+        "# CONFIG_NOT_SET is not set\n"
+        "CONFIG_ONE=1\n"
+        "CONFIG_Y=y\n"
+        "CONFIG_STR=string\n"
+        "# ignore_thiscomment\n"
+        "# CONFIG_NOT_SET2 is not set\n";
+    KernelConfigParser parser = processData(data, true /* processComments */);
+    const auto& configs = parser.configs();
+
+    EXPECT_EQ(configs.find("CONFIG_ONE")->second, "1");
+    EXPECT_EQ(configs.find("CONFIG_Y")->second, "y");
+    EXPECT_EQ(configs.find("CONFIG_STR")->second, "string");
+    EXPECT_EQ(configs.find("CONFIG_NOT_SET")->second, "n");
+    EXPECT_EQ(configs.find("CONFIG_NOT_SET2")->second, "n");
 }
 
 } // namespace vintf
