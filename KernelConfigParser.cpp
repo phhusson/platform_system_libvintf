@@ -18,6 +18,13 @@
 
 #include <regex>
 
+#define KEY "(CONFIG[\\w_]+)"
+#define COMMENT "(?:#.*)"
+
+static const std::regex sKeyValuePattern("^\\s*" KEY "\\s*=\\s*([^#]+)" COMMENT "?$");
+static const std::regex sNotSetPattern("^\\s*#\\s*" KEY " is not set\\s*$");
+static const std::regex sCommentPattern("^\\s*" COMMENT "$");
+
 namespace android {
 namespace vintf {
 
@@ -39,43 +46,44 @@ const std::map<std::string, std::string>& KernelConfigParser::configs() const {
     return mConfigs;
 }
 
+// trim spaces between value and #, value and end of line
+std::string trimTrailingSpaces(const std::string& s) {
+    auto r = s.rbegin();
+    for (; r != s.rend() && std::isspace(*r); ++r)
+        ;
+    return std::string{s.begin(), r.base()};
+}
+
 status_t KernelConfigParser::processRemaining() {
-    static std::regex sCommentPattern("^# (CONFIG[\\w_]+) is not set$");
 
     if (mRemaining.empty()) {
         return OK;
     }
 
-    if (mRemaining[0] == '#') {
-        if (!mProcessComments) {
+    std::smatch match;
+    if (std::regex_match(mRemaining, match, sKeyValuePattern)) {
+        if (mConfigs.emplace(match[1], trimTrailingSpaces(match[2])).second) {
             return OK;
         }
-        std::smatch sm;
-        if (!std::regex_match(mRemaining, sm, sCommentPattern)) {
-            return OK;  // ignore this comment;
-        }
-        if (!mConfigs.emplace(sm[1], "n").second) {
-            mError << "Key " << sm[1] << " is set but commented as not set"
-                   << "\n";
-            return UNKNOWN_ERROR;
-        }
+        mError << "Duplicated key in configs: " << match[1] << "\n";
+        return UNKNOWN_ERROR;
+    }
 
+    if (mProcessComments && std::regex_match(mRemaining, match, sNotSetPattern)) {
+        if (mConfigs.emplace(match[1], "n").second) {
+            return OK;
+        }
+        mError << "Key " << match[1] << " is set but commented as not set"
+               << "\n";
+        return UNKNOWN_ERROR;
+    }
+
+    if (std::regex_match(mRemaining, match, sCommentPattern)) {
         return OK;
     }
 
-    size_t equalPos = mRemaining.find('=');
-    if (equalPos == std::string::npos) {
-        mError << "Unrecognized line in configs: " << mRemaining << "\n";
-        return UNKNOWN_ERROR;
-    }
-    std::string key = mRemaining.substr(0, equalPos);
-    std::string value = mRemaining.substr(equalPos + 1);
-    if (!mConfigs.emplace(std::move(key), std::move(value)).second) {
-        mError << "Duplicated key in configs: " << mRemaining.substr(0, equalPos) << "\n";
-        return UNKNOWN_ERROR;
-    }
-
-    return OK;
+    mError << "Unrecognized line in configs: " << mRemaining << "\n";
+    return UNKNOWN_ERROR;
 }
 
 status_t KernelConfigParser::process(const char* buf, size_t len) {
