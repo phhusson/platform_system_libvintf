@@ -27,8 +27,8 @@ status_t KernelConfigParser::finish() {
     return process("\n", 1 /* sizeof "\n" */);
 }
 
-const std::stringstream& KernelConfigParser::error() const {
-    return mError;
+std::stringbuf* KernelConfigParser::error() const {
+    return mError.rdbuf();
 }
 
 std::map<std::string, std::string>& KernelConfigParser::configs() {

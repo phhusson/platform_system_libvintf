@@ -69,12 +69,12 @@ public:
         std::string content = read(ifs);
         status_t err = parser.process(content.c_str(), content.size());
         if (err != OK) {
-            std::cerr << parser.error().rdbuf();
+            std::cerr << parser.error();
             return false;
         }
         err = parser.finish();
         if (err != OK) {
-            std::cerr << parser.error().rdbuf();
+            std::cerr << parser.error();
             return false;
         }
 
