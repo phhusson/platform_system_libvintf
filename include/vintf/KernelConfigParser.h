@@ -33,7 +33,7 @@ class KernelConfigParser {
 
     status_t process(const char* buf, size_t len);
     status_t finish();
-    const std::stringstream& error() const;
+    std::stringbuf* error() const;
     std::map<std::string, std::string>& configs();
     const std::map<std::string, std::string>& configs() const;
 
