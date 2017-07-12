@@ -42,8 +42,9 @@ public:
     static bool getFlag(const std::string& key, T* value) {
         const char *envValue = getenv(key.c_str());
         if (envValue == NULL) {
-            std::cerr << "Required " << key << " flag." << std::endl;
-            return false;
+            std::cerr << "Warning: " << key << " is missing, defaulted to " << (*value)
+                      << std::endl;
+            return true;
         }
 
         if (!parse(envValue, value)) {
