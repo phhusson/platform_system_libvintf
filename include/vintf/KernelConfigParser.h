@@ -29,7 +29,7 @@ namespace vintf {
 
 class KernelConfigParser {
    public:
-    KernelConfigParser(bool processComments = false);
+    KernelConfigParser(bool processComments = false, bool relaxedFormat = false);
 
     status_t process(const char* buf, size_t len);
     status_t finish();
@@ -43,6 +43,7 @@ class KernelConfigParser {
     std::stringstream mError;
     std::string mRemaining;
     bool mProcessComments;
+    bool mRelaxedFormat;
 };
 
 }  // namespace vintf
