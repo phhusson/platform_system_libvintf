@@ -65,7 +65,7 @@ public:
             std::cerr << "File '" << path << "' does not exist or cannot be read." << std::endl;
             return false;
         }
-        KernelConfigParser parser(true /* processComments */);
+        KernelConfigParser parser(true /* processComments */, true /* relaxedFormat */);
         std::string content = read(ifs);
         status_t err = parser.process(content.c_str(), content.size());
         if (err != OK) {
