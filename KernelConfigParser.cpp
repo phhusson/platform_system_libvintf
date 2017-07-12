@@ -28,7 +28,8 @@ static const std::regex sCommentPattern("^\\s*" COMMENT "$");
 namespace android {
 namespace vintf {
 
-KernelConfigParser::KernelConfigParser(bool processComments) : mProcessComments(processComments) {}
+KernelConfigParser::KernelConfigParser(bool processComments, bool relaxedFormat)
+    : mProcessComments(processComments), mRelaxedFormat(relaxedFormat) {}
 
 status_t KernelConfigParser::finish() {
     return process("\n", 1 /* sizeof "\n" */);
@@ -61,12 +62,28 @@ status_t KernelConfigParser::processRemaining() {
     }
 
     std::smatch match;
-    if (std::regex_match(mRemaining, match, sKeyValuePattern)) {
-        if (mConfigs.emplace(match[1], trimTrailingSpaces(match[2])).second) {
-            return OK;
+
+    if (mRelaxedFormat) {
+        // Allow free format like "   CONFIG_FOO  = bar    #trailing comments"
+        if (std::regex_match(mRemaining, match, sKeyValuePattern)) {
+            if (mConfigs.emplace(match[1], trimTrailingSpaces(match[2])).second) {
+                return OK;
+            }
+            mError << "Duplicated key in configs: " << match[1] << "\n";
+            return UNKNOWN_ERROR;
         }
-        mError << "Duplicated key in configs: " << match[1] << "\n";
-        return UNKNOWN_ERROR;
+    } else {
+        // No spaces. Strictly like "CONFIG_FOO=bar"
+        size_t equalPos = mRemaining.find('=');
+        if (equalPos != std::string::npos) {
+            std::string key = mRemaining.substr(0, equalPos);
+            std::string value = mRemaining.substr(equalPos + 1);
+            if (mConfigs.emplace(std::move(key), std::move(value)).second) {
+                return OK;
+            }
+            mError << "Duplicated key in configs: " << mRemaining.substr(0, equalPos) << "\n";
+            return UNKNOWN_ERROR;
+        }
     }
 
     if (mProcessComments && std::regex_match(mRemaining, match, sNotSetPattern)) {
@@ -78,8 +95,16 @@ status_t KernelConfigParser::processRemaining() {
         return UNKNOWN_ERROR;
     }
 
-    if (std::regex_match(mRemaining, match, sCommentPattern)) {
-        return OK;
+    if (mRelaxedFormat) {
+        // Allow free format like "   #comments here"
+        if (std::regex_match(mRemaining, match, sCommentPattern)) {
+            return OK;
+        }
+    } else {
+        // No leading spaces before the comment
+        if (mRemaining.at(0) == '#') {
+            return OK;
+        }
     }
 
     mError << "Unrecognized line in configs: " << mRemaining << "\n";

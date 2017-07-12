@@ -1310,8 +1310,9 @@ TEST_F(LibVintfTest, MatrixXmlFilePathMissing) {
     EXPECT_EQ(matrix.getXmlSchemaPath("media_profile", {2, 0}), "");
 }
 
-std::pair<KernelConfigParser, status_t> processData(const std::string& data, bool processComments) {
-    KernelConfigParser parser(processComments);
+std::pair<KernelConfigParser, status_t> processData(const std::string& data, bool processComments,
+                                                    bool relaxedFormat = false) {
+    KernelConfigParser parser(processComments, relaxedFormat);
     const char* p = data.c_str();
     size_t n = 0;
     size_t chunkSize;
@@ -1378,7 +1379,7 @@ TEST_F(LibVintfTest, KernelConfigParserSpace) {
         "CONFIG_WORLD=hello world!       \n"
         "CONFIG_GOOD   =   good morning!  #comments here\n"
         "    CONFIG_MORNING   =   good morning!  \n";
-    auto pair = processData(data, true /* processComments */);
+    auto pair = processData(data, true /* processComments */, true /* relaxedFormat */);
     ASSERT_EQ(OK, pair.second) << pair.first.error();
     const auto& configs = pair.first.configs();
 
@@ -1403,7 +1404,7 @@ class KernelConfigParserInvalidTest : public ::testing::TestWithParam<bool> {};
 
 TEST_P(KernelConfigParserInvalidTest, NonSet1) {
     const std::string data = "# CONFIG_NOT_EXIST is not sat\n";
-    auto pair = processData(data, GetParam() /* processComments */);
+    auto pair = processData(data, GetParam() /* processComments */, true /* relaxedFormat */);
     ASSERT_EQ(OK, pair.second) << pair.first.error();
     const auto& configs = pair.first.configs();
     EXPECT_EQ(configs.find("CONFIG_NOT_EXIST"), configs.end())
@@ -1412,12 +1413,14 @@ TEST_P(KernelConfigParserInvalidTest, NonSet1) {
 
 TEST_P(KernelConfigParserInvalidTest, InvalidLine1) {
     const std::string data = "FOO_CONFIG=foo\n";
-    ASSERT_NE(OK, processData(data, GetParam() /* processComments */).second);
+    ASSERT_NE(OK,
+              processData(data, GetParam() /* processComments */, true /* relaxedFormat */).second);
 }
 
 TEST_P(KernelConfigParserInvalidTest, InvalidLine2) {
     const std::string data = "CONFIG_BAR-BAZ=foo\n";
-    ASSERT_NE(OK, processData(data, GetParam() /* processComments */).second);
+    ASSERT_NE(OK,
+              processData(data, GetParam() /* processComments */, true /* relaxedFormat */).second);
 }
 
 INSTANTIATE_TEST_CASE_P(KernelConfigParser, KernelConfigParserInvalidTest, ::testing::Bool());
