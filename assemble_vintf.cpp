@@ -92,6 +92,19 @@ public:
         return true;
     }
 
+    static bool parseFilesForKernelConfigs(const std::string& path, std::vector<KernelConfig>* out) {
+        bool ret = true;
+        char *pathIter;
+        char *modPath = new char[path.length() + 1];
+        strcpy(modPath, path.c_str());
+        pathIter = strtok(modPath, ":");
+        while (ret && pathIter != NULL) {
+            ret &= parseFileForKernelConfigs(pathIter, out);
+            pathIter = strtok(NULL, ":");
+        }
+        return ret;
+    }
+
     std::basic_ostream<char>& out() const {
         return mOutFileRef == nullptr ? std::cout : *mOutFileRef;
     }
@@ -154,7 +167,7 @@ public:
             }
             for (const auto& pair : mKernels) {
                 std::vector<KernelConfig> configs;
-                if (!parseFileForKernelConfigs(pair.second, &configs)) {
+                if (!parseFilesForKernelConfigs(pair.second, &configs)) {
                     return false;
                 }
                 bool added = false;
@@ -338,11 +351,13 @@ void help() {
                  "               message is written to stderr. Return 0.\n"
                  "               If the check file is specified but is not compatible, an error\n"
                  "               message is written to stderr. Return 1.\n"
-                 "    --kernel=<version>:<android-base.cfg>\n"
+                 "    --kernel=<version>:<android-base.cfg>[:<android-base-arch.cfg>[...]]\n"
                  "               Add a kernel entry to framework compatibility matrix.\n"
                  "               Ignored for other input format.\n"
                  "               <version> has format: 3.18\n"
-                 "               <android-base.cfg> is the location of android-base.cfg\n";
+                 "               <android-base.cfg> is the location of android-base.cfg\n"
+                 "               <android-base-arch.cfg> is the location of an optional\n"
+                 "               arch-specific config fragment, more than one may be specified\n";
 }
 
 int main(int argc, char **argv) {
