@@ -16,10 +16,16 @@
 
 // Convert objects from and to xml.
 
+#define LOG_TAG "libvintf"
+#include <android-base/logging.h>
+
+#include "parse_xml.h"
+
+#include <type_traits>
+
 #include <tinyxml2.h>
 
 #include "parse_string.h"
-#include "parse_xml.h"
 
 namespace android {
 namespace vintf {
@@ -539,11 +545,35 @@ struct ManifestHalConverter : public XmlNodeConverter<ManifestHal> {
         std::vector<HalInterface> interfaces;
         if (!parseOptionalAttr(root, "format", HalFormat::HIDL, &object->format) ||
             !parseTextElement(root, "name", &object->name) ||
-            !parseChild(root, transportArchConverter, &object->transportArch) ||
+            !parseOptionalChild(root, transportArchConverter, {}, &object->transportArch) ||
             !parseChildren(root, versionConverter, &object->versions) ||
             !parseChildren(root, halInterfaceConverter, &interfaces)) {
             return false;
         }
+
+        switch (object->format) {
+            case HalFormat::HIDL: {
+                if (object->transportArch.empty()) {
+                    this->mLastError =
+                        "HIDL HAL '" + object->name + "' should have <transport> defined.";
+                    return false;
+                }
+            } break;
+            case HalFormat::NATIVE: {
+                if (!object->transportArch.empty()) {
+                    this->mLastError =
+                        "Native HAL '" + object->name + "' should not have <transport> defined.";
+                    return false;
+                }
+            } break;
+            default: {
+                LOG(FATAL) << "Unhandled HalFormat "
+                           << static_cast<typename std::underlying_type<HalFormat>::type>(
+                                  object->format);
+            } break;
+        }
+        if (!object->transportArch.isValid()) return false;
+
         object->interfaces.clear();
         for (auto &&interface : interfaces) {
             auto res = object->interfaces.emplace(interface.name,

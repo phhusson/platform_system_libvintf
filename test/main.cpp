@@ -304,6 +304,28 @@ TEST_F(LibVintfTest, HalManifestOptional) {
             "</manifest>"));
 }
 
+TEST_F(LibVintfTest, HalManifestNative) {
+    HalManifest vm;
+    EXPECT_TRUE(gHalManifestConverter(&vm,
+                                      "<manifest version=\"1.0\" type=\"device\">"
+                                      "    <hal format=\"native\">"
+                                      "        <name>foo</name>"
+                                      "        <version>1.0</version>"
+                                      "    </hal>"
+                                      "</manifest>"))
+        << gHalManifestConverter.lastError();
+    EXPECT_FALSE(gHalManifestConverter(&vm,
+                                       "<manifest version=\"1.0\" type=\"device\">"
+                                       "    <hal format=\"native\">"
+                                       "        <name>foo</name>"
+                                       "        <version>1.0</version>"
+                                       "        <transport>hwbinder</transport>"
+                                       "    </hal>"
+                                       "</manifest>"));
+    EXPECT_TRUE(gHalManifestConverter.lastError().find(
+                    "Native HAL 'foo' should not have <transport> defined") != std::string::npos);
+}
+
 TEST_F(LibVintfTest, HalManifestDuplicate) {
     HalManifest vm;
     EXPECT_FALSE(gHalManifestConverter(&vm,
