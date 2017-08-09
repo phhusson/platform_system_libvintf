@@ -43,7 +43,7 @@ inline DocType *createDocument() {
 // caller is responsible for deleteDocument() call
 inline DocType *createDocument(const std::string &xml) {
     DocType *doc = new tinyxml2::XMLDocument();
-    if (doc->Parse(xml.c_str()) == tinyxml2::XML_NO_ERROR) {
+    if (doc->Parse(xml.c_str()) == tinyxml2::XML_SUCCESS) {
         return doc;
     }
     delete doc;
