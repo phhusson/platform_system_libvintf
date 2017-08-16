@@ -59,7 +59,10 @@ cc_library {
         host: {
             srcs: [
                 "RuntimeInfo-host.cpp"
-            ]
+            ],
+            cflags: [
+                "-DLIBVINTF_HOST",
+            ],
         },
         android: {
             shared_libs: [
