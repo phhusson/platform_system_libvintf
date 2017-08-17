@@ -39,6 +39,12 @@ extern const XmlConverter<KernelConfigTypedValue> &gKernelConfigTypedValueConver
 extern const XmlConverter<HalManifest> &gHalManifestConverter;
 extern const XmlConverter<CompatibilityMatrix> &gCompatibilityMatrixConverter;
 
+static bool Contains(const std::string& str, const std::string& sub) {
+    return str.find(sub) != std::string::npos;
+}
+#define EXPECT_CONTAINS(str, sub) \
+    EXPECT_TRUE(Contains((str), (sub))) << "Cannot find \"" << (sub) << "\" in \"" << (str) << "\""
+
 struct LibVintfTest : public ::testing::Test {
 public:
     virtual void SetUp() override {
@@ -1419,6 +1425,113 @@ TEST_F(LibVintfTest, KernelConfigParserSpace) {
     EXPECT_EQ(configs.find("CONFIG_MORNING")->second, "good morning!")
         << "Value should be \"good morning!\" without leading or trailing spaces";
     EXPECT_EQ(configs.find("CONFIG_NOT_SET")->second, "n");
+}
+
+TEST_F(LibVintfTest, NetutilsWrapperMatrix) {
+    std::string matrixXml;
+    CompatibilityMatrix matrix;
+
+    matrixXml =
+        "<compatibility-matrix version=\"1.0\" type=\"device\">"
+        "    <hal format=\"native\" optional=\"false\">"
+        "        <name>netutils-wrapper</name>"
+        "        <version>1.0</version>"
+        "    </hal>"
+        "</compatibility-matrix>";
+    EXPECT_TRUE(gCompatibilityMatrixConverter(&matrix, matrixXml))
+        << gCompatibilityMatrixConverter.lastError();
+
+// only host libvintf hardcodes netutils-wrapper version requirements
+#ifdef LIBVINTF_HOST
+
+    matrixXml =
+        "<compatibility-matrix version=\"1.0\" type=\"device\">"
+        "    <hal format=\"native\" optional=\"false\">"
+        "        <name>netutils-wrapper</name>"
+        "        <version>1.0-1</version>"
+        "    </hal>"
+        "</compatibility-matrix>";
+    EXPECT_FALSE(gCompatibilityMatrixConverter(&matrix, matrixXml));
+    EXPECT_CONTAINS(
+        gCompatibilityMatrixConverter.lastError(),
+        "netutils-wrapper HAL must specify exactly one version x.0, but a range is provided. "
+        "Perhaps you mean '1.0'?");
+
+    matrixXml =
+        "<compatibility-matrix version=\"1.0\" type=\"device\">"
+        "    <hal format=\"native\" optional=\"false\">"
+        "        <name>netutils-wrapper</name>"
+        "        <version>1.1</version>"
+        "    </hal>"
+        "</compatibility-matrix>";
+    EXPECT_FALSE(gCompatibilityMatrixConverter(&matrix, matrixXml));
+    EXPECT_CONTAINS(
+        gCompatibilityMatrixConverter.lastError(),
+        "netutils-wrapper HAL must specify exactly one version x.0, but minor version is not 0. "
+        "Perhaps you mean '1.0'?");
+
+    matrixXml =
+        "<compatibility-matrix version=\"1.0\" type=\"device\">"
+        "    <hal format=\"native\" optional=\"false\">"
+        "        <name>netutils-wrapper</name>"
+        "        <version>1.0</version>"
+        "        <version>2.0</version>"
+        "    </hal>"
+        "</compatibility-matrix>";
+    EXPECT_FALSE(gCompatibilityMatrixConverter(&matrix, matrixXml));
+    EXPECT_CONTAINS(
+        gCompatibilityMatrixConverter.lastError(),
+        "netutils-wrapper HAL must specify exactly one version x.0, but multiple <version> element "
+        "is specified.");
+
+#endif  // LIBVINTF_HOST
+}
+
+TEST_F(LibVintfTest, NetutilsWrapperManifest) {
+    std::string manifestXml;
+    HalManifest manifest;
+
+    manifestXml =
+        "<manifest version=\"1.0\" type=\"framework\">"
+        "    <hal format=\"native\">"
+        "        <name>netutils-wrapper</name>"
+        "        <version>1.0</version>"
+        "        <version>2.0</version>"
+        "    </hal>"
+        "</manifest>";
+    EXPECT_TRUE(gHalManifestConverter(&manifest, manifestXml)) << gHalManifestConverter.lastError();
+
+// only host libvintf hardcodes netutils-wrapper version requirements
+#ifdef LIBVINTF_HOST
+
+    manifestXml =
+        "<manifest version=\"1.0\" type=\"framework\">"
+        "    <hal format=\"native\">"
+        "        <name>netutils-wrapper</name>"
+        "        <version>1.1</version>"
+        "    </hal>"
+        "</manifest>";
+    EXPECT_FALSE(gHalManifestConverter(&manifest, manifestXml));
+    EXPECT_CONTAINS(
+        gCompatibilityMatrixConverter.lastError(),
+        "netutils-wrapper HAL must specify exactly one version x.0, but multiple <version> element "
+        "is specified.");
+
+    manifestXml =
+        "<manifest version=\"1.0\" type=\"framework\">"
+        "    <hal format=\"native\">"
+        "        <name>netutils-wrapper</name>"
+        "        <version>1.0</version>"
+        "        <version>2.1</version>"
+        "    </hal>"
+        "</manifest>";
+    EXPECT_FALSE(gHalManifestConverter(&manifest, manifestXml));
+    EXPECT_CONTAINS(
+        gCompatibilityMatrixConverter.lastError(),
+        "netutils-wrapper HAL must specify exactly one version x.0, but multiple <version> element "
+        "is specified.");
+
+#endif  // LIBVINTF_HOST
 }
 
 // Run KernelConfigParserInvalidTest on processComments = {true, false}
