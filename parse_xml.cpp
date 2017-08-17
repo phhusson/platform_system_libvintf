@@ -507,8 +507,44 @@ struct MatrixHalConverter : public XmlNodeConverter<MatrixHal> {
                 return false;
             }
         }
+// Do not check for target-side libvintf to avoid restricting ability for upgrade accidentally.
+#ifdef LIBVINTF_HOST
+        if (!checkAdditionalRestrictionsOnHal(*object)) {
+            return false;
+        }
+#endif
         return true;
     }
+
+#ifdef LIBVINTF_HOST
+   private:
+    bool checkAdditionalRestrictionsOnHal(const MatrixHal& hal) const {
+        if (hal.getName() == "netutils-wrapper") {
+            if (hal.versionRanges.size() != 1) {
+                this->mLastError =
+                    "netutils-wrapper HAL must specify exactly one version x.0, "
+                    "but multiple <version> element is specified.";
+                return false;
+            }
+            const VersionRange& v = hal.versionRanges.at(0);
+            if (!v.isSingleVersion()) {
+                this->mLastError =
+                    "netutils-wrapper HAL must specify exactly one version x.0, "
+                    "but a range is provided. Perhaps you mean '" +
+                    to_string(Version{v.majorVer, 0}) + "'?";
+                return false;
+            }
+            if (v.minMinor != 0) {
+                this->mLastError =
+                    "netutils-wrapper HAL must specify exactly one version x.0, "
+                    "but minor version is not 0. Perhaps you mean '" +
+                    to_string(Version{v.majorVer, 0}) + "'?";
+                return false;
+            }
+        }
+        return true;
+    }
+#endif
 };
 
 const MatrixHalConverter matrixHalConverter{};
@@ -589,8 +625,32 @@ struct ManifestHalConverter : public XmlNodeConverter<ManifestHal> {
             this->mLastError = "'" + object->name + "' is not a valid Manifest HAL.";
             return false;
         }
+// Do not check for target-side libvintf to avoid restricting upgrade accidentally.
+#ifdef LIBVINTF_HOST
+        if (!checkAdditionalRestrictionsOnHal(*object)) {
+            return false;
+        }
+#endif
         return true;
     }
+
+#ifdef LIBVINTF_HOST
+   private:
+    bool checkAdditionalRestrictionsOnHal(const ManifestHal& hal) const {
+        if (hal.getName() == "netutils-wrapper") {
+            for (const Version& v : hal.versions) {
+                if (v.minorVer != 0) {
+                    this->mLastError =
+                        "netutils-wrapper HAL must specify exactly one version x.0, "
+                        "but minor version is not 0. Perhaps you mean '" +
+                        to_string(Version{v.majorVer, 0}) + "'?";
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+#endif
 };
 
 // Convert ManifestHal from and to XML. Returned object is guaranteed to have
