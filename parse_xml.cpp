@@ -549,14 +549,31 @@ struct MatrixHalConverter : public XmlNodeConverter<MatrixHal> {
 
 const MatrixHalConverter matrixHalConverter{};
 
+struct MatrixKernelConditionsConverter : public XmlNodeConverter<std::vector<KernelConfig>> {
+    std::string elementName() const override { return "conditions"; }
+    void mutateNode(const std::vector<KernelConfig>& conds, NodeType* root,
+                    DocType* d) const override {
+        appendChildren(root, kernelConfigConverter, conds, d);
+    }
+    bool buildObject(std::vector<KernelConfig>* object, NodeType* root) const override {
+        return parseChildren(root, kernelConfigConverter, object);
+    }
+};
+
+const MatrixKernelConditionsConverter matrixKernelConditionsConverter{};
+
 struct MatrixKernelConverter : public XmlNodeConverter<MatrixKernel> {
     std::string elementName() const override { return "kernel"; }
     void mutateNode(const MatrixKernel &kernel, NodeType *root, DocType *d) const override {
         appendAttr(root, "version", kernel.mMinLts);
+        if (!kernel.mConditions.empty()) {
+            appendChild(root, matrixKernelConditionsConverter(kernel.mConditions, d));
+        }
         appendChildren(root, kernelConfigConverter, kernel.mConfigs, d);
     }
     bool buildObject(MatrixKernel *object, NodeType *root) const override {
         if (!parseAttr(root, "version", &object->mMinLts) ||
+            !parseOptionalChild(root, matrixKernelConditionsConverter, {}, &object->mConditions) ||
             !parseChildren(root, kernelConfigConverter, &object->mConfigs)) {
             return false;
         }

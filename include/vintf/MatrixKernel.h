@@ -50,12 +50,18 @@ struct MatrixKernel {
     // for (const KernelConfig &config : kernel.configs()) {...}
     const std::vector<KernelConfig> &configs() const { return mConfigs; }
 
-private:
+    // Return an iterable on all kernel config conditions. Use it as follows:
+    // for (const KernelConfig &config : kernel.conditions()) {...}
+    const std::vector<KernelConfig>& conditions() const { return mConditions; }
+
+   private:
     friend struct MatrixKernelConverter;
+    friend struct MatrixKernelConditionsConverter;
     friend class AssembleVintf;
 
     KernelVersion mMinLts;
     std::vector<KernelConfig> mConfigs;
+    std::vector<KernelConfig> mConditions;
 };
 
 } // namespace vintf
