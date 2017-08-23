@@ -102,6 +102,7 @@ public:
             ret &= parseFileForKernelConfigs(pathIter, out);
             pathIter = strtok(NULL, ":");
         }
+        delete[] modPath;
         return ret;
     }
 
@@ -423,4 +424,3 @@ int main(int argc, char **argv) {
 
     return success ? 0 : 1;
 }
-
