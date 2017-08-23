@@ -887,6 +887,21 @@ struct CompatibilityMatrixConverter : public XmlNodeConverter<CompatibilityMatri
                 !parseOptionalChild(root, avbConverter, {}, &object->framework.mAvbMetaVersion)) {
                 return false;
             }
+
+            std::set<Version> seenKernelVersions;
+            for (const auto& kernel : object->framework.mKernels) {
+                Version minLts(kernel.minLts().version, kernel.minLts().majorRev);
+                if (seenKernelVersions.find(minLts) != seenKernelVersions.end()) {
+                    continue;
+                }
+                if (!kernel.conditions().empty()) {
+                    this->mLastError = "First <kernel> for version " + to_string(minLts) +
+                                       " must have empty <conditions> for backwards compatibility.";
+                    return false;
+                }
+                seenKernelVersions.insert(minLts);
+            }
+
         } else if (object->mType == SchemaType::DEVICE) {
             // <vndk> can be missing because it can be determined at build time, not hard-coded
             // in the XML file.
