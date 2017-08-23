@@ -244,8 +244,8 @@ struct XmlNodeConverter : public XmlConverter<Object> {
         std::string attrText;
         bool ret = getAttr(root, attrName, &attrText) && ::android::vintf::parse(attrText, attr);
         if (!ret) {
-            mLastError = "Could not find/parse attr with name \"" + attrName + "\" for element <"
-                    + elementName() + ">";
+            mLastError = "Could not find/parse attr with name \"" + attrName + "\" and value \"" +
+                         attrText + "\" for element <" + elementName() + ">";
         }
         return ret;
     }
