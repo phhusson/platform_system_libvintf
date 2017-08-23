@@ -35,7 +35,8 @@ struct KernelConfigKey : public std::string {
 
 using KernelConfig = std::pair<KernelConfigKey, KernelConfigTypedValue>;
 
-// A kernel entry to a compatibility matrix
+// A <kernel> entry to a compatibility matrix represents a fragment of kernel
+// config requirements.
 struct MatrixKernel {
 
     MatrixKernel() {}
