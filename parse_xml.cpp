@@ -244,8 +244,8 @@ struct XmlNodeConverter : public XmlConverter<Object> {
         std::string attrText;
         bool ret = getAttr(root, attrName, &attrText) && ::android::vintf::parse(attrText, attr);
         if (!ret) {
-            mLastError = "Could not find/parse attr with name \"" + attrName + "\" for element <"
-                    + elementName() + ">";
+            mLastError = "Could not find/parse attr with name \"" + attrName + "\" and value \"" +
+                         attrText + "\" for element <" + elementName() + ">";
         }
         return ret;
     }
@@ -549,14 +549,31 @@ struct MatrixHalConverter : public XmlNodeConverter<MatrixHal> {
 
 const MatrixHalConverter matrixHalConverter{};
 
+struct MatrixKernelConditionsConverter : public XmlNodeConverter<std::vector<KernelConfig>> {
+    std::string elementName() const override { return "conditions"; }
+    void mutateNode(const std::vector<KernelConfig>& conds, NodeType* root,
+                    DocType* d) const override {
+        appendChildren(root, kernelConfigConverter, conds, d);
+    }
+    bool buildObject(std::vector<KernelConfig>* object, NodeType* root) const override {
+        return parseChildren(root, kernelConfigConverter, object);
+    }
+};
+
+const MatrixKernelConditionsConverter matrixKernelConditionsConverter{};
+
 struct MatrixKernelConverter : public XmlNodeConverter<MatrixKernel> {
     std::string elementName() const override { return "kernel"; }
     void mutateNode(const MatrixKernel &kernel, NodeType *root, DocType *d) const override {
         appendAttr(root, "version", kernel.mMinLts);
+        if (!kernel.mConditions.empty()) {
+            appendChild(root, matrixKernelConditionsConverter(kernel.mConditions, d));
+        }
         appendChildren(root, kernelConfigConverter, kernel.mConfigs, d);
     }
     bool buildObject(MatrixKernel *object, NodeType *root) const override {
         if (!parseAttr(root, "version", &object->mMinLts) ||
+            !parseOptionalChild(root, matrixKernelConditionsConverter, {}, &object->mConditions) ||
             !parseChildren(root, kernelConfigConverter, &object->mConfigs)) {
             return false;
         }
@@ -870,6 +887,21 @@ struct CompatibilityMatrixConverter : public XmlNodeConverter<CompatibilityMatri
                 !parseOptionalChild(root, avbConverter, {}, &object->framework.mAvbMetaVersion)) {
                 return false;
             }
+
+            std::set<Version> seenKernelVersions;
+            for (const auto& kernel : object->framework.mKernels) {
+                Version minLts(kernel.minLts().version, kernel.minLts().majorRev);
+                if (seenKernelVersions.find(minLts) != seenKernelVersions.end()) {
+                    continue;
+                }
+                if (!kernel.conditions().empty()) {
+                    this->mLastError = "First <kernel> for version " + to_string(minLts) +
+                                       " must have empty <conditions> for backwards compatibility.";
+                    return false;
+                }
+                seenKernelVersions.insert(minLts);
+            }
+
         } else if (object->mType == SchemaType::DEVICE) {
             // <vndk> can be missing because it can be determined at build time, not hard-coded
             // in the XML file.

@@ -25,6 +25,9 @@
 
 #include <utils/Errors.h>
 
+#include "MatrixKernel.h"
+#include "Version.h"
+
 namespace android {
 namespace vintf {
 
@@ -78,6 +81,13 @@ private:
     friend std::string dump(const RuntimeInfo &ki);
 
     status_t fetchAllInformation();
+
+    // mKernelVersion = x'.y'.z', minLts = x.y.z,
+    // match if x == x' , y == y' , and z <= z'.
+    bool matchKernelVersion(const KernelVersion& minLts) const;
+    // return true if all kernel configs in matrixConfigs matches.
+    bool matchKernelConfigs(const std::vector<KernelConfig>& matrixConfigs,
+                            std::string* error = nullptr) const;
 
     // /proc/config.gz
     // Key: CONFIG_xxx; Value: the value after = sign.
