@@ -155,23 +155,23 @@ public:
     }
 
     bool assembleFrameworkCompatibilityMatrixKernels(CompatibilityMatrix* matrix) {
+        if (!matrix->framework.mKernels.empty()) {
+            // Remove hard-coded <kernel version="x.y.z" /> in legacy files.
+            std::cerr << "WARNING: framework compatibility matrix has hard-coded kernel"
+                      << " requirements for version";
+            for (const auto& kernel : matrix->framework.mKernels) {
+                std::cerr << " " << kernel.minLts();
+            }
+            std::cerr << ". Hard-coded requirements are removed." << std::endl;
+            matrix->framework.mKernels.clear();
+        }
         for (const auto& pair : mKernels) {
             std::vector<KernelConfig> configs;
             if (!parseFilesForKernelConfigs(pair.second, &configs)) {
                 return false;
             }
-            bool added = false;
-            for (auto& e : matrix->framework.mKernels) {
-                if (e.minLts() == pair.first) {
-                    e.mConfigs.insert(e.mConfigs.end(), configs.begin(), configs.end());
-                    added = true;
-                    break;
-                }
-            }
-            if (!added) {
-                matrix->framework.mKernels.push_back(
-                    MatrixKernel{KernelVersion{pair.first}, std::move(configs)});
-            }
+            matrix->framework.mKernels.push_back(
+                MatrixKernel{KernelVersion{pair.first}, std::move(configs)});
         }
         return true;
     }
