@@ -36,19 +36,6 @@ bool CompatibilityMatrix::add(MatrixKernel &&kernel) {
     return true;
 }
 
-const MatrixKernel *CompatibilityMatrix::findKernel(const KernelVersion &v) const {
-    if (mType != SchemaType::FRAMEWORK) {
-        return nullptr;
-    }
-    for (const MatrixKernel &matrixKernel : framework.mKernels) {
-        if (matrixKernel.minLts().version == v.version &&
-            matrixKernel.minLts().majorRev == v.majorRev) {
-            return matrixKernel.minLts().minorRev <= v.minorRev ? &matrixKernel : nullptr;
-        }
-    }
-    return nullptr;
-}
-
 SchemaType CompatibilityMatrix::type() const {
     return mType;
 }
