@@ -73,6 +73,38 @@ class AssembleVintf {
         return ::android::base::Basename(path) == gBaseConfig;
     }
 
+    // nullptr on any error, otherwise the condition.
+    static Condition generateCondition(const std::string& path) {
+        std::string fname = ::android::base::Basename(path);
+        if (fname.size() <= gConfigPrefix.size() + gConfigSuffix.size() ||
+            !std::equal(gConfigPrefix.begin(), gConfigPrefix.end(), fname.begin()) ||
+            !std::equal(gConfigSuffix.rbegin(), gConfigSuffix.rend(), fname.rbegin())) {
+            return nullptr;
+        }
+
+        std::string sub = fname.substr(gConfigPrefix.size(),
+                                       fname.size() - gConfigPrefix.size() - gConfigSuffix.size());
+        if (sub.empty()) {
+            return nullptr;  // should not happen
+        }
+        for (size_t i = 0; i < sub.size(); ++i) {
+            if (sub[i] == '-') {
+                sub[i] = '_';
+                continue;
+            }
+            if (isalnum(sub[i])) {
+                sub[i] = toupper(sub[i]);
+                continue;
+            }
+            std::cerr << "'" << fname << "' (in " << path
+                      << ") is not a valid kernel config file name. Must match regex: "
+                      << "android-base(-[0-9a-zA-Z-]+)?\\.cfg" << std::endl;
+            return nullptr;
+        }
+        sub.insert(0, "CONFIG_");
+        return std::make_unique<KernelConfig>(std::move(sub), Tristate::YES);
+    }
+
     static bool parseFileForKernelConfigs(const std::string& path, std::vector<KernelConfig>* out) {
         std::ifstream ifs{path};
         if (!ifs.is_open()) {
@@ -120,9 +152,12 @@ class AssembleVintf {
                 ret &= parseFileForKernelConfigs(pathIter, &commonConfig.second);
                 foundCommonConfig = true;
             } else {
+                Condition condition = generateCondition(pathIter);
+                ret &= (condition != nullptr);
+
                 std::vector<KernelConfig> kernelConfigs;
                 if ((ret &= parseFileForKernelConfigs(pathIter, &kernelConfigs)))
-                    out->emplace_back(nullptr, std::move(kernelConfigs));
+                    out->emplace_back(std::move(condition), std::move(kernelConfigs));
             }
             pathIter = strtok(NULL, ":");
         }
@@ -203,8 +238,10 @@ class AssembleVintf {
                 return false;
             }
             for (ConditionedConfig& conditionedConfig : conditionedConfigs) {
-                matrix->framework.mKernels.push_back(
-                    MatrixKernel{KernelVersion{pair.first}, std::move(conditionedConfig.second)});
+                MatrixKernel kernel(KernelVersion{pair.first}, std::move(conditionedConfig.second));
+                if (conditionedConfig.first != nullptr)
+                    kernel.mConditions.push_back(std::move(*conditionedConfig.first));
+                matrix->framework.mKernels.push_back(std::move(kernel));
             }
         }
         return true;
