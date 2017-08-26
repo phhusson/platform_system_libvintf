@@ -24,6 +24,8 @@
 #include <sstream>
 #include <string>
 
+#include <android-base/file.h>
+
 #include <vintf/KernelConfigParser.h>
 #include <vintf/parse_string.h>
 #include <vintf/parse_xml.h>
@@ -33,11 +35,18 @@
 namespace android {
 namespace vintf {
 
+static const std::string gConfigPrefix = "android-base-";
+static const std::string gConfigSuffix = ".cfg";
+static const std::string gBaseConfig = "android-base.cfg";
+
 /**
  * Slurps the device manifest file and add build time flag to it.
  */
 class AssembleVintf {
-public:
+    using Condition = std::unique_ptr<KernelConfig>;
+    using ConditionedConfig = std::pair<Condition, std::vector<KernelConfig> /* configs */>;
+
+   public:
     template<typename T>
     static bool getFlag(const std::string& key, T* value) {
         const char *envValue = getenv(key.c_str());
@@ -58,6 +67,10 @@ public:
         std::stringstream ss;
         ss << is.rdbuf();
         return ss.str();
+    }
+
+    static bool isCommonConfig(const std::string& path) {
+        return ::android::base::Basename(path) == gBaseConfig;
     }
 
     static bool parseFileForKernelConfigs(const std::string& path, std::vector<KernelConfig>* out) {
@@ -92,17 +105,36 @@ public:
         return true;
     }
 
-    static bool parseFilesForKernelConfigs(const std::string& path, std::vector<KernelConfig>* out) {
+    static bool parseFilesForKernelConfigs(const std::string& path,
+                                           std::vector<ConditionedConfig>* out) {
+        out->clear();
+        ConditionedConfig commonConfig;
+        bool foundCommonConfig = false;
         bool ret = true;
         char *pathIter;
         char *modPath = new char[path.length() + 1];
         strcpy(modPath, path.c_str());
         pathIter = strtok(modPath, ":");
         while (ret && pathIter != NULL) {
-            ret &= parseFileForKernelConfigs(pathIter, out);
+            if (isCommonConfig(pathIter)) {
+                ret &= parseFileForKernelConfigs(pathIter, &commonConfig.second);
+                foundCommonConfig = true;
+            } else {
+                std::vector<KernelConfig> kernelConfigs;
+                if ((ret &= parseFileForKernelConfigs(pathIter, &kernelConfigs)))
+                    out->emplace_back(nullptr, std::move(kernelConfigs));
+            }
             pathIter = strtok(NULL, ":");
         }
         delete[] modPath;
+
+        if (!foundCommonConfig) {
+            std::cerr << "No android-base.cfg is found in these paths: '" << path << "'"
+                      << std::endl;
+        }
+        ret &= foundCommonConfig;
+        // first element is always common configs (no conditions).
+        out->insert(out->begin(), std::move(commonConfig));
         return ret;
     }
 
@@ -166,12 +198,14 @@ public:
             matrix->framework.mKernels.clear();
         }
         for (const auto& pair : mKernels) {
-            std::vector<KernelConfig> configs;
-            if (!parseFilesForKernelConfigs(pair.second, &configs)) {
+            std::vector<ConditionedConfig> conditionedConfigs;
+            if (!parseFilesForKernelConfigs(pair.second, &conditionedConfigs)) {
                 return false;
             }
-            matrix->framework.mKernels.push_back(
-                MatrixKernel{KernelVersion{pair.first}, std::move(configs)});
+            for (ConditionedConfig& conditionedConfig : conditionedConfigs) {
+                matrix->framework.mKernels.push_back(
+                    MatrixKernel{KernelVersion{pair.first}, std::move(conditionedConfig.second)});
+            }
         }
         return true;
     }
