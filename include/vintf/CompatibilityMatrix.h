@@ -58,9 +58,6 @@ struct CompatibilityMatrix : public HalGroup<MatrixHal>, public XmlFileGroup<Mat
     bool add(MatrixHal &&hal);
     bool add(MatrixKernel &&kernel);
 
-    // Find a MatrixKernel entry that has version v. nullptr if not found.
-    const MatrixKernel *findKernel(const KernelVersion &v) const;
-
     status_t fetchAllInformation(const std::string &path);
 
     friend struct HalManifest;
