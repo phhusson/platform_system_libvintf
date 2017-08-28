@@ -238,7 +238,8 @@ class AssembleVintf {
                 return false;
             }
             for (ConditionedConfig& conditionedConfig : conditionedConfigs) {
-                MatrixKernel kernel(KernelVersion{pair.first}, std::move(conditionedConfig.second));
+                MatrixKernel kernel(KernelVersion{pair.first.majorVer, pair.first.minorVer, 0u},
+                                    std::move(conditionedConfig.second));
                 if (conditionedConfig.first != nullptr)
                     kernel.mConditions.push_back(std::move(*conditionedConfig.first));
                 matrix->framework.mKernels.push_back(std::move(kernel));
@@ -389,7 +390,11 @@ class AssembleVintf {
             std::cerr << "Unrecognized kernel version '" << kernelVerStr << "'" << std::endl;
             return false;
         }
-        mKernels.push_back({{kernelVer.majorVer, kernelVer.minorVer, 0u}, kernelConfigPath});
+        if (mKernels.find(kernelVer) != mKernels.end()) {
+            std::cerr << "Multiple --kernel for " << kernelVer << " is specified." << std::endl;
+            return false;
+        }
+        mKernels[kernelVer] = kernelConfigPath;
         return true;
     }
 
@@ -399,7 +404,7 @@ class AssembleVintf {
     std::unique_ptr<std::ofstream> mOutFileRef;
     std::ifstream mCheckFile;
     bool mOutputMatrix = false;
-    std::vector<std::pair<KernelVersion, std::string>> mKernels;
+    std::map<Version, std::string> mKernels;
 };
 
 }  // namespace vintf
