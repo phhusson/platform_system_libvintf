@@ -93,7 +93,8 @@ cc_binary_host {
     name: "assemble_vintf",
     defaults: ["libvintf-defaults"],
     shared_libs: [
-        "libvintf"
+        "libvintf",
+        "libbase",
     ],
     srcs: [
         "assemble_vintf.cpp"
