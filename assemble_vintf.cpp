@@ -154,6 +154,28 @@ public:
         return true;
     }
 
+    bool assembleFrameworkCompatibilityMatrixKernels(CompatibilityMatrix* matrix) {
+        for (const auto& pair : mKernels) {
+            std::vector<KernelConfig> configs;
+            if (!parseFilesForKernelConfigs(pair.second, &configs)) {
+                return false;
+            }
+            bool added = false;
+            for (auto& e : matrix->framework.mKernels) {
+                if (e.minLts() == pair.first) {
+                    e.mConfigs.insert(e.mConfigs.end(), configs.begin(), configs.end());
+                    added = true;
+                    break;
+                }
+            }
+            if (!added) {
+                matrix->framework.mKernels.push_back(
+                    MatrixKernel{KernelVersion{pair.first}, std::move(configs)});
+            }
+        }
+        return true;
+    }
+
     bool assembleCompatibilityMatrix(CompatibilityMatrix* matrix) {
         std::string error;
 
@@ -166,24 +188,11 @@ public:
             if (!getFlag("POLICYVERS", &kernelSepolicyVers)) {
                 return false;
             }
-            for (const auto& pair : mKernels) {
-                std::vector<KernelConfig> configs;
-                if (!parseFilesForKernelConfigs(pair.second, &configs)) {
-                    return false;
-                }
-                bool added = false;
-                for (auto& e : matrix->framework.mKernels) {
-                    if (e.minLts() == pair.first) {
-                        e.mConfigs.insert(e.mConfigs.end(), configs.begin(), configs.end());
-                        added = true;
-                        break;
-                    }
-                }
-                if (!added) {
-                    matrix->framework.mKernels.push_back(
-                        MatrixKernel{KernelVersion{pair.first}, std::move(configs)});
-                }
+
+            if (!assembleFrameworkCompatibilityMatrixKernels(matrix)) {
+                return false;
             }
+
             matrix->framework.mSepolicy =
                 Sepolicy(kernelSepolicyVers, {{sepolicyVers.majorVer, sepolicyVers.minorVer}});
 
