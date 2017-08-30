@@ -24,6 +24,8 @@
 #include <sstream>
 #include <string>
 
+#include <android-base/file.h>
+
 #include <vintf/KernelConfigParser.h>
 #include <vintf/parse_string.h>
 #include <vintf/parse_xml.h>
@@ -33,11 +35,18 @@
 namespace android {
 namespace vintf {
 
+static const std::string gConfigPrefix = "android-base-";
+static const std::string gConfigSuffix = ".cfg";
+static const std::string gBaseConfig = "android-base.cfg";
+
 /**
  * Slurps the device manifest file and add build time flag to it.
  */
 class AssembleVintf {
-public:
+    using Condition = std::unique_ptr<KernelConfig>;
+    using ConditionedConfig = std::pair<Condition, std::vector<KernelConfig> /* configs */>;
+
+   public:
     template<typename T>
     static bool getFlag(const std::string& key, T* value) {
         const char *envValue = getenv(key.c_str());
@@ -58,6 +67,42 @@ public:
         std::stringstream ss;
         ss << is.rdbuf();
         return ss.str();
+    }
+
+    static bool isCommonConfig(const std::string& path) {
+        return ::android::base::Basename(path) == gBaseConfig;
+    }
+
+    // nullptr on any error, otherwise the condition.
+    static Condition generateCondition(const std::string& path) {
+        std::string fname = ::android::base::Basename(path);
+        if (fname.size() <= gConfigPrefix.size() + gConfigSuffix.size() ||
+            !std::equal(gConfigPrefix.begin(), gConfigPrefix.end(), fname.begin()) ||
+            !std::equal(gConfigSuffix.rbegin(), gConfigSuffix.rend(), fname.rbegin())) {
+            return nullptr;
+        }
+
+        std::string sub = fname.substr(gConfigPrefix.size(),
+                                       fname.size() - gConfigPrefix.size() - gConfigSuffix.size());
+        if (sub.empty()) {
+            return nullptr;  // should not happen
+        }
+        for (size_t i = 0; i < sub.size(); ++i) {
+            if (sub[i] == '-') {
+                sub[i] = '_';
+                continue;
+            }
+            if (isalnum(sub[i])) {
+                sub[i] = toupper(sub[i]);
+                continue;
+            }
+            std::cerr << "'" << fname << "' (in " << path
+                      << ") is not a valid kernel config file name. Must match regex: "
+                      << "android-base(-[0-9a-zA-Z-]+)?\\.cfg" << std::endl;
+            return nullptr;
+        }
+        sub.insert(0, "CONFIG_");
+        return std::make_unique<KernelConfig>(std::move(sub), Tristate::YES);
     }
 
     static bool parseFileForKernelConfigs(const std::string& path, std::vector<KernelConfig>* out) {
@@ -92,17 +137,39 @@ public:
         return true;
     }
 
-    static bool parseFilesForKernelConfigs(const std::string& path, std::vector<KernelConfig>* out) {
+    static bool parseFilesForKernelConfigs(const std::string& path,
+                                           std::vector<ConditionedConfig>* out) {
+        out->clear();
+        ConditionedConfig commonConfig;
+        bool foundCommonConfig = false;
         bool ret = true;
         char *pathIter;
         char *modPath = new char[path.length() + 1];
         strcpy(modPath, path.c_str());
         pathIter = strtok(modPath, ":");
         while (ret && pathIter != NULL) {
-            ret &= parseFileForKernelConfigs(pathIter, out);
+            if (isCommonConfig(pathIter)) {
+                ret &= parseFileForKernelConfigs(pathIter, &commonConfig.second);
+                foundCommonConfig = true;
+            } else {
+                Condition condition = generateCondition(pathIter);
+                ret &= (condition != nullptr);
+
+                std::vector<KernelConfig> kernelConfigs;
+                if ((ret &= parseFileForKernelConfigs(pathIter, &kernelConfigs)))
+                    out->emplace_back(std::move(condition), std::move(kernelConfigs));
+            }
             pathIter = strtok(NULL, ":");
         }
         delete[] modPath;
+
+        if (!foundCommonConfig) {
+            std::cerr << "No android-base.cfg is found in these paths: '" << path << "'"
+                      << std::endl;
+        }
+        ret &= foundCommonConfig;
+        // first element is always common configs (no conditions).
+        out->insert(out->begin(), std::move(commonConfig));
         return ret;
     }
 
@@ -154,6 +221,33 @@ public:
         return true;
     }
 
+    bool assembleFrameworkCompatibilityMatrixKernels(CompatibilityMatrix* matrix) {
+        if (!matrix->framework.mKernels.empty()) {
+            // Remove hard-coded <kernel version="x.y.z" /> in legacy files.
+            std::cerr << "WARNING: framework compatibility matrix has hard-coded kernel"
+                      << " requirements for version";
+            for (const auto& kernel : matrix->framework.mKernels) {
+                std::cerr << " " << kernel.minLts();
+            }
+            std::cerr << ". Hard-coded requirements are removed." << std::endl;
+            matrix->framework.mKernels.clear();
+        }
+        for (const auto& pair : mKernels) {
+            std::vector<ConditionedConfig> conditionedConfigs;
+            if (!parseFilesForKernelConfigs(pair.second, &conditionedConfigs)) {
+                return false;
+            }
+            for (ConditionedConfig& conditionedConfig : conditionedConfigs) {
+                MatrixKernel kernel(KernelVersion{pair.first.majorVer, pair.first.minorVer, 0u},
+                                    std::move(conditionedConfig.second));
+                if (conditionedConfig.first != nullptr)
+                    kernel.mConditions.push_back(std::move(*conditionedConfig.first));
+                matrix->framework.mKernels.push_back(std::move(kernel));
+            }
+        }
+        return true;
+    }
+
     bool assembleCompatibilityMatrix(CompatibilityMatrix* matrix) {
         std::string error;
 
@@ -166,24 +260,11 @@ public:
             if (!getFlag("POLICYVERS", &kernelSepolicyVers)) {
                 return false;
             }
-            for (const auto& pair : mKernels) {
-                std::vector<KernelConfig> configs;
-                if (!parseFilesForKernelConfigs(pair.second, &configs)) {
-                    return false;
-                }
-                bool added = false;
-                for (auto& e : matrix->framework.mKernels) {
-                    if (e.minLts() == pair.first) {
-                        e.mConfigs.insert(e.mConfigs.end(), configs.begin(), configs.end());
-                        added = true;
-                        break;
-                    }
-                }
-                if (!added) {
-                    matrix->framework.mKernels.push_back(
-                        MatrixKernel{KernelVersion{pair.first}, std::move(configs)});
-                }
+
+            if (!assembleFrameworkCompatibilityMatrixKernels(matrix)) {
+                return false;
             }
+
             matrix->framework.mSepolicy =
                 Sepolicy(kernelSepolicyVers, {{sepolicyVers.majorVer, sepolicyVers.minorVer}});
 
@@ -309,7 +390,11 @@ public:
             std::cerr << "Unrecognized kernel version '" << kernelVerStr << "'" << std::endl;
             return false;
         }
-        mKernels.push_back({{kernelVer.majorVer, kernelVer.minorVer, 0u}, kernelConfigPath});
+        if (mKernels.find(kernelVer) != mKernels.end()) {
+            std::cerr << "Multiple --kernel for " << kernelVer << " is specified." << std::endl;
+            return false;
+        }
+        mKernels[kernelVer] = kernelConfigPath;
         return true;
     }
 
@@ -319,7 +404,7 @@ public:
     std::unique_ptr<std::ofstream> mOutFileRef;
     std::ifstream mCheckFile;
     bool mOutputMatrix = false;
-    std::vector<std::pair<KernelVersion, std::string>> mKernels;
+    std::map<Version, std::string> mKernels;
 };
 
 }  // namespace vintf
