@@ -25,31 +25,31 @@ int main(int, char **) {
 
     std::cout << "======== Device HAL Manifest =========" << std::endl;
 
-    const HalManifest *vm = VintfObject::GetDeviceHalManifest();
+    std::shared_ptr<const HalManifest> vm = VintfObject::GetDeviceHalManifest();
     if (vm != nullptr)
         std::cout << gHalManifestConverter(*vm);
 
     std::cout << "======== Framework HAL Manifest =========" << std::endl;
 
-    const HalManifest *fm = VintfObject::GetFrameworkHalManifest();
+    std::shared_ptr<const HalManifest> fm = VintfObject::GetFrameworkHalManifest();
     if (fm != nullptr)
         std::cout << gHalManifestConverter(*fm);
 
     std::cout << "======== Device Compatibility Matrix =========" << std::endl;
 
-    const CompatibilityMatrix *vcm = VintfObject::GetDeviceCompatibilityMatrix();
+    std::shared_ptr<const CompatibilityMatrix> vcm = VintfObject::GetDeviceCompatibilityMatrix();
     if (vcm != nullptr)
         std::cout << gCompatibilityMatrixConverter(*vcm);
 
     std::cout << "======== Framework Compatibility Matrix =========" << std::endl;
 
-    const CompatibilityMatrix *fcm = VintfObject::GetFrameworkCompatibilityMatrix();
+    std::shared_ptr<const CompatibilityMatrix> fcm = VintfObject::GetFrameworkCompatibilityMatrix();
     if (fcm != nullptr)
         std::cout << gCompatibilityMatrixConverter(*fcm);
 
     std::cout << "======== Runtime Info =========" << std::endl;
 
-    const RuntimeInfo* ki = VintfObject::GetRuntimeInfo();
+    std::shared_ptr<const RuntimeInfo> ki = VintfObject::GetRuntimeInfo();
     if (ki != nullptr) std::cout << dump(*ki);
     std::cout << std::endl;
 
