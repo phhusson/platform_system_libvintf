@@ -17,6 +17,8 @@
 #ifndef ANDROID_VINTF_VINTF_OBJECT_H_
 #define ANDROID_VINTF_VINTF_OBJECT_H_
 
+#include <memory>
+
 #include "CompatibilityMatrix.h"
 #include "HalManifest.h"
 #include "RuntimeInfo.h"
@@ -53,30 +55,32 @@ public:
      * Return the API that access the device-side HAL manifest stored
      * in /vendor/manifest.xml.
      */
-    static const HalManifest *GetDeviceHalManifest(bool skipCache = false);
+    static std::shared_ptr<const HalManifest> GetDeviceHalManifest(bool skipCache = false);
 
     /*
      * Return the API that access the framework-side HAL manifest stored
      * in /system/manfiest.xml.
      */
-    static const HalManifest *GetFrameworkHalManifest(bool skipCache = false);
+    static std::shared_ptr<const HalManifest> GetFrameworkHalManifest(bool skipCache = false);
 
     /*
      * Return the API that access the device-side compatibility matrix stored
      * in /vendor/compatibility_matrix.xml.
      */
-    static const CompatibilityMatrix *GetDeviceCompatibilityMatrix(bool skipCache = false);
+    static std::shared_ptr<const CompatibilityMatrix> GetDeviceCompatibilityMatrix(
+        bool skipCache = false);
 
     /*
-     * Return the API that access the device-side compatibility matrix stored
+     * Return the API that access the framework-side compatibility matrix stored
      * in /system/compatibility_matrix.xml.
      */
-    static const CompatibilityMatrix *GetFrameworkCompatibilityMatrix(bool skipCache = false);
+    static std::shared_ptr<const CompatibilityMatrix> GetFrameworkCompatibilityMatrix(
+        bool skipCache = false);
 
     /*
      * Return the API that access device runtime info.
      */
-    static const RuntimeInfo *GetRuntimeInfo(bool skipCache = false);
+    static std::shared_ptr<const RuntimeInfo> GetRuntimeInfo(bool skipCache = false);
 
     /**
      * Check compatibility, given a set of manifests / matrices in packageInfo.
