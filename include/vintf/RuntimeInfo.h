@@ -25,6 +25,7 @@
 
 #include <utils/Errors.h>
 
+#include "DisabledChecks.h"
 #include "MatrixKernel.h"
 #include "Version.h"
 
@@ -70,11 +71,10 @@ struct RuntimeInfo {
     //   RuntimeInfo object is created (the first time VintfObject::GetRuntimeInfo is called),
     //   not when RuntimeInfo::checkCompatibility is called.
     // - avb-vbmetaversion matches related sysprops
-    bool checkCompatibility(const CompatibilityMatrix &mat,
-            std::string *error = nullptr) const;
+    bool checkCompatibility(const CompatibilityMatrix& mat, std::string* error = nullptr,
+                            DisabledChecks disabledChecks = ENABLE_ALL_CHECKS) const;
 
-private:
-
+   private:
     friend struct RuntimeInfoFetcher;
     friend class VintfObject;
     friend struct LibVintfTest;
