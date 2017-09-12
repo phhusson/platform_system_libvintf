@@ -101,8 +101,8 @@ bool RuntimeInfo::matchKernelVersion(const KernelVersion& minLts) const {
            minLts.minorRev <= mKernelVersion.minorRev;
 }
 
-bool RuntimeInfo::checkCompatibility(const CompatibilityMatrix &mat,
-            std::string *error) const {
+bool RuntimeInfo::checkCompatibility(const CompatibilityMatrix& mat, std::string* error,
+                                     DisabledChecks disabledChecks) const {
     if (mat.mType != SchemaType::FRAMEWORK) {
         if (error != nullptr) {
             *error = "Should not check runtime info against " + to_string(mat.mType)
@@ -160,25 +160,28 @@ bool RuntimeInfo::checkCompatibility(const CompatibilityMatrix &mat,
         error->clear();
     }
 
-    const Version &matAvb = mat.framework.mAvbMetaVersion;
-    if (mBootAvbVersion.majorVer != matAvb.majorVer || mBootAvbVersion.minorVer < matAvb.minorVer) {
-        if (error != nullptr) {
-            std::stringstream ss;
-            ss << "AVB version " << mBootAvbVersion << " does not match framework matrix "
-               << matAvb;
-            *error = ss.str();
+    if ((disabledChecks & DISABLE_AVB_CHECK) == 0) {
+        const Version& matAvb = mat.framework.mAvbMetaVersion;
+        if (mBootAvbVersion.majorVer != matAvb.majorVer ||
+            mBootAvbVersion.minorVer < matAvb.minorVer) {
+            if (error != nullptr) {
+                std::stringstream ss;
+                ss << "AVB version " << mBootAvbVersion << " does not match framework matrix "
+                   << matAvb;
+                *error = ss.str();
+            }
+            return false;
         }
-        return false;
-    }
-    if (mBootVbmetaAvbVersion.majorVer != matAvb.majorVer ||
-        mBootVbmetaAvbVersion.minorVer < matAvb.minorVer) {
-        if (error != nullptr) {
-            std::stringstream ss;
-            ss << "Vbmeta version " << mBootVbmetaAvbVersion << " does not match framework matrix "
-               << matAvb;
-            *error = ss.str();
+        if (mBootVbmetaAvbVersion.majorVer != matAvb.majorVer ||
+            mBootVbmetaAvbVersion.minorVer < matAvb.minorVer) {
+            if (error != nullptr) {
+                std::stringstream ss;
+                ss << "Vbmeta version " << mBootVbmetaAvbVersion
+                   << " does not match framework matrix " << matAvb;
+                *error = ss.str();
+            }
+            return false;
         }
-        return false;
     }
 
     return true;

@@ -771,8 +771,7 @@ TEST_F(LibVintfTest, RuntimeInfo) {
         CompatibilityMatrix cm = testMatrix(std::move(kernel));
         EXPECT_FALSE(ki.checkCompatibility(cm)) << "Value shouldn't match for integer";
     }
-// TODO(b/38325029) enable avb check when avb version is injected to fwk matrix.
-#if 0
+
     RuntimeInfo badAvb = testRuntimeInfo();
     CompatibilityMatrix cm = testMatrix(MatrixKernel(KernelVersion{3, 18, 31}, {}));
     {
@@ -792,7 +791,6 @@ TEST_F(LibVintfTest, RuntimeInfo) {
         setAvb(badAvb, {2, 3}, {2, 1});
         EXPECT_TRUE(badAvb.checkCompatibility(cm, &error));
     }
-#endif
 }
 
 TEST_F(LibVintfTest, MissingAvb) {
@@ -807,6 +805,27 @@ TEST_F(LibVintfTest, MissingAvb) {
     CompatibilityMatrix cm;
     EXPECT_TRUE(gCompatibilityMatrixConverter(&cm, xml));
     EXPECT_EQ(getAvb(cm), Version(0, 0));
+}
+
+TEST_F(LibVintfTest, DisableAvb) {
+    std::string xml =
+        "<compatibility-matrix version=\"1.0\" type=\"framework\">\n"
+        "    <kernel version=\"3.18.31\"></kernel>"
+        "    <sepolicy>\n"
+        "        <kernel-sepolicy-version>30</kernel-sepolicy-version>\n"
+        "        <sepolicy-version>25.5</sepolicy-version>\n"
+        "    </sepolicy>\n"
+        "    <avb>\n"
+        "        <vbmeta-version>1.0</vbmeta-version>\n"
+        "    </avb>\n"
+        "</compatibility-matrix>\n";
+    CompatibilityMatrix cm;
+    EXPECT_TRUE(gCompatibilityMatrixConverter(&cm, xml));
+    RuntimeInfo ki = testRuntimeInfo();
+    std::string error;
+    EXPECT_FALSE(ki.checkCompatibility(cm, &error));
+    EXPECT_STREQ(error.c_str(), "AVB version 2.1 does not match framework matrix 1.0");
+    EXPECT_TRUE(ki.checkCompatibility(cm, &error, DISABLE_AVB_CHECK)) << error;
 }
 
 // This is the test extracted from VINTF Object doc
