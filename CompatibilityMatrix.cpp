@@ -22,8 +22,6 @@
 namespace android {
 namespace vintf {
 
-constexpr Version CompatibilityMatrix::kVersion;
-
 bool CompatibilityMatrix::add(MatrixHal &&hal) {
     return HalGroup<MatrixHal>::add(std::move(hal));
 }
@@ -40,6 +38,11 @@ SchemaType CompatibilityMatrix::type() const {
     return mType;
 }
 
+Version CompatibilityMatrix::getMinimumMetaVersion() const {
+    // TODO(b/62801658): this needs to depend on whether there are 1.1 requirements
+    // (e.g. required <xmlfile> entry)
+    return {1, 0};
+}
 
 status_t CompatibilityMatrix::fetchAllInformation(const std::string &path) {
     return details::fetchAllInformation(path, gCompatibilityMatrixConverter, this);

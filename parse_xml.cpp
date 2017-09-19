@@ -25,6 +25,7 @@
 
 #include <tinyxml2.h>
 
+#include "constants.h"
 #include "parse_string.h"
 
 namespace android {
@@ -747,7 +748,7 @@ const ManifestXmlFileConverter manifestXmlFileConverter{};
 struct HalManifestConverter : public XmlNodeConverter<HalManifest> {
     std::string elementName() const override { return "manifest"; }
     void mutateNode(const HalManifest &m, NodeType *root, DocType *d) const override {
-        appendAttr(root, "version", HalManifest::kVersion);
+        appendAttr(root, "version", m.getMetaVersion());
         appendAttr(root, "type", m.mType);
 
         appendChildren(root, manifestHalConverter, m.getHals(), d);
@@ -760,15 +761,15 @@ struct HalManifestConverter : public XmlNodeConverter<HalManifest> {
         appendChildren(root, manifestXmlFileConverter, m.getXmlFiles(), d);
     }
     bool buildObject(HalManifest *object, NodeType *root) const override {
-        Version version;
         std::vector<ManifestHal> hals;
-        if (!parseAttr(root, "version", &version) ||
+        if (!parseAttr(root, "version", &object->mMetaVersion) ||
             !parseAttr(root, "type", &object->mType) ||
             !parseChildren(root, manifestHalConverter, &hals)) {
             return false;
         }
-        if (version != HalManifest::kVersion) {
-            this->mLastError = "Unrecognized manifest.version";
+        if (!kMetaVersion.minorAtLeast(object->mMetaVersion)) {
+            this->mLastError = "Unrecognized manifest.version " + to_string(object->mMetaVersion) +
+                               " (libvintf@" + to_string(kMetaVersion) + ")";
             return false;
         }
         if (object->mType == SchemaType::DEVICE) {
@@ -857,7 +858,7 @@ const MatrixXmlFileConverter matrixXmlFileConverter{};
 struct CompatibilityMatrixConverter : public XmlNodeConverter<CompatibilityMatrix> {
     std::string elementName() const override { return "compatibility-matrix"; }
     void mutateNode(const CompatibilityMatrix &m, NodeType *root, DocType *d) const override {
-        appendAttr(root, "version", CompatibilityMatrix::kVersion);
+        appendAttr(root, "version", m.getMinimumMetaVersion());
         appendAttr(root, "type", m.mType);
         appendChildren(root, matrixHalConverter, iterateValues(m.mHals), d);
         if (m.mType == SchemaType::FRAMEWORK) {
@@ -910,8 +911,9 @@ struct CompatibilityMatrixConverter : public XmlNodeConverter<CompatibilityMatri
             }
         }
 
-        if (version != CompatibilityMatrix::kVersion) {
-            this->mLastError = "Unrecognized compatibility-matrix.version";
+        if (!kMetaVersion.minorAtLeast(version)) {
+            this->mLastError = "Unrecognized compatibility-matrix.version " + to_string(version) +
+                               " (libvintf@" + to_string(kMetaVersion) + ")";
             return false;
         }
         for (auto &&hal : hals) {
