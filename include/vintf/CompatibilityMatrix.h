@@ -40,8 +40,7 @@ struct CompatibilityMatrix : public HalGroup<MatrixHal>, public XmlFileGroup<Mat
     CompatibilityMatrix() : mType(SchemaType::FRAMEWORK) {};
 
     SchemaType type() const;
-
-    constexpr static Version kVersion{1, 0};
+    Version getMinimumMetaVersion() const;
 
     // If the corresponding <xmlfile> with the given version exists, for the first match,
     // - Return the overridden <path> if it is present,
