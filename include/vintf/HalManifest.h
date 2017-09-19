@@ -41,8 +41,6 @@ struct CompatibilityMatrix;
 // framework code. This is the API for the framework.
 struct HalManifest : public HalGroup<ManifestHal>, public XmlFileGroup<ManifestXmlFile> {
    public:
-    // manifest.version
-    constexpr static Version kVersion{1, 0};
 
     // Construct a device HAL manifest.
     HalManifest() : mType(SchemaType::DEVICE) {}
@@ -127,6 +125,9 @@ struct HalManifest : public HalGroup<ManifestHal>, public XmlFileGroup<ManifestX
     // Otherwise if the <xmlfile> entry does not exist, "" is returned.
     std::string getXmlFilePath(const std::string& xmlFileName, const Version& version) const;
 
+    // Get metaversion of this manifest.
+    Version getMetaVersion() const;
+
    protected:
     // Check before add()
     bool shouldAdd(const ManifestHal& toAdd) const override;
@@ -153,6 +154,8 @@ struct HalManifest : public HalGroup<ManifestHal>, public XmlFileGroup<ManifestX
                                                        bool includeOptional = true) const;
 
     SchemaType mType;
+    // version attribute. Default is 1.0 for manifests created programatically.
+    Version mMetaVersion{1, 0};
 
     // entries for device hal manifest only
     struct {
