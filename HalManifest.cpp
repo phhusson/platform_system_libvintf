@@ -32,8 +32,6 @@
 namespace android {
 namespace vintf {
 
-constexpr Version HalManifest::kVersion;
-
 // Check <version> tag for all <hal> with the same name.
 bool HalManifest::shouldAdd(const ManifestHal& hal) const {
     if (!hal.isValid()) {
@@ -362,6 +360,10 @@ status_t HalManifest::fetchAllInformation(const std::string &path) {
 
 SchemaType HalManifest::type() const {
     return mType;
+}
+
+Version HalManifest::getMetaVersion() const {
+    return mMetaVersion;
 }
 
 const Version &HalManifest::sepolicyVersion() const {
