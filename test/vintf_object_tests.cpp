@@ -201,7 +201,6 @@ static MockPartitionMounter &mounter() {
 static MockFileFetcher &fetcher() {
     return *static_cast<MockFileFetcher*>(gFetcher);
 }
-
 // Test fixture that provides compatible metadata from the mock device.
 class VintfObjectCompatibleTest : public testing::Test {
    protected:
@@ -439,6 +438,46 @@ TEST_F(VintfObjectIncompatibleTest, TestInputVsDeviceSuccess) {
     ASSERT_STREQ(error.c_str(), "");
 }
 
+static MockRuntimeInfoFactory& runtimeInfoFactory() {
+    return *static_cast<MockRuntimeInfoFactory*>(gRuntimeInfoFactory);
+}
+
+// Test fixture that provides compatible metadata from the mock device.
+class VintfObjectRuntimeInfoTest : public testing::Test {
+   protected:
+    virtual void SetUp() {
+        // clear fetch flags
+        runtimeInfoFactory().getInfo()->failNextFetch();
+        VintfObject::GetRuntimeInfo(true /* skipCache */, RuntimeInfo::FetchFlag::ALL);
+    }
+    virtual void TearDown() {
+        Mock::VerifyAndClear(&runtimeInfoFactory());
+        Mock::VerifyAndClear(runtimeInfoFactory().getInfo().get());
+    }
+};
+
+TEST_F(VintfObjectRuntimeInfoTest, GetRuntimeInfo) {
+    InSequence s;
+
+    EXPECT_CALL(*runtimeInfoFactory().getInfo(),
+                fetchAllInformation(RuntimeInfo::FetchFlag::CPU_VERSION));
+    EXPECT_CALL(*runtimeInfoFactory().getInfo(), fetchAllInformation(RuntimeInfo::FetchFlag::NONE));
+    EXPECT_CALL(*runtimeInfoFactory().getInfo(),
+                fetchAllInformation(RuntimeInfo::FetchFlag::CPU_VERSION));
+    EXPECT_CALL(
+        *runtimeInfoFactory().getInfo(),
+        fetchAllInformation(RuntimeInfo::FetchFlag::ALL & ~RuntimeInfo::FetchFlag::CPU_VERSION));
+    EXPECT_CALL(*runtimeInfoFactory().getInfo(), fetchAllInformation(RuntimeInfo::FetchFlag::ALL));
+    EXPECT_CALL(*runtimeInfoFactory().getInfo(), fetchAllInformation(RuntimeInfo::FetchFlag::NONE));
+
+    VintfObject::GetRuntimeInfo(false /* skipCache */, RuntimeInfo::FetchFlag::CPU_VERSION);
+    VintfObject::GetRuntimeInfo(false /* skipCache */, RuntimeInfo::FetchFlag::CPU_VERSION);
+    VintfObject::GetRuntimeInfo(true /* skipCache */, RuntimeInfo::FetchFlag::CPU_VERSION);
+    VintfObject::GetRuntimeInfo(false /* skipCache */, RuntimeInfo::FetchFlag::ALL);
+    VintfObject::GetRuntimeInfo(true /* skipCache */, RuntimeInfo::FetchFlag::ALL);
+    VintfObject::GetRuntimeInfo(false /* skipCache */, RuntimeInfo::FetchFlag::ALL);
+}
+
 int main(int argc, char** argv) {
     ::testing::InitGoogleMock(&argc, argv);
 
@@ -447,6 +486,10 @@ int main(int argc, char** argv) {
 
     NiceMock<MockPartitionMounter> mounter;
     gPartitionMounter = &mounter;
+
+    NiceMock<MockRuntimeInfoFactory> runtimeInfoFactory(
+        std::make_shared<NiceMock<MockRuntimeInfo>>());
+    gRuntimeInfoFactory = &runtimeInfoFactory;
 
     return RUN_ALL_TESTS();
 }

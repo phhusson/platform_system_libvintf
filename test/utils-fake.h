@@ -78,6 +78,35 @@ class MockPartitionMounter : public PartitionMounter {
     bool vendorMounted_;
 };
 
+class MockRuntimeInfo : public RuntimeInfo {
+   public:
+    MockRuntimeInfo() {
+        ON_CALL(*this, fetchAllInformation(_))
+            .WillByDefault(Invoke(this, &MockRuntimeInfo::doFetch));
+    }
+    MOCK_METHOD1(fetchAllInformation, status_t(RuntimeInfo::FetchFlags));
+    status_t doFetch(RuntimeInfo::FetchFlags flags) {
+        if (failNextFetch_) {
+            failNextFetch_ = false;
+            return android::UNKNOWN_ERROR;
+        }
+        return RuntimeInfo::fetchAllInformation(flags);
+    }
+    void failNextFetch() { failNextFetch_ = true; }
+
+   private:
+    bool failNextFetch_ = false;
+};
+class MockRuntimeInfoFactory : public ObjectFactory<RuntimeInfo> {
+   public:
+    MockRuntimeInfoFactory(const std::shared_ptr<MockRuntimeInfo>& info) { object_ = info; }
+    std::shared_ptr<RuntimeInfo> make_shared() const override { return object_; }
+    std::shared_ptr<MockRuntimeInfo> getInfo() const { return object_; }
+
+   private:
+    std::shared_ptr<MockRuntimeInfo> object_;
+};
+
 }  // namespace details
 }  // namespace vintf
 }  // namespace android

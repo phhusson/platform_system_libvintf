@@ -98,7 +98,7 @@ std::shared_ptr<const RuntimeInfo> VintfObject::GetRuntimeInfo(bool skipCache,
     }
 
     if (gDeviceRuntimeInfo.object == nullptr) {
-        gDeviceRuntimeInfo.object = std::make_shared<RuntimeInfo>();
+        gDeviceRuntimeInfo.object = details::gRuntimeInfoFactory->make_shared();
     }
 
     status_t status = gDeviceRuntimeInfo.object->fetchAllInformation(flags);
