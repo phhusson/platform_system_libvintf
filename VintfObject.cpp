@@ -33,6 +33,12 @@ struct LockedSharedPtr {
     std::mutex mutex;
 };
 
+struct LockedRuntimeInfoCache {
+    std::shared_ptr<RuntimeInfo> object;
+    std::mutex mutex;
+    RuntimeInfo::FetchFlags fetchedFlags = RuntimeInfo::FetchFlag::NONE;
+};
+
 template <typename T, typename F>
 static std::shared_ptr<const T> Get(
         LockedSharedPtr<T> *ptr,
@@ -82,10 +88,27 @@ std::shared_ptr<const CompatibilityMatrix> VintfObject::GetFrameworkCompatibilit
 }
 
 // static
-std::shared_ptr<const RuntimeInfo> VintfObject::GetRuntimeInfo(bool skipCache) {
-    static LockedSharedPtr<RuntimeInfo> gDeviceRuntimeInfo;
-    return Get(&gDeviceRuntimeInfo, skipCache,
-            std::bind(&RuntimeInfo::fetchAllInformation, std::placeholders::_1));
+std::shared_ptr<const RuntimeInfo> VintfObject::GetRuntimeInfo(bool skipCache,
+                                                               RuntimeInfo::FetchFlags flags) {
+    static LockedRuntimeInfoCache gDeviceRuntimeInfo;
+    std::unique_lock<std::mutex> _lock(gDeviceRuntimeInfo.mutex);
+
+    if (!skipCache) {
+        flags &= (~gDeviceRuntimeInfo.fetchedFlags);
+    }
+
+    if (gDeviceRuntimeInfo.object == nullptr) {
+        gDeviceRuntimeInfo.object = details::gRuntimeInfoFactory->make_shared();
+    }
+
+    status_t status = gDeviceRuntimeInfo.object->fetchAllInformation(flags);
+    if (status != OK) {
+        gDeviceRuntimeInfo.fetchedFlags &= (~flags);  // mark the fields as "not fetched"
+        return nullptr;
+    }
+
+    gDeviceRuntimeInfo.fetchedFlags |= flags;
+    return gDeviceRuntimeInfo.object;
 }
 
 namespace details {
