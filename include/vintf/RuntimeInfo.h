@@ -38,6 +38,7 @@ struct CompatibilityMatrix;
 struct RuntimeInfo {
 
     RuntimeInfo() {}
+    virtual ~RuntimeInfo() = default;
 
     // /proc/version
     // utsname.sysname
@@ -87,13 +88,14 @@ struct RuntimeInfo {
         ALL = ((LAST_PLUS_ONE - 1) << 1) - 1,
     };
 
+   protected:
+    virtual status_t fetchAllInformation(FetchFlags flags);
+
    private:
     friend struct RuntimeInfoFetcher;
     friend class VintfObject;
     friend struct LibVintfTest;
     friend std::string dump(const RuntimeInfo &ki);
-
-    status_t fetchAllInformation(FetchFlags flags);
 
     // mKernelVersion = x'.y'.z', minLts = x.y.z,
     // match if x == x' , y == y' , and z <= z'.
