@@ -74,13 +74,26 @@ struct RuntimeInfo {
     bool checkCompatibility(const CompatibilityMatrix& mat, std::string* error = nullptr,
                             DisabledChecks disabledChecks = ENABLE_ALL_CHECKS) const;
 
+    using FetchFlags = uint32_t;
+    enum FetchFlag : FetchFlags {
+        CPU_VERSION     = 1 << 0,
+        CONFIG_GZ       = 1 << 1,
+        CPU_INFO        = 1 << 2,
+        POLICYVERS      = 1 << 3,
+        AVB             = 1 << 4,
+        LAST_PLUS_ONE,
+
+        NONE = 0,
+        ALL = ((LAST_PLUS_ONE - 1) << 1) - 1,
+    };
+
    private:
     friend struct RuntimeInfoFetcher;
     friend class VintfObject;
     friend struct LibVintfTest;
     friend std::string dump(const RuntimeInfo &ki);
 
-    status_t fetchAllInformation();
+    status_t fetchAllInformation(FetchFlags flags);
 
     // mKernelVersion = x'.y'.z', minLts = x.y.z,
     // match if x == x' , y == y' , and z <= z'.
