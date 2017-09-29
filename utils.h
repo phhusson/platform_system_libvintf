@@ -24,6 +24,7 @@
 #include <android-base/logging.h>
 #include <utils/Errors.h>
 
+#include "RuntimeInfo.h"
 #include "parse_xml.h"
 
 namespace android {
@@ -90,6 +91,14 @@ status_t fetchAllInformation(const std::string& path, const XmlConverter<T>& con
     }
     return OK;
 }
+
+template <typename T>
+class ObjectFactory {
+   public:
+    virtual ~ObjectFactory() = default;
+    virtual std::shared_ptr<T> make_shared() const { return std::make_shared<T>(); }
+};
+extern ObjectFactory<RuntimeInfo>* gRuntimeInfoFactory;
 
 }  // namespace details
 }  // namespace vintf

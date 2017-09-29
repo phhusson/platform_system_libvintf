@@ -25,6 +25,10 @@ FileFetcher* gFetcher = &fetcher;
 
 static PartitionMounter partitionMounter;
 PartitionMounter* gPartitionMounter = &partitionMounter;
+
+static ObjectFactory<RuntimeInfo> runtimeInfoFactory;
+ObjectFactory<RuntimeInfo>* gRuntimeInfoFactory = &runtimeInfoFactory;
+
 }  // namespace details
 }  // namespace vintf
 }  // namespace android
