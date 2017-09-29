@@ -20,7 +20,7 @@ namespace android {
 namespace vintf {
 
 // Fake implementation used for testing.
-status_t RuntimeInfo::fetchAllInformation() {
+status_t RuntimeInfo::fetchAllInformation(RuntimeInfo::FetchFlags) {
     mOsName = "Linux";
     mNodeName = "localhost";
     mOsRelease = "3.18.31-g936f9a479d0f";
