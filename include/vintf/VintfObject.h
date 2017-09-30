@@ -80,8 +80,19 @@ public:
 
     /*
      * Return the API that access device runtime info.
+     *
+     * {skipCache == true, flags == ALL}: re-fetch everything
+     * {skipCache == false, flags == ALL}: fetch everything if not previously fetched
+     * {skipCache == true, flags == selected info}: re-fetch selected information
+     *                                if not previously fetched.
+     * {skipCache == false, flags == selected info}: fetch selected information
+     *                                if not previously fetched.
+     *
+     * @param skipCache do not fetch if previously fetched
+     * @param flags bitwise-or of RuntimeInfo::FetchFlag
      */
-    static std::shared_ptr<const RuntimeInfo> GetRuntimeInfo(bool skipCache = false);
+    static std::shared_ptr<const RuntimeInfo> GetRuntimeInfo(
+        bool skipCache = false, RuntimeInfo::FetchFlags flags = RuntimeInfo::FetchFlag::ALL);
 
     /**
      * Check compatibility, given a set of manifests / matrices in packageInfo.

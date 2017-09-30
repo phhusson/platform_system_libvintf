@@ -26,6 +26,8 @@ FileFetcher* gFetcher = nullptr;
 
 PartitionMounter* gPartitionMounter = nullptr;
 
+ObjectFactory<RuntimeInfo>* gRuntimeInfoFactory = nullptr;
+
 }  // namespace details
 }  // namespace vintf
 }  // namespace android
