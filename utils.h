@@ -23,9 +23,8 @@
 
 #include <android-base/logging.h>
 #include <utils/Errors.h>
-
-#include "RuntimeInfo.h"
-#include "parse_xml.h"
+#include <vintf/RuntimeInfo.h>
+#include <vintf/parse_xml.h>
 
 namespace android {
 namespace vintf {
