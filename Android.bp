@@ -90,6 +90,19 @@ cc_binary {
 }
 
 cc_binary_host {
+    name: "checkvintf",
+    defaults: ["libvintf-defaults"],
+    shared_libs: [
+        "libvintf",
+        "libbase"
+    ],
+    srcs: [
+        "check_vintf.cpp",
+        "utils.cpp"
+    ],
+}
+
+cc_binary_host {
     name: "assemble_vintf",
     defaults: ["libvintf-defaults"],
     shared_libs: [
