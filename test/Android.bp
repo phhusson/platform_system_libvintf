@@ -30,7 +30,6 @@ cc_test {
     cflags: [
         "-O0",
         "-g",
-        "-Wno-error=unused-function",
     ],
     target: {
         host: {
