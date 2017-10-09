@@ -39,11 +39,13 @@ extern const XmlConverter<KernelConfigTypedValue> &gKernelConfigTypedValueConver
 extern const XmlConverter<HalManifest> &gHalManifestConverter;
 extern const XmlConverter<CompatibilityMatrix> &gCompatibilityMatrixConverter;
 
+#ifdef LIBVINTF_HOST
 static bool Contains(const std::string& str, const std::string& sub) {
     return str.find(sub) != std::string::npos;
 }
 #define EXPECT_CONTAINS(str, sub) \
     EXPECT_TRUE(Contains((str), (sub))) << "Cannot find \"" << (sub) << "\" in \"" << (str) << "\""
+#endif
 
 struct LibVintfTest : public ::testing::Test {
 public:
