@@ -588,9 +588,7 @@ struct ManifestHalConverter : public XmlNodeConverter<ManifestHal> {
     void mutateNode(const ManifestHal &hal, NodeType *root, DocType *d) const override {
         appendAttr(root, "format", hal.format);
         appendTextElement(root, "name", hal.name, d);
-        if (!hal.transportArch.empty()) {
-            appendChild(root, transportArchConverter(hal.transportArch, d));
-        }
+        appendChild(root, transportArchConverter(hal.transportArch, d));
         appendChildren(root, versionConverter, hal.versions, d);
         appendChildren(root, halInterfaceConverter, iterateValues(hal.interfaces), d);
     }
