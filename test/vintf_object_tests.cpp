@@ -169,6 +169,8 @@ void setupMockFetcher(const std::string& vendorManifestXml, const std::string& s
                       const std::string& systemManifestXml, const std::string& vendorMatrixXml) {
     MockFileFetcher* fetcher = static_cast<MockFileFetcher*>(gFetcher);
 
+    ON_CALL(*fetcher, fetch(StrEq("/odm/manifest.xml"), _))
+        .WillByDefault(Return(::android::NAME_NOT_FOUND));
     ON_CALL(*fetcher, fetch(StrEq("/vendor/manifest.xml"), _))
         .WillByDefault(Invoke([vendorManifestXml](const std::string& path, std::string& fetched) {
             (void)path;
@@ -221,6 +223,7 @@ TEST_F(VintfObjectCompatibleTest, TestDeviceCompatibility) {
     std::string error;
     std::vector<std::string> packageInfo;
 
+    EXPECT_CALL(fetcher(), fetch(StrEq("/odm/manifest.xml"), _));
     EXPECT_CALL(fetcher(), fetch(StrEq("/vendor/manifest.xml"), _));
     EXPECT_CALL(fetcher(), fetch(StrEq("/system/manifest.xml"), _));
     EXPECT_CALL(fetcher(), fetch(StrEq("/vendor/compatibility_matrix.xml"), _));
@@ -260,6 +263,7 @@ TEST_F(VintfObjectCompatibleTest, TestInputVsDeviceSuccess) {
     std::string error;
     std::vector<std::string> packageInfo = {systemMatrixXml1};
 
+    EXPECT_CALL(fetcher(), fetch(StrEq("/odm/manifest.xml"), _));
     EXPECT_CALL(fetcher(), fetch(StrEq("/vendor/manifest.xml"), _));
     EXPECT_CALL(fetcher(), fetch(StrEq("/system/manifest.xml"), _));
     EXPECT_CALL(fetcher(), fetch(StrEq("/vendor/compatibility_matrix.xml"), _));
@@ -321,6 +325,7 @@ TEST_F(VintfObjectCompatibleTest, TestFrameworkOnlyOta) {
     std::string error;
     std::vector<std::string> packageInfo = {systemMatrixXml1, systemManifestXml1};
 
+    EXPECT_CALL(fetcher(), fetch(StrEq("/odm/manifest.xml"), _));
     EXPECT_CALL(fetcher(), fetch(StrEq("/vendor/manifest.xml"), _));
     EXPECT_CALL(fetcher(), fetch(StrEq("/system/manifest.xml"), _)).Times(0);
     EXPECT_CALL(fetcher(), fetch(StrEq("/vendor/compatibility_matrix.xml"), _));
@@ -359,6 +364,7 @@ TEST_F(VintfObjectCompatibleTest, TestFullOta) {
     std::vector<std::string> packageInfo = {systemMatrixXml1, systemManifestXml1,
             vendorMatrixXml1, vendorManifestXml1};
 
+    EXPECT_CALL(fetcher(), fetch(StrEq("/odm/manifest.xml"), _)).Times(0);
     EXPECT_CALL(fetcher(), fetch(StrEq("/vendor/manifest.xml"), _)).Times(0);
     EXPECT_CALL(fetcher(), fetch(StrEq("/system/manifest.xml"), _)).Times(0);
     EXPECT_CALL(fetcher(), fetch(StrEq("/vendor/compatibility_matrix.xml"), _)).Times(0);
@@ -412,6 +418,7 @@ TEST_F(VintfObjectIncompatibleTest, TestDeviceCompatibility) {
     std::string error;
     std::vector<std::string> packageInfo;
 
+    EXPECT_CALL(fetcher(), fetch(StrEq("/odm/manifest.xml"), _));
     EXPECT_CALL(fetcher(), fetch(StrEq("/vendor/manifest.xml"), _));
     EXPECT_CALL(fetcher(), fetch(StrEq("/system/manifest.xml"), _));
     EXPECT_CALL(fetcher(), fetch(StrEq("/vendor/compatibility_matrix.xml"), _));
@@ -427,6 +434,7 @@ TEST_F(VintfObjectIncompatibleTest, TestInputVsDeviceSuccess) {
     std::string error;
     std::vector<std::string> packageInfo = {systemMatrixXml1};
 
+    EXPECT_CALL(fetcher(), fetch(StrEq("/odm/manifest.xml"), _));
     EXPECT_CALL(fetcher(), fetch(StrEq("/vendor/manifest.xml"), _));
     EXPECT_CALL(fetcher(), fetch(StrEq("/system/manifest.xml"), _));
     EXPECT_CALL(fetcher(), fetch(StrEq("/vendor/compatibility_matrix.xml"), _));

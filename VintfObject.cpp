@@ -56,10 +56,22 @@ static std::shared_ptr<const T> Get(
 
 // static
 std::shared_ptr<const HalManifest> VintfObject::GetDeviceHalManifest(bool skipCache) {
-    static LockedSharedPtr<HalManifest> gDeviceManifest;
-    return Get(&gDeviceManifest, skipCache,
-            std::bind(&HalManifest::fetchAllInformation, std::placeholders::_1,
-                "/vendor/manifest.xml"));
+    static LockedSharedPtr<HalManifest> gVendorManifest;
+    static LockedSharedPtr<HalManifest> gOdmManifest;
+    static std::mutex gDeviceManifestMutex;
+
+    std::unique_lock<std::mutex> _lock(gDeviceManifestMutex);
+
+    auto odm = Get(
+        &gOdmManifest, skipCache,
+        std::bind(&HalManifest::fetchAllInformation, std::placeholders::_1, "/odm/manifest.xml"));
+    if (odm != nullptr) {
+        return odm;
+    }
+
+    return Get(&gVendorManifest, skipCache,
+               std::bind(&HalManifest::fetchAllInformation, std::placeholders::_1,
+                         "/vendor/manifest.xml"));
 }
 
 // static
