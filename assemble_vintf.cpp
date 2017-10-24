@@ -318,7 +318,15 @@ class AssembleVintf {
                           << std::endl;
                 return FAIL_AND_EXIT;
             }
-            schema.addAll(std::move(additionalSchema));
+            std::string error;
+            if (!schema.addAll(std::move(additionalSchema), &error)) {
+                std::cerr << "File \"" << mInFilePaths[std::distance(mInFiles.begin(), it)]
+                          << "\" cannot be added: conflict on HAL \"" << error
+                          << "\" with an existing HAL. See <hal> with the same name "
+                          << "in previously parsed files or previously declared in this file."
+                          << std::endl;
+                return FAIL_AND_EXIT;
+            }
         }
         return assemble(&schema) ? SUCCESS : FAIL_AND_EXIT;
     }
