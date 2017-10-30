@@ -58,18 +58,9 @@ struct HalManifest : public HalGroup<ManifestHal>, public XmlFileGroup<ManifestX
     // (dupes removed)
     std::set<Version> getSupportedVersions(const std::string &name) const;
 
-    // Given a component name (e.g. "android.hardware.camera") and an interface
-    // name, return all instance names for that interface.
-    // * If the component ("android.hardware.camera") does not exist, return empty list
-    // * If the component ("android.hardware.camera") does exist,
-    //    * If the interface (ICamera) does not exist, return empty list
-    //    * Else return the list hal.interface.instance
-    std::set<std::string> getInstances(
-            const std::string &halName, const std::string &interfaceName) const;
-
     // Convenience method for checking if instanceName is in getInstances(halName, interfaceName)
-    bool hasInstance(const std::string &halName,
-            const std::string &interfaceName, const std::string &instanceName) const;
+    bool hasInstance(const std::string& halName, const Version& version,
+                     const std::string& interfaceName, const std::string& instanceName) const;
 
     // Return a list of component names that does NOT conform to
     // the given compatibility matrix. It contains components that are optional
@@ -99,17 +90,8 @@ struct HalManifest : public HalGroup<ManifestHal>, public XmlFileGroup<ManifestX
     // "android.hardware.nfc@1.0"]
     std::set<std::string> getHalNamesAndVersions() const;
 
-    // Given a component name (e.g. "android.hardware.camera"),
-    // return a list of interface names of that component.
-    // If the component is not found, empty list is returned.
-    std::set<std::string> getInterfaceNames(const std::string &name) const;
-
     // Type of the manifest. FRAMEWORK or DEVICE.
     SchemaType type() const;
-
-    // Get all hals with the name
-    std::vector<const ManifestHal *> getHals(const std::string &name) const;
-    std::vector<ManifestHal *> getHals(const std::string &name);
 
     // device.mSepolicyVersion. Assume type == device.
     // Abort if type != device.
@@ -140,10 +122,6 @@ struct HalManifest : public HalGroup<ManifestHal>, public XmlFileGroup<ManifestX
     friend struct LibVintfTest;
     friend std::string dump(const HalManifest &vm);
     friend bool operator==(const HalManifest &lft, const HalManifest &rgt);
-
-    // Return an iterable to all ManifestHal objects. Call it as follows:
-    // for (const ManifestHal &e : vm.getHals()) { }
-    ConstMultiMapValueIterable<std::string, ManifestHal> getHals() const;
 
     status_t fetchAllInformation(const std::string &path);
 

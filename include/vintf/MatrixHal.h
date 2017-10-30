@@ -18,6 +18,7 @@
 #define ANDROID_VINTF_MATRIX_HAL_H
 
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -32,6 +33,10 @@ namespace vintf {
 struct MatrixHal {
 
     bool operator==(const MatrixHal &other) const;
+    // Check whether the MatrixHal contains the given version.
+    bool containsVersion(const Version& version) const;
+    // Get all instances of the ManifestHal with given interface name.
+    std::set<std::string> getInstances(const std::string& interfaceName) const;
 
     HalFormat format = HalFormat::HIDL;
     std::string name;
@@ -40,6 +45,9 @@ struct MatrixHal {
     std::map<std::string, HalInterface> interfaces;
 
     inline const std::string& getName() const { return name; }
+    inline bool hasInterface(const std::string& interface_name) const {
+        return interfaces.find(interface_name) != interfaces.end();
+    }
 };
 
 } // namespace vintf
