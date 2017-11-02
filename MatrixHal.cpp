@@ -32,5 +32,21 @@ bool MatrixHal::operator==(const MatrixHal &other) const {
     return true;
 }
 
+bool MatrixHal::containsVersion(const Version& version) const {
+    for (VersionRange vRange : versionRanges) {
+        if (vRange.contains(version)) return true;
+    }
+    return false;
+}
+
+std::set<std::string> MatrixHal::getInstances(const std::string& interfaceName) const {
+    std::set<std::string> ret;
+    auto it = interfaces.find(interfaceName);
+    if (it != interfaces.end()) {
+        ret.insert(it->second.instances.begin(), it->second.instances.end());
+    }
+    return ret;
+}
+
 } // namespace vintf
 } // namespace android
