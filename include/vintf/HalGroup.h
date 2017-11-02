@@ -18,8 +18,10 @@
 #define ANDROID_VINTF_HAL_GROUP_H
 
 #include <map>
+#include <set>
 
 #include "MapValueIterator.h"
+#include "Version.h"
 
 namespace android {
 namespace vintf {
@@ -51,6 +53,51 @@ struct HalGroup {
         std::string name = hal.getName();
         mHals.emplace(std::move(name), std::move(hal));  // always succeed
         return true;
+    }
+
+    // Get all hals with the given name (e.g "android.hardware.camera").
+    // There could be multiple hals that matches the same given name.
+    std::vector<const Hal*> getHals(const std::string& name) const {
+        std::vector<const Hal*> ret;
+        auto range = mHals.equal_range(name);
+        for (auto it = range.first; it != range.second; ++it) {
+            ret.push_back(&it->second);
+        }
+        return ret;
+    }
+
+    // Get all hals with the given name (e.g "android.hardware.camera").
+    // There could be multiple hals that matches the same given name.
+    // Non-const version of the above getHals() method.
+    std::vector<Hal*> getHals(const std::string& name) {
+        std::vector<Hal*> ret;
+        auto range = mHals.equal_range(name);
+        for (auto it = range.first; it != range.second; ++it) {
+            ret.push_back(&it->second);
+        }
+        return ret;
+    }
+
+    // Get the hal that matches the given name and version (e.g.
+    // "android.hardware.camera@2.4")
+    // There should be a single hal that matches the given name and version.
+    const Hal* getHal(const std::string& name, const Version& version) const {
+        for (const Hal* hal : getHals(name)) {
+            if (hal->containsVersion(version)) return hal;
+        }
+        return nullptr;
+    }
+
+    // Get all instance names for hal that matches the given component name, version
+    // and interface name (e.g. "android.hardware.camera@2.4::ICameraProvider").
+    // * If the component ("android.hardware.camera@2.4") does not exist, return empty set.
+    // * If the component ("android.hardware.camera@2.4") does exist,
+    //    * If the interface (ICameraProvider) does not exist, return empty set.
+    //    * Else return the list hal.interface.instance.
+    std::set<std::string> getInstances(const std::string& halName, const Version& version,
+                                       const std::string& interfaceName) const {
+        const Hal* hal = getHal(halName, version);
+        return hal->getInstances(interfaceName);
     }
 
    protected:
