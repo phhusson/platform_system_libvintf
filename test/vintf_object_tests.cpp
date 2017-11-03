@@ -21,6 +21,10 @@
 #include <stdio.h>
 #include <unistd.h>
 
+#ifdef LIBVINTF_TARGET
+#include <android-base/properties.h>
+#endif
+
 #include "utils-fake.h"
 #include "vintf/VintfObject.h"
 
@@ -166,9 +170,14 @@ const std::string vendorManifestXml2 =
 // Setup the MockFileFetcher used by the fetchAllInformation template
 // so it returns the given metadata info instead of fetching from device.
 void setupMockFetcher(const std::string& vendorManifestXml, const std::string& systemMatrixXml,
-                      const std::string& systemManifestXml, const std::string& vendorMatrixXml) {
+                      const std::string& systemManifestXml, const std::string& vendorMatrixXml,
+                      const std::string& productModel) {
     MockFileFetcher* fetcher = static_cast<MockFileFetcher*>(gFetcher);
 
+    if (!productModel.empty()) {
+        ON_CALL(*fetcher, fetch(StrEq("/odm/manifest_" + productModel + ".xml"), _))
+            .WillByDefault(Return(::android::NAME_NOT_FOUND));
+    }
     ON_CALL(*fetcher, fetch(StrEq("/odm/manifest.xml"), _))
         .WillByDefault(Return(::android::NAME_NOT_FOUND));
     ON_CALL(*fetcher, fetch(StrEq("/vendor/manifest.xml"), _))
@@ -208,14 +217,17 @@ class VintfObjectCompatibleTest : public testing::Test {
    protected:
     virtual void SetUp() {
         mounter().reset();
-        setupMockFetcher(vendorManifestXml1, systemMatrixXml1, systemManifestXml1,
-                         vendorMatrixXml1);
+#ifdef LIBVINTF_TARGET
+        productModel = android::base::GetProperty("ro.product.model", "");
+#endif
+        setupMockFetcher(vendorManifestXml1, systemMatrixXml1, systemManifestXml1, vendorMatrixXml1,
+                         productModel);
     }
     virtual void TearDown() {
         Mock::VerifyAndClear(&mounter());
         Mock::VerifyAndClear(&fetcher());
     }
-
+    std::string productModel;
 };
 
 // Tests that local info is checked.
@@ -223,6 +235,9 @@ TEST_F(VintfObjectCompatibleTest, TestDeviceCompatibility) {
     std::string error;
     std::vector<std::string> packageInfo;
 
+    if (!productModel.empty()) {
+        EXPECT_CALL(fetcher(), fetch(StrEq("/odm/manifest_" + productModel + ".xml"), _));
+    }
     EXPECT_CALL(fetcher(), fetch(StrEq("/odm/manifest.xml"), _));
     EXPECT_CALL(fetcher(), fetch(StrEq("/vendor/manifest.xml"), _));
     EXPECT_CALL(fetcher(), fetch(StrEq("/system/manifest.xml"), _));
@@ -263,6 +278,9 @@ TEST_F(VintfObjectCompatibleTest, TestInputVsDeviceSuccess) {
     std::string error;
     std::vector<std::string> packageInfo = {systemMatrixXml1};
 
+    if (!productModel.empty()) {
+        EXPECT_CALL(fetcher(), fetch(StrEq("/odm/manifest_" + productModel + ".xml"), _));
+    }
     EXPECT_CALL(fetcher(), fetch(StrEq("/odm/manifest.xml"), _));
     EXPECT_CALL(fetcher(), fetch(StrEq("/vendor/manifest.xml"), _));
     EXPECT_CALL(fetcher(), fetch(StrEq("/system/manifest.xml"), _));
@@ -325,6 +343,9 @@ TEST_F(VintfObjectCompatibleTest, TestFrameworkOnlyOta) {
     std::string error;
     std::vector<std::string> packageInfo = {systemMatrixXml1, systemManifestXml1};
 
+    if (!productModel.empty()) {
+        EXPECT_CALL(fetcher(), fetch(StrEq("/odm/manifest_" + productModel + ".xml"), _));
+    }
     EXPECT_CALL(fetcher(), fetch(StrEq("/odm/manifest.xml"), _));
     EXPECT_CALL(fetcher(), fetch(StrEq("/vendor/manifest.xml"), _));
     EXPECT_CALL(fetcher(), fetch(StrEq("/system/manifest.xml"), _)).Times(0);
@@ -364,6 +385,9 @@ TEST_F(VintfObjectCompatibleTest, TestFullOta) {
     std::vector<std::string> packageInfo = {systemMatrixXml1, systemManifestXml1,
             vendorMatrixXml1, vendorManifestXml1};
 
+    if (!productModel.empty()) {
+        EXPECT_CALL(fetcher(), fetch(StrEq("/odm/manifest_" + productModel + ".xml"), _)).Times(0);
+    }
     EXPECT_CALL(fetcher(), fetch(StrEq("/odm/manifest.xml"), _)).Times(0);
     EXPECT_CALL(fetcher(), fetch(StrEq("/vendor/manifest.xml"), _)).Times(0);
     EXPECT_CALL(fetcher(), fetch(StrEq("/system/manifest.xml"), _)).Times(0);
@@ -404,13 +428,17 @@ class VintfObjectIncompatibleTest : public testing::Test {
    protected:
     virtual void SetUp() {
         mounter().reset();
-        setupMockFetcher(vendorManifestXml1, systemMatrixXml2, systemManifestXml1,
-                         vendorMatrixXml1);
+#ifdef LIBVINTF_TARGET
+        productModel = android::base::GetProperty("ro.product.model", "");
+#endif
+        setupMockFetcher(vendorManifestXml1, systemMatrixXml2, systemManifestXml1, vendorMatrixXml1,
+                         productModel);
     }
     virtual void TearDown() {
         Mock::VerifyAndClear(&mounter());
         Mock::VerifyAndClear(&fetcher());
     }
+    std::string productModel;
 };
 
 // Fetch all metadata from device and ensure that it fails.
@@ -418,6 +446,9 @@ TEST_F(VintfObjectIncompatibleTest, TestDeviceCompatibility) {
     std::string error;
     std::vector<std::string> packageInfo;
 
+    if (!productModel.empty()) {
+        EXPECT_CALL(fetcher(), fetch(StrEq("/odm/manifest_" + productModel + ".xml"), _));
+    }
     EXPECT_CALL(fetcher(), fetch(StrEq("/odm/manifest.xml"), _));
     EXPECT_CALL(fetcher(), fetch(StrEq("/vendor/manifest.xml"), _));
     EXPECT_CALL(fetcher(), fetch(StrEq("/system/manifest.xml"), _));
@@ -434,6 +465,9 @@ TEST_F(VintfObjectIncompatibleTest, TestInputVsDeviceSuccess) {
     std::string error;
     std::vector<std::string> packageInfo = {systemMatrixXml1};
 
+    if (!productModel.empty()) {
+        EXPECT_CALL(fetcher(), fetch(StrEq("/odm/manifest_" + productModel + ".xml"), _));
+    }
     EXPECT_CALL(fetcher(), fetch(StrEq("/odm/manifest.xml"), _));
     EXPECT_CALL(fetcher(), fetch(StrEq("/vendor/manifest.xml"), _));
     EXPECT_CALL(fetcher(), fetch(StrEq("/system/manifest.xml"), _));
