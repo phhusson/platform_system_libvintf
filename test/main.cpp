@@ -398,25 +398,25 @@ TEST_F(LibVintfTest, HalManifestGetTransport) {
 
 TEST_F(LibVintfTest, HalManifestInstances) {
     HalManifest vm = testDeviceManifest();
-    EXPECT_EQ(vm.getInstances("android.hardware.camera", "ICamera"),
-            std::set<std::string>({"default", "legacy/0"}));
-    EXPECT_EQ(vm.getInstances("android.hardware.camera", "IBetterCamera"),
-            std::set<std::string>({"camera"}));
-    EXPECT_EQ(vm.getInstances("android.hardware.camera", "INotExist"),
-            std::set<std::string>({}));
-    EXPECT_EQ(vm.getInstances("android.hardware.nfc", "INfc"),
-            std::set<std::string>({"default"}));
+    EXPECT_EQ(vm.getInstances("android.hardware.camera", {2, 0}, "ICamera"),
+              std::set<std::string>({"default", "legacy/0"}));
+    EXPECT_EQ(vm.getInstances("android.hardware.camera", {2, 0}, "IBetterCamera"),
+              std::set<std::string>({"camera"}));
+    EXPECT_EQ(vm.getInstances("android.hardware.camera", {2, 0}, "INotExist"),
+              std::set<std::string>({}));
+    EXPECT_EQ(vm.getInstances("android.hardware.nfc", {1, 0}, "INfc"),
+              std::set<std::string>({"default"}));
 
-    EXPECT_TRUE(vm.hasInstance("android.hardware.camera", "ICamera", "default"));
-    EXPECT_TRUE(vm.hasInstance("android.hardware.camera", "ICamera", "legacy/0"));
-    EXPECT_TRUE(vm.hasInstance("android.hardware.camera", "IBetterCamera", "camera"));
-    EXPECT_TRUE(vm.hasInstance("android.hardware.nfc", "INfc", "default"));
+    EXPECT_TRUE(vm.hasInstance("android.hardware.camera", {2, 0}, "ICamera", "default"));
+    EXPECT_TRUE(vm.hasInstance("android.hardware.camera", {2, 0}, "ICamera", "legacy/0"));
+    EXPECT_TRUE(vm.hasInstance("android.hardware.camera", {2, 0}, "IBetterCamera", "camera"));
+    EXPECT_TRUE(vm.hasInstance("android.hardware.nfc", {1, 0}, "INfc", "default"));
 
-    EXPECT_FALSE(vm.hasInstance("android.hardware.camera", "INotExist", "default"));
-    EXPECT_FALSE(vm.hasInstance("android.hardware.camera", "ICamera", "notexist"));
-    EXPECT_FALSE(vm.hasInstance("android.hardware.camera", "IBetterCamera", "default"));
-    EXPECT_FALSE(vm.hasInstance("android.hardware.camera", "INotExist", "notexist"));
-    EXPECT_FALSE(vm.hasInstance("android.hardware.nfc", "INfc", "notexist"));
+    EXPECT_FALSE(vm.hasInstance("android.hardware.camera", {2, 0}, "INotExist", "default"));
+    EXPECT_FALSE(vm.hasInstance("android.hardware.camera", {2, 0}, "ICamera", "notexist"));
+    EXPECT_FALSE(vm.hasInstance("android.hardware.camera", {2, 0}, "IBetterCamera", "default"));
+    EXPECT_FALSE(vm.hasInstance("android.hardware.camera", {2, 0}, "INotExist", "notexist"));
+    EXPECT_FALSE(vm.hasInstance("android.hardware.nfc", {1, 0}, "INfc", "notexist"));
 }
 
 TEST_F(LibVintfTest, VersionConverter) {
@@ -663,15 +663,7 @@ TEST_F(LibVintfTest, HalManifestGetHalNames) {
                   {"android.hardware.camera", "android.hardware.nfc"}));
 }
 
-TEST_F(LibVintfTest, HalManifestGetInterfaceNames) {
-    HalManifest vm = testDeviceManifest();
-    EXPECT_EQ(vm.getInterfaceNames("android.hardware.camera"),
-              std::set<std::string>({"ICamera", "IBetterCamera"}));
-    EXPECT_EQ(vm.getInterfaceNames("android.hardware.nfc"),
-              std::set<std::string>({"INfc"}));
-}
-
-TEST_F(LibVintfTest, HalManifestGetHal) {
+TEST_F(LibVintfTest, HalManifestGetAllHals) {
     HalManifest vm = testDeviceManifest();
     EXPECT_NE(getAnyHal(vm, "android.hardware.camera"), nullptr);
     EXPECT_EQ(getAnyHal(vm, "non-existent"), nullptr);
@@ -681,6 +673,113 @@ TEST_F(LibVintfTest, HalManifestGetHal) {
     for (const auto &hal : getHals(vm)) {
         EXPECT_EQ(hal.name, arr[i++]);
     }
+}
+
+TEST_F(LibVintfTest, HalManifestGetHals) {
+    HalManifest vm;
+    EXPECT_TRUE(
+        add(vm, ManifestHal{.format = HalFormat::HIDL,
+                            .name = "android.hardware.camera",
+                            .versions = {Version(1, 2)},
+                            .transportArch = {Transport::HWBINDER, Arch::ARCH_EMPTY},
+                            .interfaces = {{"ICamera", {"ICamera", {"legacy/0", "default"}}},
+                                           {"IBetterCamera", {"IBetterCamera", {"camera"}}}}}));
+    EXPECT_TRUE(
+        add(vm, ManifestHal{.format = HalFormat::HIDL,
+                            .name = "android.hardware.camera",
+                            .versions = {Version(2, 0)},
+                            .transportArch = {Transport::HWBINDER, Arch::ARCH_EMPTY},
+                            .interfaces = {{"ICamera", {"ICamera", {"legacy/0", "default"}}},
+                                           {"IBetterCamera", {"IBetterCamera", {"camera"}}}}}));
+    EXPECT_TRUE(add(vm, ManifestHal{.format = HalFormat::HIDL,
+                                    .name = "android.hardware.nfc",
+                                    .versions = {Version(1, 0), Version(2, 1)},
+                                    .transportArch = {Transport::PASSTHROUGH, Arch::ARCH_32_64},
+                                    .interfaces = {{"INfc", {"INfc", {"default"}}}}}));
+    ManifestHal expectedCameraHalV1_2 =
+        ManifestHal{.format = HalFormat::HIDL,
+                    .name = "android.hardware.camera",
+                    .versions = {Version(1, 2)},
+                    .transportArch = {Transport::HWBINDER, Arch::ARCH_EMPTY},
+                    .interfaces = {{"ICamera", {"ICamera", {"legacy/0", "default"}}},
+                                   {"IBetterCamera", {"IBetterCamera", {"camera"}}}}};
+    ManifestHal expectedCameraHalV2_0 =
+        ManifestHal{.format = HalFormat::HIDL,
+                    .name = "android.hardware.camera",
+                    .versions = {Version(2, 0)},
+                    .transportArch = {Transport::HWBINDER, Arch::ARCH_EMPTY},
+                    .interfaces = {{"ICamera", {"ICamera", {"legacy/0", "default"}}},
+                                   {"IBetterCamera", {"IBetterCamera", {"camera"}}}}};
+    ManifestHal expectedNfcHal =
+        ManifestHal{.format = HalFormat::HIDL,
+                    .name = "android.hardware.nfc",
+                    .versions = {Version(1, 0), Version(2, 1)},
+                    .transportArch = {Transport::PASSTHROUGH, Arch::ARCH_32_64},
+                    .interfaces = {{"INfc", {"INfc", {"default"}}}}};
+    auto cameraHals = vm.getHals("android.hardware.camera");
+    EXPECT_EQ((int)cameraHals.size(), 2);
+    EXPECT_EQ(*cameraHals[0], expectedCameraHalV1_2);
+    EXPECT_EQ(*cameraHals[1], expectedCameraHalV2_0);
+    auto nfcHals = vm.getHals("android.hardware.nfc");
+    EXPECT_EQ((int)nfcHals.size(), 1);
+    EXPECT_EQ(*nfcHals[0], expectedNfcHal);
+
+    EXPECT_EQ(*vm.getHal("android.hardware.camera", {1, 1}), expectedCameraHalV1_2);
+    EXPECT_EQ(*vm.getHal("android.hardware.camera", {2, 0}), expectedCameraHalV2_0);
+    EXPECT_EQ(*vm.getHal("android.hardware.nfc", {1, 0}), expectedNfcHal);
+    EXPECT_EQ(*vm.getHal("android.hardware.nfc", {2, 0}), expectedNfcHal);
+    EXPECT_EQ(*vm.getHal("android.hardware.nfc", {2, 1}), expectedNfcHal);
+
+    EXPECT_EQ(vm.getHal("non-existent", {1, 0}), nullptr);
+    EXPECT_EQ(vm.getHal("android.hardware.camera", {2, 1}), nullptr);
+    EXPECT_EQ(vm.getHal("android.hardware.camera", {1, 3}), nullptr);
+    EXPECT_EQ(vm.getHal("android.hardware.nfc", {1, 1}), nullptr);
+    EXPECT_EQ(vm.getHal("android.hardware.nfc", {3, 0}), nullptr);
+}
+
+TEST_F(LibVintfTest, CompatibilityMatrixGetHals) {
+    CompatibilityMatrix cm;
+    EXPECT_TRUE(add(cm, MatrixHal{HalFormat::NATIVE,
+                                  "android.hardware.camera",
+                                  {{VersionRange(1, 2, 3), VersionRange(4, 5, 6)}},
+                                  false /* optional */,
+                                  testHalInterfaces()}));
+    EXPECT_TRUE(add(cm, MatrixHal{HalFormat::NATIVE,
+                                  "android.hardware.nfc",
+                                  {{VersionRange(4, 5, 6), VersionRange(10, 11, 12)}},
+                                  true /* optional */,
+                                  testHalInterfaces()}));
+
+    MatrixHal expectedCameraHal = MatrixHal{
+        HalFormat::NATIVE,
+        "android.hardware.camera",
+        {{VersionRange(1, 2, 3), VersionRange(4, 5, 6)}},
+        false /* optional */,
+        testHalInterfaces(),
+    };
+    MatrixHal expectedNfcHal = MatrixHal{HalFormat::NATIVE,
+                                         "android.hardware.nfc",
+                                         {{VersionRange(4, 5, 6), VersionRange(10, 11, 12)}},
+                                         true /* optional */,
+                                         testHalInterfaces()};
+    auto cameraHals = cm.getHals("android.hardware.camera");
+    EXPECT_EQ((int)cameraHals.size(), 1);
+    EXPECT_EQ(*cameraHals[0], expectedCameraHal);
+    auto nfcHals = cm.getHals("android.hardware.nfc");
+    EXPECT_EQ((int)nfcHals.size(), 1);
+    EXPECT_EQ(*nfcHals[0], expectedNfcHal);
+
+    EXPECT_EQ(*cm.getHal("android.hardware.camera", {1, 2}), expectedCameraHal);
+    EXPECT_EQ(*cm.getHal("android.hardware.camera", {1, 3}), expectedCameraHal);
+    EXPECT_EQ(*cm.getHal("android.hardware.camera", {4, 5}), expectedCameraHal);
+    EXPECT_EQ(*cm.getHal("android.hardware.nfc", {4, 5}), expectedNfcHal);
+    EXPECT_EQ(*cm.getHal("android.hardware.nfc", {10, 12}), expectedNfcHal);
+
+    EXPECT_EQ(cm.getHal("non-existent", {1, 0}), nullptr);
+    EXPECT_EQ(cm.getHal("android.hardware.camera", {2, 1}), nullptr);
+    EXPECT_EQ(cm.getHal("android.hardware.camera", {1, 0}), nullptr);
+    EXPECT_EQ(cm.getHal("android.hardware.nfc", {3, 0}), nullptr);
+    EXPECT_EQ(cm.getHal("android.hardware.nfc", {4, 7}), nullptr);
 }
 
 TEST_F(LibVintfTest, RuntimeInfo) {

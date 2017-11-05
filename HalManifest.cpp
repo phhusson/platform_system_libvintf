@@ -81,33 +81,6 @@ std::set<std::string> HalManifest::getHalNamesAndVersions() const {
     return names;
 }
 
-std::set<std::string> HalManifest::getInterfaceNames(const std::string &name) const {
-    std::set<std::string> interfaceNames{};
-    for (const ManifestHal *hal : getHals(name)) {
-        for (const auto &iface : hal->interfaces) {
-            interfaceNames.insert(iface.first);
-        }
-    }
-    return interfaceNames;
-}
-
-std::vector<const ManifestHal *> HalManifest::getHals(const std::string &name) const {
-    std::vector<const ManifestHal *> ret;
-    auto range = mHals.equal_range(name);
-    for (auto it = range.first; it != range.second; ++it) {
-        ret.push_back(&it->second);
-    }
-    return ret;
-}
-std::vector<ManifestHal *> HalManifest::getHals(const std::string &name) {
-    std::vector<ManifestHal *> ret;
-    auto range = mHals.equal_range(name);
-    for (auto it = range.first; it != range.second; ++it) {
-        ret.push_back(&it->second);
-    }
-    return ret;
-}
-
 Transport HalManifest::getTransport(const std::string &package, const Version &v,
             const std::string &interfaceName, const std::string &instanceName) const {
 
@@ -145,10 +118,6 @@ Transport HalManifest::getTransport(const std::string &package, const Version &v
 
 }
 
-ConstMultiMapValueIterable<std::string, ManifestHal> HalManifest::getHals() const {
-    return HalGroup<ManifestHal>::getHals();
-}
-
 std::set<Version> HalManifest::getSupportedVersions(const std::string &name) const {
     std::set<Version> ret;
     for (const ManifestHal *hal : getHals(name)) {
@@ -157,22 +126,10 @@ std::set<Version> HalManifest::getSupportedVersions(const std::string &name) con
     return ret;
 }
 
-
-std::set<std::string> HalManifest::getInstances(
-        const std::string &halName, const std::string &interfaceName) const {
-    std::set<std::string> ret;
-    for (const ManifestHal *hal : getHals(halName)) {
-        auto it = hal->interfaces.find(interfaceName);
-        if (it != hal->interfaces.end()) {
-            ret.insert(it->second.instances.begin(), it->second.instances.end());
-        }
-    }
-    return ret;
-}
-
-bool HalManifest::hasInstance(const std::string &halName,
-        const std::string &interfaceName, const std::string &instanceName) const {
-    const auto &instances = getInstances(halName, interfaceName);
+bool HalManifest::hasInstance(const std::string& halName, const Version& version,
+                              const std::string& interfaceName,
+                              const std::string& instanceName) const {
+    const auto& instances = getInstances(halName, version, interfaceName);
     return instances.find(instanceName) != instances.end();
 }
 

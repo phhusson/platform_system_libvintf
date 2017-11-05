@@ -42,5 +42,21 @@ bool ManifestHal::operator==(const ManifestHal &other) const {
     return true;
 }
 
+bool ManifestHal::containsVersion(const Version& version) const {
+    for (Version v : versions) {
+        if (v.minorAtLeast(version)) return true;
+    }
+    return false;
+}
+
+std::set<std::string> ManifestHal::getInstances(const std::string& interfaceName) const {
+    std::set<std::string> ret;
+    auto it = interfaces.find(interfaceName);
+    if (it != interfaces.end()) {
+        ret.insert(it->second.instances.begin(), it->second.instances.end());
+    }
+    return ret;
+}
+
 } // namespace vintf
 } // namespace android
