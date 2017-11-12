@@ -92,9 +92,12 @@ cc_binary {
 cc_binary_host {
     name: "checkvintf",
     defaults: ["libvintf-defaults"],
-    shared_libs: [
+    static_libs: [
         "libvintf",
-        "libbase"
+        "libtinyxml2",
+    ],
+    shared_libs: [
+        "libbase",
     ],
     srcs: [
         "check_vintf.cpp",
