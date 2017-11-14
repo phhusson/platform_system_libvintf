@@ -24,6 +24,10 @@
 #include <memory>
 #include <mutex>
 
+#ifdef LIBVINTF_TARGET
+#include <android-base/properties.h>
+#endif
+
 namespace android {
 namespace vintf {
 
@@ -58,9 +62,24 @@ static std::shared_ptr<const T> Get(
 std::shared_ptr<const HalManifest> VintfObject::GetDeviceHalManifest(bool skipCache) {
     static LockedSharedPtr<HalManifest> gVendorManifest;
     static LockedSharedPtr<HalManifest> gOdmManifest;
+#ifdef LIBVINTF_TARGET
+    static LockedSharedPtr<HalManifest> gProductManifest;
+#endif
     static std::mutex gDeviceManifestMutex;
 
     std::unique_lock<std::mutex> _lock(gDeviceManifestMutex);
+
+#ifdef LIBVINTF_TARGET
+    std::string productModel = android::base::GetProperty("ro.product.model", "");
+    if (!productModel.empty()) {
+        auto product = Get(&gProductManifest, skipCache,
+                           std::bind(&HalManifest::fetchAllInformation, std::placeholders::_1,
+                                     "/odm/manifest_" + productModel + ".xml"));
+        if (product != nullptr) {
+            return product;
+        }
+    }
+#endif
 
     auto odm = Get(
         &gOdmManifest, skipCache,
