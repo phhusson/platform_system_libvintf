@@ -60,4 +60,9 @@ cc_test {
         "-O0",
         "-g",
     ],
+    target: {
+        android: {
+            cflags: ["-DLIBVINTF_TARGET"],
+        },
+    }
 }
