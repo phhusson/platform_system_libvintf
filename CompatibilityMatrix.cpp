@@ -38,6 +38,10 @@ SchemaType CompatibilityMatrix::type() const {
     return mType;
 }
 
+Level CompatibilityMatrix::level() const {
+    return mLevel;
+}
+
 Version CompatibilityMatrix::getMinimumMetaVersion() const {
     // TODO(b/62801658): this needs to depend on whether there are 1.1 requirements
     // (e.g. required <xmlfile> entry)
@@ -68,7 +72,8 @@ std::string CompatibilityMatrix::getXmlSchemaPath(const std::string& xmlFileName
 }
 
 bool operator==(const CompatibilityMatrix &lft, const CompatibilityMatrix &rgt) {
-    return lft.mType == rgt.mType && lft.mHals == rgt.mHals && lft.mXmlFiles == rgt.mXmlFiles &&
+    return lft.mType == rgt.mType && lft.mLevel == rgt.mLevel && lft.mHals == rgt.mHals &&
+           lft.mXmlFiles == rgt.mXmlFiles &&
            (lft.mType != SchemaType::DEVICE || (lft.device.mVndk == rgt.device.mVndk)) &&
            (lft.mType != SchemaType::FRAMEWORK ||
             (lft.framework.mKernels == rgt.framework.mKernels &&

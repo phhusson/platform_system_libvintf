@@ -2047,6 +2047,43 @@ TEST_P(KernelConfigParserInvalidTest, InvalidLine2) {
 
 INSTANTIATE_TEST_CASE_P(KernelConfigParser, KernelConfigParserInvalidTest, ::testing::Bool());
 
+TEST_F(LibVintfTest, MatrixLevel) {
+    CompatibilityMatrix cm;
+    std::string xml;
+
+    xml = "<compatibility-matrix version=\"1.0\" type=\"framework\"/>";
+    EXPECT_TRUE(gCompatibilityMatrixConverter(&cm, xml))
+        << gCompatibilityMatrixConverter.lastError();
+    EXPECT_EQ(Level::UNSPECIFIED, cm.level());
+
+    xml = "<compatibility-matrix version=\"1.0\" type=\"framework\" level=\"legacy\"/>";
+    EXPECT_TRUE(gCompatibilityMatrixConverter(&cm, xml))
+        << gCompatibilityMatrixConverter.lastError();
+    EXPECT_EQ(Level::LEGACY, cm.level());
+
+    xml = "<compatibility-matrix version=\"1.0\" type=\"framework\" level=\"1\"/>";
+    EXPECT_TRUE(gCompatibilityMatrixConverter(&cm, xml))
+        << gCompatibilityMatrixConverter.lastError();
+    EXPECT_EQ(1u, cm.level());
+}
+
+TEST_F(LibVintfTest, ManifestLevel) {
+    HalManifest manifest;
+    std::string xml;
+
+    xml = "<manifest version=\"1.0\" type=\"device\"/>";
+    EXPECT_TRUE(gHalManifestConverter(&manifest, xml)) << gHalManifestConverter.lastError();
+    EXPECT_EQ(Level::UNSPECIFIED, manifest.level());
+
+    xml = "<manifest version=\"1.0\" type=\"device\" target-level=\"legacy\"/>";
+    EXPECT_TRUE(gHalManifestConverter(&manifest, xml)) << gHalManifestConverter.lastError();
+    EXPECT_EQ(Level::LEGACY, manifest.level());
+
+    xml = "<manifest version=\"1.0\" type=\"device\" target-level=\"1\"/>";
+    EXPECT_TRUE(gHalManifestConverter(&manifest, xml)) << gHalManifestConverter.lastError();
+    EXPECT_EQ(1u, manifest.level());
+}
+
 } // namespace vintf
 } // namespace android
 
