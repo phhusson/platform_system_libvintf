@@ -48,5 +48,23 @@ std::set<std::string> MatrixHal::getInstances(const std::string& interfaceName) 
     return ret;
 }
 
+bool MatrixHal::containsInstances(const MatrixHal& other) const {
+    for (const auto& pair : other.interfaces) {
+        const std::string& interfaceName = pair.first;
+        auto thisIt = interfaces.find(interfaceName);
+        if (thisIt == interfaces.end()) {
+            return false;
+        }
+
+        const std::set<std::string>& thisInstances = thisIt->second.instances;
+        const std::set<std::string>& otherInstances = pair.second.instances;
+        if (!std::includes(thisInstances.begin(), thisInstances.end(), otherInstances.begin(),
+                           otherInstances.end())) {
+            return false;
+        }
+    }
+    return true;
+}
+
 } // namespace vintf
 } // namespace android

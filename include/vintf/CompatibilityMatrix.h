@@ -59,6 +59,16 @@ struct CompatibilityMatrix : public HalGroup<MatrixHal>, public XmlFileGroup<Mat
     bool add(MatrixHal &&hal);
     bool add(MatrixKernel &&kernel);
 
+    // Add all HALs as optional HALs from "other". This function moves MatrixHal objects
+    // from "other".
+    // Require other->level() > this->level(), otherwise do nothing.
+    bool addAllHalsAsOptional(CompatibilityMatrix* other, std::string* error);
+    // Return the MatrixHal object with the given name and major version. Since all major
+    // version are guaranteed distinct when add()-ed, there should be at most 1 match.
+    // Return nullptr if none is found.
+    std::pair<MatrixHal*, VersionRange*> getHalWithMajorVersion(const std::string& name,
+                                                                size_t majorVer);
+
     status_t fetchAllInformation(const std::string &path);
 
     friend struct HalManifest;
