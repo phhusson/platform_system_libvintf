@@ -199,9 +199,9 @@ class AssembleVintf {
                      "    Many entries other than HALs are zero-filled and\n"
                      "    require human attention. \n"
                      "-->\n"
-                  << gCompatibilityMatrixConverter(generatedMatrix);
+                  << gCompatibilityMatrixConverter(generatedMatrix, mSerializeFlags);
         } else {
-            out() << gHalManifestConverter(*halManifest);
+            out() << gHalManifestConverter(*halManifest, mSerializeFlags);
         }
         out().flush();
 
@@ -274,7 +274,7 @@ class AssembleVintf {
             }
             matrix->framework.mAvbMetaVersion = avbMetaVersion;
         }
-        out() << gCompatibilityMatrixConverter(*matrix);
+        out() << gCompatibilityMatrixConverter(*matrix, mSerializeFlags);
         out().flush();
 
         if (mCheckFile.is_open()) {
@@ -385,6 +385,18 @@ class AssembleVintf {
 
     void setOutputMatrix() { mOutputMatrix = true; }
 
+    bool setHalsOnly() {
+        if (mSerializeFlags) return false;
+        mSerializeFlags |= SerializeFlag::HALS_ONLY;
+        return true;
+    }
+
+    bool setNoHals() {
+        if (mSerializeFlags) return false;
+        mSerializeFlags |= SerializeFlag::NO_HALS;
+        return true;
+    }
+
     bool addKernel(const std::string& kernelArg) {
         auto ind = kernelArg.find(':');
         if (ind == std::string::npos) {
@@ -412,6 +424,7 @@ class AssembleVintf {
     std::unique_ptr<std::ofstream> mOutFileRef;
     std::ifstream mCheckFile;
     bool mOutputMatrix = false;
+    SerializeFlags mSerializeFlags = SerializeFlag::EVERYTHING;
     std::map<Version, std::string> mKernels;
 };
 
@@ -451,17 +464,25 @@ void help() {
                  "               <version> has format: 3.18\n"
                  "               <android-base.cfg> is the location of android-base.cfg\n"
                  "               <android-base-arch.cfg> is the location of an optional\n"
-                 "               arch-specific config fragment, more than one may be specified\n";
+                 "               arch-specific config fragment, more than one may be specified\n"
+                 "    -l, --hals-only\n"
+                 "               Output has only <hal> entries. Cannot be used with -n.\n"
+                 "    -n, --no-hals\n"
+                 "               Output has no <hal> entries (but all other entries).\n"
+                 "               Cannot be used with -l.\n";
 }
 
 int main(int argc, char **argv) {
-    const struct option longopts[] = {{"kernel", required_argument, NULL, 'k'}, {0, 0, 0, 0}};
+    const struct option longopts[] = {{"kernel", required_argument, NULL, 'k'},
+                                      {"hals-only", no_argument, NULL, 'l'},
+                                      {"no-hals", no_argument, NULL, 'n'},
+                                      {0, 0, 0, 0}};
 
     std::string outFilePath;
     ::android::vintf::AssembleVintf assembleVintf;
     int res;
     int optind;
-    while ((res = getopt_long(argc, argv, "hi:o:mc:", longopts, &optind)) >= 0) {
+    while ((res = getopt_long(argc, argv, "hi:o:mc:nl", longopts, &optind)) >= 0) {
         switch (res) {
             case 'i': {
                 char* inFilePath = strtok(optarg, ":");
@@ -501,6 +522,18 @@ int main(int argc, char **argv) {
             case 'k': {
                 if (!assembleVintf.addKernel(optarg)) {
                     std::cerr << "ERROR: Unrecognized --kernel argument." << std::endl;
+                    return 1;
+                }
+            } break;
+
+            case 'l': {
+                if (!assembleVintf.setHalsOnly()) {
+                    return 1;
+                }
+            } break;
+
+            case 'n': {
+                if (!assembleVintf.setNoHals()) {
                     return 1;
                 }
             } break;

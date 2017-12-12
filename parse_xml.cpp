@@ -140,19 +140,23 @@ struct XmlNodeConverter : public XmlConverter<Object> {
 
     // sub-types should implement these.
     virtual void mutateNode(const Object &o, NodeType *n, DocType *d) const = 0;
+    virtual void mutateNode(const Object& o, NodeType* n, DocType* d, SerializeFlags) const {
+        mutateNode(o, n, d);
+    }
     virtual bool buildObject(Object *o, NodeType *n) const = 0;
     virtual std::string elementName() const = 0;
 
     // convenience methods for user
     inline const std::string &lastError() const { return mLastError; }
-    inline NodeType *serialize(const Object &o, DocType *d) const {
+    inline NodeType* serialize(const Object& o, DocType* d,
+                               SerializeFlags flags = EVERYTHING) const {
         NodeType *root = createNode(this->elementName(), d);
-        this->mutateNode(o, root, d);
+        this->mutateNode(o, root, d, flags);
         return root;
     }
-    inline std::string serialize(const Object &o) const {
+    inline std::string serialize(const Object& o, SerializeFlags flags) const {
         DocType *doc = createDocument();
-        appendChild(doc, serialize(o, doc));
+        appendChild(doc, serialize(o, doc, flags));
         std::string s = printDocument(doc);
         deleteDocument(doc);
         return s;
@@ -176,8 +180,8 @@ struct XmlNodeConverter : public XmlConverter<Object> {
     inline NodeType *operator()(const Object &o, DocType *d) const {
         return serialize(o, d);
     }
-    inline std::string operator()(const Object &o) const {
-        return serialize(o);
+    inline std::string operator()(const Object& o, SerializeFlags flags) const {
+        return serialize(o, flags);
     }
     inline bool operator()(Object *o, NodeType *node) const {
         return deserialize(o, node);
@@ -746,19 +750,32 @@ const ManifestXmlFileConverter manifestXmlFileConverter{};
 struct HalManifestConverter : public XmlNodeConverter<HalManifest> {
     std::string elementName() const override { return "manifest"; }
     void mutateNode(const HalManifest &m, NodeType *root, DocType *d) const override {
+        mutateNode(m, root, d, SerializeFlag::EVERYTHING);
+    }
+    void mutateNode(const HalManifest& m, NodeType* root, DocType* d,
+                    SerializeFlags flags) const override {
         appendAttr(root, "version", m.getMetaVersion());
         appendAttr(root, "type", m.mType);
         if (m.mLevel != Level::UNSPECIFIED) {
             this->appendAttr(root, "target-level", m.mLevel);
         }
-        appendChildren(root, manifestHalConverter, m.getHals(), d);
+
+        if (!(flags & SerializeFlag::NO_HALS)) {
+            appendChildren(root, manifestHalConverter, m.getHals(), d);
+        }
         if (m.mType == SchemaType::DEVICE) {
-            appendChild(root, halManifestSepolicyConverter(m.device.mSepolicyVersion, d));
+            if (!(flags & SerializeFlag::NO_SEPOLICY)) {
+                appendChild(root, halManifestSepolicyConverter(m.device.mSepolicyVersion, d));
+            }
         } else if (m.mType == SchemaType::FRAMEWORK) {
-            appendChildren(root, vndkConverter, m.framework.mVndks, d);
+            if (!(flags & SerializeFlag::NO_VNDK)) {
+                appendChildren(root, vndkConverter, m.framework.mVndks, d);
+            }
         }
 
-        appendChildren(root, manifestXmlFileConverter, m.getXmlFiles(), d);
+        if (!(flags & SerializeFlag::NO_XMLFILES)) {
+            appendChildren(root, manifestXmlFileConverter, m.getXmlFiles(), d);
+        }
     }
     bool buildObject(HalManifest *object, NodeType *root) const override {
         std::vector<ManifestHal> hals;
@@ -859,21 +876,38 @@ const MatrixXmlFileConverter matrixXmlFileConverter{};
 struct CompatibilityMatrixConverter : public XmlNodeConverter<CompatibilityMatrix> {
     std::string elementName() const override { return "compatibility-matrix"; }
     void mutateNode(const CompatibilityMatrix &m, NodeType *root, DocType *d) const override {
+        mutateNode(m, root, d, SerializeFlag::EVERYTHING);
+    }
+    void mutateNode(const CompatibilityMatrix& m, NodeType* root, DocType* d,
+                    SerializeFlags flags) const override {
         appendAttr(root, "version", m.getMinimumMetaVersion());
         appendAttr(root, "type", m.mType);
         if (m.mLevel != Level::UNSPECIFIED) {
             this->appendAttr(root, "level", m.mLevel);
         }
-        appendChildren(root, matrixHalConverter, iterateValues(m.mHals), d);
+
+        if (!(flags & SerializeFlag::NO_HALS)) {
+            appendChildren(root, matrixHalConverter, iterateValues(m.mHals), d);
+        }
         if (m.mType == SchemaType::FRAMEWORK) {
-            appendChildren(root, matrixKernelConverter, m.framework.mKernels, d);
-            appendChild(root, sepolicyConverter(m.framework.mSepolicy, d));
-            appendChild(root, avbConverter(m.framework.mAvbMetaVersion, d));
+            if (!(flags & SerializeFlag::NO_KERNEL)) {
+                appendChildren(root, matrixKernelConverter, m.framework.mKernels, d);
+            }
+            if (!(flags & SerializeFlag::NO_SEPOLICY)) {
+                appendChild(root, sepolicyConverter(m.framework.mSepolicy, d));
+            }
+            if (!(flags & SerializeFlag::NO_AVB)) {
+                appendChild(root, avbConverter(m.framework.mAvbMetaVersion, d));
+            }
         } else if (m.mType == SchemaType::DEVICE) {
-            appendChild(root, vndkConverter(m.device.mVndk, d));
+            if (!(flags & SerializeFlag::NO_VNDK)) {
+                appendChild(root, vndkConverter(m.device.mVndk, d));
+            }
         }
 
-        appendChildren(root, matrixXmlFileConverter, m.getXmlFiles(), d);
+        if (!(flags & SerializeFlag::NO_XMLFILES)) {
+            appendChildren(root, matrixXmlFileConverter, m.getXmlFiles(), d);
+        }
     }
     bool buildObject(CompatibilityMatrix *object, NodeType *root) const override {
         Version version;
