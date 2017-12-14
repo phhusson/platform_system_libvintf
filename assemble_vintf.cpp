@@ -25,6 +25,7 @@
 #include <string>
 
 #include <android-base/file.h>
+#include <android-base/parseint.h>
 
 #include <vintf/KernelConfigParser.h>
 #include <vintf/parse_string.h>
@@ -63,6 +64,24 @@ class AssembleVintf {
         return true;
     }
 
+    static bool getBooleanFlag(const char* key) {
+        const char* envValue = getenv(key);
+        return envValue != nullptr && strcmp(envValue, "true") == 0;
+    }
+
+    static size_t getIntegerFlag(const char* key, size_t defaultValue = 0) {
+        std::string envValue = getenv(key);
+        if (envValue.empty()) {
+            return defaultValue;
+        }
+        size_t value;
+        if (!base::ParseUint(envValue, &value)) {
+            std::cerr << "Error: " << key << " must be a number." << std::endl;
+            return defaultValue;
+        }
+        return value;
+    }
+
     static std::string read(std::basic_istream<char>& is) {
         std::stringstream ss;
         ss << is.rdbuf();
@@ -71,6 +90,18 @@ class AssembleVintf {
 
     static bool isCommonConfig(const std::string& path) {
         return ::android::base::Basename(path) == gBaseConfig;
+    }
+
+    static Level convertFromApiLevel(size_t apiLevel) {
+        if (apiLevel < 26) {
+            return Level::LEGACY;
+        } else if (apiLevel == 26) {
+            return Level::O;
+        } else if (apiLevel == 27) {
+            return Level::O_MR1;
+        } else {
+            return Level::UNSPECIFIED;
+        }
     }
 
     // nullptr on any error, otherwise the condition.
@@ -173,15 +204,57 @@ class AssembleVintf {
         return ret;
     }
 
+    static std::string getFileNameFromPath(std::string path) {
+        auto idx = path.find_last_of("\\/");
+        if (idx != std::string::npos) {
+            path.erase(0, idx + 1);
+        }
+        return path;
+    }
+
     std::basic_ostream<char>& out() const {
         return mOutFileRef == nullptr ? std::cout : *mOutFileRef;
     }
 
-    bool assembleHalManifest(HalManifest* halManifest) {
+    template <typename S>
+    using Schemas = std::vector<std::pair<std::string, S>>;
+    using HalManifests = Schemas<HalManifest>;
+    using CompatibilityMatrices = Schemas<CompatibilityMatrix>;
+
+    bool assembleHalManifest(HalManifests* halManifests) {
         std::string error;
+        HalManifest* halManifest = &halManifests->front().second;
+        for (auto it = halManifests->begin() + 1; it != halManifests->end(); ++it) {
+            const std::string& path = it->first;
+            HalManifest& halToAdd = it->second;
+
+            if (halToAdd.level() != Level::UNSPECIFIED) {
+                if (halManifest->level() == Level::UNSPECIFIED) {
+                    halManifest->mLevel = halToAdd.level();
+                } else if (halManifest->level() != halToAdd.level()) {
+                    std::cerr << "Inconsistent FCM Version in HAL manifests:" << std::endl
+                              << "    File '" << halManifests->front().first << "' has level "
+                              << halManifest->level() << std::endl
+                              << "    File '" << path << "' has level " << halToAdd.level()
+                              << std::endl;
+                    return false;
+                }
+            }
+
+            if (!halManifest->addAll(std::move(halToAdd), &error)) {
+                std::cerr << "File \"" << path << "\" cannot be added: conflict on HAL \"" << error
+                          << "\" with an existing HAL. See <hal> with the same name "
+                          << "in previously parsed files or previously declared in this file."
+                          << std::endl;
+                return false;
+            }
+        }
 
         if (halManifest->mType == SchemaType::DEVICE) {
             if (!getFlag("BOARD_SEPOLICY_VERS", &halManifest->device.mSepolicyVersion)) {
+                return false;
+            }
+            if (!setDeviceFcmVersion(halManifest)) {
                 return false;
             }
         }
@@ -199,9 +272,9 @@ class AssembleVintf {
                      "    Many entries other than HALs are zero-filled and\n"
                      "    require human attention. \n"
                      "-->\n"
-                  << gCompatibilityMatrixConverter(generatedMatrix);
+                  << gCompatibilityMatrixConverter(generatedMatrix, mSerializeFlags);
         } else {
-            out() << gHalManifestConverter(*halManifest);
+            out() << gHalManifestConverter(*halManifest, mSerializeFlags);
         }
         out().flush();
 
@@ -248,12 +321,107 @@ class AssembleVintf {
         return true;
     }
 
-    bool assembleCompatibilityMatrix(CompatibilityMatrix* matrix) {
-        std::string error;
+    bool setDeviceFcmVersion(HalManifest* manifest) {
+        size_t shippingApiLevel = getIntegerFlag("PRODUCT_SHIPPING_API_LEVEL");
 
+        if (manifest->level() != Level::UNSPECIFIED) {
+            return true;
+        }
+        if (!getBooleanFlag("PRODUCT_ENFORCE_VINTF_MANIFEST")) {
+            manifest->mLevel = Level::LEGACY;
+            return true;
+        }
+        // TODO(b/70628538): Do not infer from Shipping API level.
+        if (shippingApiLevel) {
+            std::cerr << "Warning: Shipping FCM Version is inferred from Shipping API level. "
+                      << "Declare Shipping FCM Version in device manifest directly." << std::endl;
+            manifest->mLevel = convertFromApiLevel(shippingApiLevel);
+            if (manifest->mLevel == Level::UNSPECIFIED) {
+                std::cerr << "Error: Shipping FCM Version cannot be inferred from Shipping API "
+                          << "level " << shippingApiLevel << "."
+                          << "Declare Shipping FCM Version in device manifest directly."
+                          << std::endl;
+                return false;
+            }
+            return true;
+        }
+        // TODO(b/69638851): should be an error if Shipping API level is not defined.
+        // For now, just leave it empty; when framework compatibility matrix is built,
+        // lowest FCM Version is assumed.
+        std::cerr << "Warning: Shipping FCM Version cannot be inferred, because:" << std::endl
+                  << "    (1) It is not explicitly declared in device manifest;" << std::endl
+                  << "    (2) PRODUCT_ENFORCE_VINTF_MANIFEST is set to true;" << std::endl
+                  << "    (3) PRODUCT_SHIPPING_API_LEVEL is undefined." << std::endl
+                  << "Assuming 'unspecified' Shipping FCM Version. " << std::endl
+                  << "To remove this warning, define 'level' attribute in device manifest."
+                  << std::endl;
+        return true;
+    }
+
+    Level getLowestFcmVersion(const CompatibilityMatrices& matrices) {
+        Level ret = Level::UNSPECIFIED;
+        for (const auto& e : matrices) {
+            if (ret == Level::UNSPECIFIED || ret > e.second.level()) {
+                ret = e.second.level();
+            }
+        }
+        return ret;
+    }
+
+    bool assembleCompatibilityMatrix(CompatibilityMatrices* matrices) {
+        std::string error;
+        CompatibilityMatrix* matrix = nullptr;
         KernelSepolicyVersion kernelSepolicyVers;
         Version sepolicyVers;
-        if (matrix->mType == SchemaType::FRAMEWORK) {
+        std::unique_ptr<HalManifest> checkManifest;
+        if (matrices->front().second.mType == SchemaType::DEVICE) {
+            matrix = &matrices->front().second;
+        }
+
+        if (matrices->front().second.mType == SchemaType::FRAMEWORK) {
+            Level deviceLevel = Level::UNSPECIFIED;
+            std::vector<std::string> fileList;
+            if (mCheckFile.is_open()) {
+                checkManifest = std::make_unique<HalManifest>();
+                if (!gHalManifestConverter(checkManifest.get(), read(mCheckFile))) {
+                    std::cerr << "Cannot parse check file as a HAL manifest: "
+                              << gHalManifestConverter.lastError() << std::endl;
+                    return false;
+                }
+                deviceLevel = checkManifest->level();
+            }
+
+            if (deviceLevel == Level::UNSPECIFIED) {
+                // For GSI build, legacy devices that do not have a HAL manifest,
+                // and devices in development, merge all compatibility matrices.
+                deviceLevel = getLowestFcmVersion(*matrices);
+            }
+
+            for (auto& e : *matrices) {
+                if (e.second.level() == deviceLevel) {
+                    fileList.push_back(e.first);
+                    matrix = &e.second;
+                }
+            }
+            if (matrix == nullptr) {
+                std::cerr << "FATAL ERROR: cannot find matrix with level '" << deviceLevel << "'"
+                          << std::endl;
+                return false;
+            }
+            for (auto& e : *matrices) {
+                if (e.second.level() <= deviceLevel) {
+                    continue;
+                }
+                fileList.push_back(e.first);
+                if (!matrix->addAllHalsAsOptional(&e.second, &error)) {
+                    std::cerr << "File \"" << e.first << "\" cannot be added: " << error
+                              << ". See <hal> with the same name "
+                              << "in previously parsed files or previously declared in this file."
+                              << std::endl;
+                    return false;
+                }
+            }
+
             if (!getFlag("BOARD_SEPOLICY_VERS", &sepolicyVers)) {
                 return false;
             }
@@ -273,21 +441,21 @@ class AssembleVintf {
                 return false;
             }
             matrix->framework.mAvbMetaVersion = avbMetaVersion;
+
+            out() << "<!--" << std::endl;
+            out() << "    Input:" << std::endl;
+            for (const auto& path : fileList) {
+                out() << "        " << getFileNameFromPath(path) << std::endl;
+            }
+            out() << "-->" << std::endl;
         }
-        out() << gCompatibilityMatrixConverter(*matrix);
+        out() << gCompatibilityMatrixConverter(*matrix, mSerializeFlags);
         out().flush();
 
-        if (mCheckFile.is_open()) {
-            HalManifest checkManifest;
-            if (!gHalManifestConverter(&checkManifest, read(mCheckFile))) {
-                std::cerr << "Cannot parse check file as a HAL manifest: "
-                          << gHalManifestConverter.lastError() << std::endl;
-                return false;
-            }
-            if (!checkManifest.checkCompatibility(*matrix, &error)) {
-                std::cerr << "Not compatible: " << error << std::endl;
-                return false;
-            }
+        if (checkManifest != nullptr && getBooleanFlag("PRODUCT_ENFORCE_VINTF_MANIFEST") &&
+            !checkManifest->checkCompatibility(*matrix, &error)) {
+            std::cerr << "Not compatible: " << error << std::endl;
+            return false;
         }
 
         return true;
@@ -297,38 +465,33 @@ class AssembleVintf {
     template <typename Schema, typename AssembleFunc>
     AssembleStatus tryAssemble(const XmlConverter<Schema>& converter, const std::string& schemaName,
                                AssembleFunc assemble) {
+        Schemas<Schema> schemas;
         Schema schema;
         if (!converter(&schema, read(mInFiles.front()))) {
             return TRY_NEXT;
         }
         auto firstType = schema.type();
+        schemas.emplace_back(mInFilePaths.front(), std::move(schema));
+
         for (auto it = mInFiles.begin() + 1; it != mInFiles.end(); ++it) {
             Schema additionalSchema;
+            const std::string fileName = mInFilePaths[std::distance(mInFiles.begin(), it)];
             if (!converter(&additionalSchema, read(*it))) {
-                std::cerr << "File \"" << mInFilePaths[std::distance(mInFiles.begin(), it)]
-                          << "\" is not a valid " << firstType << " " << schemaName
-                          << " (but the first file is a valid " << firstType << " " << schemaName
-                          << "). Error: " << converter.lastError() << std::endl;
+                std::cerr << "File \"" << fileName << "\" is not a valid " << firstType << " "
+                          << schemaName << " (but the first file is a valid " << firstType << " "
+                          << schemaName << "). Error: " << converter.lastError() << std::endl;
                 return FAIL_AND_EXIT;
             }
             if (additionalSchema.type() != firstType) {
-                std::cerr << "File \"" << mInFilePaths[std::distance(mInFiles.begin(), it)]
-                          << "\" is a " << additionalSchema.type() << " " << schemaName
-                          << " (but a " << firstType << " " << schemaName << " is expected)."
-                          << std::endl;
+                std::cerr << "File \"" << fileName << "\" is a " << additionalSchema.type() << " "
+                          << schemaName << " (but a " << firstType << " " << schemaName
+                          << " is expected)." << std::endl;
                 return FAIL_AND_EXIT;
             }
-            std::string error;
-            if (!schema.addAll(std::move(additionalSchema), &error)) {
-                std::cerr << "File \"" << mInFilePaths[std::distance(mInFiles.begin(), it)]
-                          << "\" cannot be added: conflict on HAL \"" << error
-                          << "\" with an existing HAL. See <hal> with the same name "
-                          << "in previously parsed files or previously declared in this file."
-                          << std::endl;
-                return FAIL_AND_EXIT;
-            }
+
+            schemas.emplace_back(fileName, std::move(additionalSchema));
         }
-        return assemble(&schema) ? SUCCESS : FAIL_AND_EXIT;
+        return assemble(&schemas) ? SUCCESS : FAIL_AND_EXIT;
     }
 
     bool assemble() {
@@ -385,6 +548,18 @@ class AssembleVintf {
 
     void setOutputMatrix() { mOutputMatrix = true; }
 
+    bool setHalsOnly() {
+        if (mSerializeFlags) return false;
+        mSerializeFlags |= SerializeFlag::HALS_ONLY;
+        return true;
+    }
+
+    bool setNoHals() {
+        if (mSerializeFlags) return false;
+        mSerializeFlags |= SerializeFlag::NO_HALS;
+        return true;
+    }
+
     bool addKernel(const std::string& kernelArg) {
         auto ind = kernelArg.find(':');
         if (ind == std::string::npos) {
@@ -412,6 +587,7 @@ class AssembleVintf {
     std::unique_ptr<std::ofstream> mOutFileRef;
     std::ifstream mCheckFile;
     bool mOutputMatrix = false;
+    SerializeFlags mSerializeFlags = SerializeFlag::EVERYTHING;
     std::map<Version, std::string> mKernels;
 };
 
@@ -451,17 +627,25 @@ void help() {
                  "               <version> has format: 3.18\n"
                  "               <android-base.cfg> is the location of android-base.cfg\n"
                  "               <android-base-arch.cfg> is the location of an optional\n"
-                 "               arch-specific config fragment, more than one may be specified\n";
+                 "               arch-specific config fragment, more than one may be specified\n"
+                 "    -l, --hals-only\n"
+                 "               Output has only <hal> entries. Cannot be used with -n.\n"
+                 "    -n, --no-hals\n"
+                 "               Output has no <hal> entries (but all other entries).\n"
+                 "               Cannot be used with -l.\n";
 }
 
 int main(int argc, char **argv) {
-    const struct option longopts[] = {{"kernel", required_argument, NULL, 'k'}, {0, 0, 0, 0}};
+    const struct option longopts[] = {{"kernel", required_argument, NULL, 'k'},
+                                      {"hals-only", no_argument, NULL, 'l'},
+                                      {"no-hals", no_argument, NULL, 'n'},
+                                      {0, 0, 0, 0}};
 
     std::string outFilePath;
     ::android::vintf::AssembleVintf assembleVintf;
     int res;
     int optind;
-    while ((res = getopt_long(argc, argv, "hi:o:mc:", longopts, &optind)) >= 0) {
+    while ((res = getopt_long(argc, argv, "hi:o:mc:nl", longopts, &optind)) >= 0) {
         switch (res) {
             case 'i': {
                 char* inFilePath = strtok(optarg, ":");
@@ -501,6 +685,18 @@ int main(int argc, char **argv) {
             case 'k': {
                 if (!assembleVintf.addKernel(optarg)) {
                     std::cerr << "ERROR: Unrecognized --kernel argument." << std::endl;
+                    return 1;
+                }
+            } break;
+
+            case 'l': {
+                if (!assembleVintf.setHalsOnly()) {
+                    return 1;
+                }
+            } break;
+
+            case 'n': {
+                if (!assembleVintf.setNoHals()) {
                     return 1;
                 }
             } break;

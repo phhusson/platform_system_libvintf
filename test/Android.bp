@@ -50,11 +50,13 @@ cc_test {
         "libbase",
         "libcutils",
         "liblog",
-        "libvintftest",
+        "libselinux",
+        "libtinyxml2",
     ],
     static_libs: [
         "libgtest",
         "libgmock",
+        "libvintftest",
     ],
     cflags: [
         "-O0",
