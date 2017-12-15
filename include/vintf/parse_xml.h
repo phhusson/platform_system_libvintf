@@ -23,14 +23,27 @@
 namespace android {
 namespace vintf {
 
+enum SerializeFlag : uint32_t {
+    NO_HALS = 1 << 0,
+    NO_AVB = 1 << 1,
+    NO_SEPOLICY = 1 << 2,
+    NO_VNDK = 1 << 3,
+    NO_KERNEL = 1 << 4,
+    NO_XMLFILES = 1 << 5,
+
+    EVERYTHING = 0,
+    HALS_ONLY = ~NO_HALS,
+};
+using SerializeFlags = uint32_t;
+
 template<typename Object>
 struct XmlConverter {
     XmlConverter() {}
     virtual ~XmlConverter() {}
     virtual const std::string &lastError() const = 0;
-    virtual std::string serialize(const Object &o) const = 0;
+    virtual std::string serialize(const Object& o, SerializeFlags flags = EVERYTHING) const = 0;
     virtual bool deserialize(Object *o, const std::string &xml) const = 0;
-    virtual std::string operator()(const Object &o) const = 0;
+    virtual std::string operator()(const Object& o, SerializeFlags flags = EVERYTHING) const = 0;
     virtual bool operator()(Object *o, const std::string &xml) const = 0;
 };
 
