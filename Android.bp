@@ -117,7 +117,7 @@ cc_binary_host {
     ],
 }
 
-cc_library {
+cc_library_static {
     name: "libvintftest",
     defaults: ["libvintf-defaults"],
     host_supported: true,
