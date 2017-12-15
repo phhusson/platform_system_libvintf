@@ -748,7 +748,9 @@ struct HalManifestConverter : public XmlNodeConverter<HalManifest> {
     void mutateNode(const HalManifest &m, NodeType *root, DocType *d) const override {
         appendAttr(root, "version", m.getMetaVersion());
         appendAttr(root, "type", m.mType);
-
+        if (m.mLevel != Level::UNSPECIFIED) {
+            this->appendAttr(root, "target-level", m.mLevel);
+        }
         appendChildren(root, manifestHalConverter, m.getHals(), d);
         if (m.mType == SchemaType::DEVICE) {
             appendChild(root, halManifestSepolicyConverter(m.device.mSepolicyVersion, d));
@@ -762,6 +764,7 @@ struct HalManifestConverter : public XmlNodeConverter<HalManifest> {
         std::vector<ManifestHal> hals;
         if (!parseAttr(root, "version", &object->mMetaVersion) ||
             !parseAttr(root, "type", &object->mType) ||
+            !parseOptionalAttr(root, "target-level", Level::UNSPECIFIED, &object->mLevel) ||
             !parseChildren(root, manifestHalConverter, &hals)) {
             return false;
         }
@@ -858,6 +861,9 @@ struct CompatibilityMatrixConverter : public XmlNodeConverter<CompatibilityMatri
     void mutateNode(const CompatibilityMatrix &m, NodeType *root, DocType *d) const override {
         appendAttr(root, "version", m.getMinimumMetaVersion());
         appendAttr(root, "type", m.mType);
+        if (m.mLevel != Level::UNSPECIFIED) {
+            this->appendAttr(root, "level", m.mLevel);
+        }
         appendChildren(root, matrixHalConverter, iterateValues(m.mHals), d);
         if (m.mType == SchemaType::FRAMEWORK) {
             appendChildren(root, matrixKernelConverter, m.framework.mKernels, d);
@@ -872,8 +878,8 @@ struct CompatibilityMatrixConverter : public XmlNodeConverter<CompatibilityMatri
     bool buildObject(CompatibilityMatrix *object, NodeType *root) const override {
         Version version;
         std::vector<MatrixHal> hals;
-        if (!parseAttr(root, "version", &version) ||
-            !parseAttr(root, "type", &object->mType) ||
+        if (!parseAttr(root, "version", &version) || !parseAttr(root, "type", &object->mType) ||
+            !parseOptionalAttr(root, "level", Level::UNSPECIFIED, &object->mLevel) ||
             !parseChildren(root, matrixHalConverter, &hals)) {
             return false;
         }

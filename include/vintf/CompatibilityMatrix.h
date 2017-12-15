@@ -23,6 +23,7 @@
 #include <utils/Errors.h>
 
 #include "HalGroup.h"
+#include "Level.h"
 #include "MapValueIterator.h"
 #include "MatrixHal.h"
 #include "MatrixKernel.h"
@@ -40,6 +41,7 @@ struct CompatibilityMatrix : public HalGroup<MatrixHal>, public XmlFileGroup<Mat
     CompatibilityMatrix() : mType(SchemaType::FRAMEWORK) {};
 
     SchemaType type() const;
+    Level level() const;
     Version getMinimumMetaVersion() const;
 
     // If the corresponding <xmlfile> with the given version exists, for the first match,
@@ -68,6 +70,7 @@ struct CompatibilityMatrix : public HalGroup<MatrixHal>, public XmlFileGroup<Mat
     friend bool operator==(const CompatibilityMatrix &, const CompatibilityMatrix &);
 
     SchemaType mType;
+    Level mLevel = Level::UNSPECIFIED;
 
     // entries only for framework compatibility matrix.
     struct {

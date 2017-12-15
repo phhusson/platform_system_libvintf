@@ -319,6 +319,10 @@ SchemaType HalManifest::type() const {
     return mType;
 }
 
+Level HalManifest::level() const {
+    return mLevel;
+}
+
 Version HalManifest::getMetaVersion() const {
     return mMetaVersion;
 }
@@ -352,7 +356,8 @@ std::string HalManifest::getXmlFilePath(const std::string& xmlFileName,
 }
 
 bool operator==(const HalManifest &lft, const HalManifest &rgt) {
-    return lft.mType == rgt.mType && lft.mHals == rgt.mHals && lft.mXmlFiles == rgt.mXmlFiles &&
+    return lft.mType == rgt.mType && lft.mLevel == rgt.mLevel && lft.mHals == rgt.mHals &&
+           lft.mXmlFiles == rgt.mXmlFiles &&
            (lft.mType != SchemaType::DEVICE ||
             (lft.device.mSepolicyVersion == rgt.device.mSepolicyVersion)) &&
            (lft.mType != SchemaType::FRAMEWORK || (lft.framework.mVndks == rgt.framework.mVndks));

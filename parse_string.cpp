@@ -113,6 +113,33 @@ std::ostream &operator<<(std::ostream &os, const KernelConfigTypedValue &kctv) {
     }
 }
 
+bool parse(const std::string& s, Level* l) {
+    if (s.empty()) {
+        *l = Level::UNSPECIFIED;
+        return true;
+    }
+    if (s == "legacy") {
+        *l = Level::LEGACY;
+        return true;
+    }
+    size_t value;
+    if (!ParseUint(s, &value)) {
+        return false;
+    }
+    *l = static_cast<Level>(value);
+    return true;
+}
+
+std::ostream& operator<<(std::ostream& os, Level l) {
+    if (l == Level::UNSPECIFIED) {
+        return os;
+    }
+    if (l == Level::LEGACY) {
+        return os << "legacy";
+    }
+    return os << static_cast<size_t>(l);
+}
+
 // Notice that strtoull is used even though KernelConfigIntValue is signed int64_t,
 // because strtoull can accept negative values as well.
 // Notice that according to man strtoul, strtoull can actually accept
