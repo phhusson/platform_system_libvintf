@@ -16,6 +16,8 @@
 
 #include "CompatibilityMatrix.h"
 
+#include <utility>
+
 #include "parse_string.h"
 #include "utils.h"
 
@@ -69,6 +71,63 @@ std::string CompatibilityMatrix::getXmlSchemaPath(const std::string& xmlFileName
         }
     }
     return "";
+}
+
+static VersionRange* findRangeWithMajorVersion(std::vector<VersionRange>& versionRanges,
+                                               size_t majorVer) {
+    for (VersionRange& vr : versionRanges) {
+        if (vr.majorVer == majorVer) {
+            return &vr;
+        }
+    }
+    return nullptr;
+}
+
+std::pair<MatrixHal*, VersionRange*> CompatibilityMatrix::getHalWithMajorVersion(
+    const std::string& name, size_t majorVer) {
+    for (MatrixHal* hal : getHals(name)) {
+        VersionRange* vr = findRangeWithMajorVersion(hal->versionRanges, majorVer);
+        if (vr != nullptr) {
+            return {hal, vr};
+        }
+    }
+    return {nullptr, nullptr};
+}
+
+bool CompatibilityMatrix::addAllHalsAsOptional(CompatibilityMatrix* other, std::string* error) {
+    if (other == nullptr || other->level() <= level()) {
+        return true;
+    }
+
+    for (auto& pair : other->mHals) {
+        const std::string& name = pair.first;
+        MatrixHal& halToAdd = pair.second;
+        for (const VersionRange& vr : halToAdd.versionRanges) {
+            MatrixHal* existingHal;
+            VersionRange* existingVr;
+            std::tie(existingHal, existingVr) = getHalWithMajorVersion(name, vr.majorVer);
+
+            if (existingHal == nullptr) {
+                halToAdd.optional = true;
+                add(std::move(halToAdd));
+                continue;
+            }
+
+            if (!existingHal->optional && !existingHal->containsInstances(halToAdd)) {
+                if (error != nullptr) {
+                    *error = "HAL " + name + "@" + to_string(vr.minVer()) + " is a required " +
+                             "HAL, but fully qualified instance names don't match (at FCM "
+                             "Version " +
+                             std::to_string(level()) + " and " + std::to_string(other->level()) +
+                             ")";
+                }
+                return false;
+            }
+
+            existingVr->maxMinor = std::max(existingVr->maxMinor, vr.maxMinor);
+        }
+    }
+    return true;
 }
 
 bool operator==(const CompatibilityMatrix &lft, const CompatibilityMatrix &rgt) {
