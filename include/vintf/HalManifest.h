@@ -24,6 +24,7 @@
 #include <vector>
 
 #include "HalGroup.h"
+#include "Level.h"
 #include "ManifestHal.h"
 #include "MapValueIterator.h"
 #include "SchemaType.h"
@@ -93,6 +94,9 @@ struct HalManifest : public HalGroup<ManifestHal>, public XmlFileGroup<ManifestX
     // Type of the manifest. FRAMEWORK or DEVICE.
     SchemaType type() const;
 
+    // FCM version that it implements.
+    Level level() const;
+
     // device.mSepolicyVersion. Assume type == device.
     // Abort if type != device.
     const Version &sepolicyVersion() const;
@@ -132,6 +136,7 @@ struct HalManifest : public HalGroup<ManifestHal>, public XmlFileGroup<ManifestX
                                                        bool includeOptional = true) const;
 
     SchemaType mType;
+    Level mLevel = Level::UNSPECIFIED;
     // version attribute. Default is 1.0 for manifests created programatically.
     Version mMetaVersion{1, 0};
 
