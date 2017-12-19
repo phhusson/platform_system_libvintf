@@ -344,16 +344,6 @@ class AssembleVintf {
     }
 
     bool assembleFrameworkCompatibilityMatrixKernels(CompatibilityMatrix* matrix) {
-        if (!matrix->framework.mKernels.empty()) {
-            // Remove hard-coded <kernel version="x.y.z" /> in legacy files.
-            std::cerr << "WARNING: framework compatibility matrix has hard-coded kernel"
-                      << " requirements for version";
-            for (const auto& kernel : matrix->framework.mKernels) {
-                std::cerr << " " << kernel.minLts();
-            }
-            std::cerr << ". Hard-coded requirements are removed." << std::endl;
-            matrix->framework.mKernels.clear();
-        }
         for (const auto& pair : mKernels) {
             std::vector<ConditionedConfig> conditionedConfigs;
             if (!parseFilesForKernelConfigs(pair.second, &conditionedConfigs)) {
