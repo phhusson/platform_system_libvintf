@@ -79,6 +79,40 @@ class AssembleVintf {
         return true;
     }
 
+    /**
+     * Set *out to environment variable if *out is not a dummy value (i.e. default constructed).
+     */
+    template <typename T>
+    bool getFlagIfUnset(const std::string& envKey, T* out) {
+        bool hasExistingValue = !(*out == T{});
+
+        bool hasEnvValue = false;
+        T envValue;
+        const char* envCValue = getenv(envKey.c_str());
+        if (envCValue != nullptr) {
+            if (!parse(envCValue, &envValue)) {
+                std::cerr << "Cannot parse " << envCValue << "." << std::endl;
+                return false;
+            }
+            hasEnvValue = true;
+        }
+
+        if (hasExistingValue) {
+            if (hasEnvValue) {
+                std::cerr << "Warning: cannot override existing value " << *out << " with "
+                          << envKey << " (which is " << envValue << ")." << std::endl;
+            }
+            return false;
+        }
+        if (!hasEnvValue) {
+            std::cerr << "Warning: " << envKey << " is not specified. Default to " << T{} << "."
+                      << std::endl;
+            return false;
+        }
+        *out = envValue;
+        return true;
+    }
+
     static bool getBooleanFlag(const char* key) {
         const char* envValue = getenv(key);
         return envValue != nullptr && strcmp(envValue, "true") == 0;
