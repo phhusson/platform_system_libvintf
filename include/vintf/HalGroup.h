@@ -33,8 +33,8 @@ struct HalGroup {
    public:
     virtual ~HalGroup() {}
     // Move all hals from another HalGroup to this.
-    bool addAll(HalGroup&& other, std::string* error = nullptr) {
-        for (auto& pair : other.mHals) {
+    bool addAllHals(HalGroup* other, std::string* error = nullptr) {
+        for (auto& pair : other->mHals) {
             if (!add(std::move(pair.second))) {
                 if (error) {
                     *error = pair.first;
