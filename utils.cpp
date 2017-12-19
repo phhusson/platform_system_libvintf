@@ -29,6 +29,19 @@ PartitionMounter* gPartitionMounter = &partitionMounter;
 static ObjectFactory<RuntimeInfo> runtimeInfoFactory;
 ObjectFactory<RuntimeInfo>* gRuntimeInfoFactory = &runtimeInfoFactory;
 
+std::vector<std::string> tokenize(const std::string& s, const char* delimiters) {
+    char* modString = new char[s.length() + 1];
+    strcpy(modString, s.c_str());
+    std::vector<std::string> ret;
+    char* e = strtok(modString, delimiters);
+    while (e != NULL) {
+        ret.push_back(e);
+        e = strtok(NULL, delimiters);
+    }
+    delete[] modString;
+    return ret;
+}
+
 }  // namespace details
 }  // namespace vintf
 }  // namespace android
