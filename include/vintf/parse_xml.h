@@ -33,6 +33,7 @@ enum SerializeFlag : uint32_t {
 
     EVERYTHING = 0,
     HALS_ONLY = ~NO_HALS,
+    XMLFILES_ONLY = ~NO_XMLFILES,
 };
 using SerializeFlags = uint32_t;
 
