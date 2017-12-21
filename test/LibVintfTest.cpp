@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#define LOG_TAG "LibHidlTest"
+#define LOG_TAG "LibVintfTest"
 
 #include <algorithm>
 #include <functional>
