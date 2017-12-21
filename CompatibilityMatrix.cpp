@@ -109,7 +109,12 @@ bool CompatibilityMatrix::addAllHalsAsOptional(CompatibilityMatrix* other, std::
 
             if (existingHal == nullptr) {
                 halToAdd.optional = true;
-                add(std::move(halToAdd));
+                if (!add(std::move(halToAdd))) {
+                    if (error) {
+                        *error = "Cannot add HAL " + name + " for unknown reason.";
+                    }
+                    return false;
+                }
                 continue;
             }
 
