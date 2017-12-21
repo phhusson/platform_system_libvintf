@@ -17,7 +17,9 @@ cc_test {
     defaults: ["libvintf-defaults"],
     host_supported: true,
     gtest: false,
-    srcs: ["main.cpp"],
+    srcs: [
+        "LibVintfTest.cpp",
+    ],
 
     shared_libs: [
         "libbase",
