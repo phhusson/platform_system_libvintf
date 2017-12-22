@@ -2203,6 +2203,7 @@ TEST_F(LibVintfTest, AddOptionalHalMajorVersion) {
         "<compatibility-matrix version=\"1.0\" type=\"framework\" level=\"2\">\n"
         "    <hal format=\"hidl\" optional=\"false\">\n"
         "        <name>android.hardware.foo</name>\n"
+        "        <version>1.2-3</version>\n"
         "        <version>2.0-4</version>\n"
         "        <interface>\n"
         "            <name>IFoo</name>\n"

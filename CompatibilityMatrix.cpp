@@ -108,8 +108,10 @@ bool CompatibilityMatrix::addAllHalsAsOptional(CompatibilityMatrix* other, std::
             std::tie(existingHal, existingVr) = getHalWithMajorVersion(name, vr.majorVer);
 
             if (existingHal == nullptr) {
-                halToAdd.optional = true;
-                if (!add(std::move(halToAdd))) {
+                MatrixHal optionalHalToAdd(halToAdd);
+                optionalHalToAdd.optional = true;
+                optionalHalToAdd.versionRanges = {vr};
+                if (!add(std::move(optionalHalToAdd))) {
                     if (error) {
                         *error = "Cannot add HAL " + name + " for unknown reason.";
                     }
