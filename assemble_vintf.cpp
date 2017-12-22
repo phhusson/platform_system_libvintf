@@ -241,7 +241,7 @@ class AssembleVintf {
                 }
             }
 
-            if (!halManifest->addAll(std::move(halToAdd), &error)) {
+            if (!halManifest->addAllHals(&halToAdd, &error)) {
                 std::cerr << "File \"" << path << "\" cannot be added: conflict on HAL \"" << error
                           << "\" with an existing HAL. See <hal> with the same name "
                           << "in previously parsed files or previously declared in this file."
