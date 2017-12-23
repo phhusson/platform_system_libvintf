@@ -135,6 +135,25 @@ bool CompatibilityMatrix::addAllHalsAsOptional(CompatibilityMatrix* other, std::
     return true;
 }
 
+bool CompatibilityMatrix::addAllXmlFilesAsOptional(CompatibilityMatrix* other, std::string* error) {
+    if (other == nullptr || other->level() <= level()) {
+        return true;
+    }
+    for (auto& pair : other->mXmlFiles) {
+        const std::string& name = pair.first;
+        MatrixXmlFile& xmlFileToAdd = pair.second;
+
+        xmlFileToAdd.mOptional = true;
+        if (!addXmlFile(std::move(xmlFileToAdd))) {
+            if (error) {
+                *error = "Cannot add XML File " + name + " for unknown reason.";
+            }
+            return false;
+        }
+    }
+    return true;
+}
+
 bool operator==(const CompatibilityMatrix &lft, const CompatibilityMatrix &rgt) {
     return lft.mType == rgt.mType && lft.mLevel == rgt.mLevel && lft.mHals == rgt.mHals &&
            lft.mXmlFiles == rgt.mXmlFiles &&
