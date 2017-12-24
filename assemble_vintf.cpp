@@ -40,6 +40,21 @@ static const std::string gConfigPrefix = "android-base-";
 static const std::string gConfigSuffix = ".cfg";
 static const std::string gBaseConfig = "android-base.cfg";
 
+// An input stream with a name.
+// The input stream may be an actual file, or a stringstream for testing.
+// It takes ownership on the istream.
+class NamedIstream {
+   public:
+    NamedIstream(const std::string& name, std::unique_ptr<std::istream>&& stream)
+        : mName(name), mStream(std::move(stream)) {}
+    const std::string& name() const { return mName; }
+    std::istream& stream() { return *mStream; }
+
+   private:
+    std::string mName;
+    std::unique_ptr<std::istream> mStream;
+};
+
 /**
  * Slurps the device manifest file and add build time flag to it.
  */
@@ -241,7 +256,7 @@ class AssembleVintf {
                 }
             }
 
-            if (!halManifest->addAll(std::move(halToAdd), &error)) {
+            if (!halManifest->addAllHals(&halToAdd, &error)) {
                 std::cerr << "File \"" << path << "\" cannot be added: conflict on HAL \"" << error
                           << "\" with an existing HAL. See <hal> with the same name "
                           << "in previously parsed files or previously declared in this file."
@@ -467,16 +482,16 @@ class AssembleVintf {
                                AssembleFunc assemble) {
         Schemas<Schema> schemas;
         Schema schema;
-        if (!converter(&schema, read(mInFiles.front()))) {
+        if (!converter(&schema, read(mInFiles.front().stream()))) {
             return TRY_NEXT;
         }
         auto firstType = schema.type();
-        schemas.emplace_back(mInFilePaths.front(), std::move(schema));
+        schemas.emplace_back(mInFiles.front().name(), std::move(schema));
 
         for (auto it = mInFiles.begin() + 1; it != mInFiles.end(); ++it) {
             Schema additionalSchema;
-            const std::string fileName = mInFilePaths[std::distance(mInFiles.begin(), it)];
-            if (!converter(&additionalSchema, read(*it))) {
+            const std::string& fileName = it->name();
+            if (!converter(&additionalSchema, read(it->stream()))) {
                 std::cerr << "File \"" << fileName << "\" is not a valid " << firstType << " "
                           << schemaName << " (but the first file is a valid " << firstType << " "
                           << schemaName << "). Error: " << converter.lastError() << std::endl;
@@ -528,10 +543,10 @@ class AssembleVintf {
     }
 
     bool openInFile(const char* path) {
-        mInFilePaths.push_back(path);
-        mInFiles.push_back({});
-        mInFiles.back().open(path);
-        return mInFiles.back().is_open();
+        auto s = std::make_unique<std::ifstream>(path);
+        if (!s->is_open()) return false;
+        mInFiles.emplace(mInFiles.end(), std::string{path}, std::move(s));
+        return true;
     }
 
     bool openCheckFile(const char* path) {
@@ -541,8 +556,8 @@ class AssembleVintf {
 
     void resetInFiles() {
         for (auto& inFile : mInFiles) {
-            inFile.clear();
-            inFile.seekg(0);
+            inFile.stream().clear();
+            inFile.stream().seekg(0);
         }
     }
 
@@ -582,8 +597,7 @@ class AssembleVintf {
     }
 
    private:
-    std::vector<std::string> mInFilePaths;
-    std::vector<std::ifstream> mInFiles;
+    std::vector<NamedIstream> mInFiles;
     std::unique_ptr<std::ofstream> mOutFileRef;
     std::ifstream mCheckFile;
     bool mOutputMatrix = false;

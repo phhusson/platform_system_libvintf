@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#define LOG_TAG "LibHidlTest"
+#define LOG_TAG "LibVintfTest"
 
 #include <algorithm>
 #include <functional>
@@ -105,6 +105,10 @@ public:
     std::vector<MatrixKernel>& getKernels(CompatibilityMatrix& cm) { return cm.framework.mKernels; }
     bool addAllHalsAsOptional(CompatibilityMatrix* cm1, CompatibilityMatrix* cm2, std::string* e) {
         return cm1->addAllHalsAsOptional(cm2, e);
+    }
+    bool addAllXmlFilesAsOptional(CompatibilityMatrix* cm1, CompatibilityMatrix* cm2,
+                                  std::string* e) {
+        return cm1->addAllXmlFilesAsOptional(cm2, e);
     }
 
     std::map<std::string, HalInterface> testHalInterfaces() {
@@ -2229,6 +2233,51 @@ TEST_F(LibVintfTest, AddOptionalHalMajorVersion) {
               "            <instance>default</instance>\n"
               "        </interface>\n"
               "    </hal>\n"
+              "</compatibility-matrix>\n");
+}
+
+TEST_F(LibVintfTest, AddOptionalXmlFile) {
+    CompatibilityMatrix cm1;
+    CompatibilityMatrix cm2;
+    std::string error;
+    std::string xml;
+
+    xml =
+        "<compatibility-matrix version=\"1.0\" type=\"framework\" level=\"1\">\n"
+        "    <xmlfile format=\"xsd\" optional=\"true\">\n"
+        "        <name>foo</name>\n"
+        "        <version>1.0-2</version>\n"
+        "        <path>/foo/bar/baz.xsd</path>\n"
+        "    </xmlfile>\n"
+        "</compatibility-matrix>\n";
+    EXPECT_TRUE(gCompatibilityMatrixConverter(&cm1, xml))
+        << gCompatibilityMatrixConverter.lastError();
+
+    xml =
+        "<compatibility-matrix version=\"1.0\" type=\"framework\" level=\"2\">\n"
+        "    <xmlfile format=\"xsd\" optional=\"true\">\n"
+        "        <name>foo</name>\n"
+        "        <version>1.1-3</version>\n"
+        "        <path>/foo/bar/quux.xsd</path>\n"
+        "    </xmlfile>\n"
+        "</compatibility-matrix>\n";
+    EXPECT_TRUE(gCompatibilityMatrixConverter(&cm2, xml))
+        << gCompatibilityMatrixConverter.lastError();
+
+    EXPECT_TRUE(addAllXmlFilesAsOptional(&cm1, &cm2, &error)) << error;
+    xml = gCompatibilityMatrixConverter(cm1, SerializeFlag::XMLFILES_ONLY);
+    EXPECT_EQ(xml,
+              "<compatibility-matrix version=\"1.0\" type=\"framework\" level=\"1\">\n"
+              "    <xmlfile format=\"xsd\" optional=\"true\">\n"
+              "        <name>foo</name>\n"
+              "        <version>1.0-2</version>\n"
+              "        <path>/foo/bar/baz.xsd</path>\n"
+              "    </xmlfile>\n"
+              "    <xmlfile format=\"xsd\" optional=\"true\">\n"
+              "        <name>foo</name>\n"
+              "        <version>1.1-3</version>\n"
+              "        <path>/foo/bar/quux.xsd</path>\n"
+              "    </xmlfile>\n"
               "</compatibility-matrix>\n");
 }
 

@@ -109,7 +109,12 @@ bool CompatibilityMatrix::addAllHalsAsOptional(CompatibilityMatrix* other, std::
 
             if (existingHal == nullptr) {
                 halToAdd.optional = true;
-                add(std::move(halToAdd));
+                if (!add(std::move(halToAdd))) {
+                    if (error) {
+                        *error = "Cannot add HAL " + name + " for unknown reason.";
+                    }
+                    return false;
+                }
                 continue;
             }
 
@@ -125,6 +130,25 @@ bool CompatibilityMatrix::addAllHalsAsOptional(CompatibilityMatrix* other, std::
             }
 
             existingVr->maxMinor = std::max(existingVr->maxMinor, vr.maxMinor);
+        }
+    }
+    return true;
+}
+
+bool CompatibilityMatrix::addAllXmlFilesAsOptional(CompatibilityMatrix* other, std::string* error) {
+    if (other == nullptr || other->level() <= level()) {
+        return true;
+    }
+    for (auto& pair : other->mXmlFiles) {
+        const std::string& name = pair.first;
+        MatrixXmlFile& xmlFileToAdd = pair.second;
+
+        xmlFileToAdd.mOptional = true;
+        if (!addXmlFile(std::move(xmlFileToAdd))) {
+            if (error) {
+                *error = "Cannot add XML File " + name + " for unknown reason.";
+            }
+            return false;
         }
     }
     return true;
