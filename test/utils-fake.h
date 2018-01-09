@@ -31,10 +31,16 @@ class MockFileFetcher : public FileFetcher {
    public:
     MockFileFetcher() {
         // By default call through to the original.
-        ON_CALL(*this, fetch(_, _)).WillByDefault(Invoke(&real_, &FileFetcher::fetch));
+        ON_CALL(*this, fetch(_, _)).WillByDefault(Invoke([this](const auto& path, auto& fetched) {
+            return real_.fetchInternal(path, fetched, nullptr);
+        }));
     }
 
     MOCK_METHOD2(fetch, status_t(const std::string& path, std::string& fetched));
+
+    status_t fetch(const std::string& path, std::string& fetched, std::string*) override final {
+        return fetch(path, fetched);
+    }
 
    private:
     FileFetcher real_;
