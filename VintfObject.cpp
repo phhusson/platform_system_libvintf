@@ -35,6 +35,7 @@ template <typename T>
 struct LockedSharedPtr {
     std::shared_ptr<T> object;
     std::mutex mutex;
+    bool fetchedOnce = false;
 };
 
 struct LockedRuntimeInfoCache {
@@ -49,11 +50,12 @@ static std::shared_ptr<const T> Get(
         bool skipCache,
         const F &fetchAllInformation) {
     std::unique_lock<std::mutex> _lock(ptr->mutex);
-    if (skipCache || ptr->object == nullptr) {
+    if (skipCache || !ptr->fetchedOnce) {
         ptr->object = std::make_unique<T>();
         if (fetchAllInformation(ptr->object.get()) != OK) {
             ptr->object = nullptr; // frees the old object
         }
+        ptr->fetchedOnce = true;
     }
     return ptr->object;
 }
