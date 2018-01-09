@@ -28,6 +28,11 @@
 #include <android-base/properties.h>
 #endif
 
+#include <android-base/logging.h>
+
+using std::placeholders::_1;
+using std::placeholders::_2;
+
 namespace android {
 namespace vintf {
 
@@ -52,7 +57,9 @@ static std::shared_ptr<const T> Get(
     std::unique_lock<std::mutex> _lock(ptr->mutex);
     if (skipCache || !ptr->fetchedOnce) {
         ptr->object = std::make_unique<T>();
-        if (fetchAllInformation(ptr->object.get()) != OK) {
+        std::string error;
+        if (fetchAllInformation(ptr->object.get(), &error) != OK) {
+            LOG(WARNING) << error;
             ptr->object = nullptr; // frees the old object
         }
         ptr->fetchedOnce = true;
@@ -75,32 +82,29 @@ std::shared_ptr<const HalManifest> VintfObject::GetDeviceHalManifest(bool skipCa
     std::string productModel = android::base::GetProperty("ro.product.model", "");
     if (!productModel.empty()) {
         auto product = Get(&gProductManifest, skipCache,
-                           std::bind(&HalManifest::fetchAllInformation, std::placeholders::_1,
-                                     "/odm/manifest_" + productModel + ".xml"));
+                           std::bind(&HalManifest::fetchAllInformation, _1,
+                                     "/odm/manifest_" + productModel + ".xml", _2));
         if (product != nullptr) {
             return product;
         }
     }
 #endif
 
-    auto odm = Get(
-        &gOdmManifest, skipCache,
-        std::bind(&HalManifest::fetchAllInformation, std::placeholders::_1, "/odm/manifest.xml"));
+    auto odm = Get(&gOdmManifest, skipCache,
+                   std::bind(&HalManifest::fetchAllInformation, _1, "/odm/manifest.xml", _2));
     if (odm != nullptr) {
         return odm;
     }
 
     return Get(&gVendorManifest, skipCache,
-               std::bind(&HalManifest::fetchAllInformation, std::placeholders::_1,
-                         "/vendor/manifest.xml"));
+               std::bind(&HalManifest::fetchAllInformation, _1, "/vendor/manifest.xml", _2));
 }
 
 // static
 std::shared_ptr<const HalManifest> VintfObject::GetFrameworkHalManifest(bool skipCache) {
     static LockedSharedPtr<HalManifest> gFrameworkManifest;
     return Get(&gFrameworkManifest, skipCache,
-            std::bind(&HalManifest::fetchAllInformation, std::placeholders::_1,
-                "/system/manifest.xml"));
+               std::bind(&HalManifest::fetchAllInformation, _1, "/system/manifest.xml", _2));
 }
 
 
@@ -108,16 +112,16 @@ std::shared_ptr<const HalManifest> VintfObject::GetFrameworkHalManifest(bool ski
 std::shared_ptr<const CompatibilityMatrix> VintfObject::GetDeviceCompatibilityMatrix(bool skipCache) {
     static LockedSharedPtr<CompatibilityMatrix> gDeviceMatrix;
     return Get(&gDeviceMatrix, skipCache,
-            std::bind(&CompatibilityMatrix::fetchAllInformation, std::placeholders::_1,
-                "/vendor/compatibility_matrix.xml"));
+               std::bind(&CompatibilityMatrix::fetchAllInformation, _1,
+                         "/vendor/compatibility_matrix.xml", _2));
 }
 
 // static
 std::shared_ptr<const CompatibilityMatrix> VintfObject::GetFrameworkCompatibilityMatrix(bool skipCache) {
     static LockedSharedPtr<CompatibilityMatrix> gFrameworkMatrix;
     return Get(&gFrameworkMatrix, skipCache,
-            std::bind(&CompatibilityMatrix::fetchAllInformation, std::placeholders::_1,
-                "/system/compatibility_matrix.xml"));
+               std::bind(&CompatibilityMatrix::fetchAllInformation, _1,
+                         "/system/compatibility_matrix.xml", _2));
 }
 
 // static
