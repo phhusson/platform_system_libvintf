@@ -21,7 +21,6 @@
 #include <iostream>
 #include <sstream>
 
-#include <android-base/logging.h>
 #include <utils/Errors.h>
 #include <vintf/RuntimeInfo.h>
 #include <vintf/parse_xml.h>
@@ -36,12 +35,14 @@ namespace details {
 class FileFetcher {
    public:
     virtual ~FileFetcher() {}
-    virtual status_t fetch(const std::string& path, std::string& fetched) {
+    status_t fetchInternal(const std::string& path, std::string& fetched, std::string* error) {
         std::ifstream in;
 
         in.open(path);
         if (!in.is_open()) {
-            LOG(WARNING) << "Cannot open " << path;
+            if (error) {
+                *error = "Cannot open " + path;
+            }
             return INVALID_OPERATION;
         }
 
@@ -50,6 +51,12 @@ class FileFetcher {
         fetched = ss.str();
 
         return OK;
+    }
+    virtual status_t fetch(const std::string& path, std::string& fetched, std::string* error) {
+        return fetchInternal(path, fetched, error);
+    }
+    virtual status_t fetch(const std::string& path, std::string& fetched) {
+        return fetchInternal(path, fetched, nullptr);
     }
 };
 
@@ -68,7 +75,7 @@ extern PartitionMounter* gPartitionMounter;
 
 template <typename T>
 status_t fetchAllInformation(const std::string& path, const XmlConverter<T>& converter,
-                             T* outObject) {
+                             T* outObject, std::string* error = nullptr) {
     std::string info;
 
     if (gFetcher == nullptr) {
@@ -76,7 +83,7 @@ status_t fetchAllInformation(const std::string& path, const XmlConverter<T>& con
         return NO_INIT;
     }
 
-    status_t result = gFetcher->fetch(path, info);
+    status_t result = gFetcher->fetch(path, info, error);
 
     if (result != OK) {
         return result;
@@ -84,8 +91,9 @@ status_t fetchAllInformation(const std::string& path, const XmlConverter<T>& con
 
     bool success = converter(outObject, info);
     if (!success) {
-        LOG(ERROR) << "Illformed file: " << path << ": "
-                   << converter.lastError();
+        if (error) {
+            *error = "Illformed file: " + path + ": " + converter.lastError();
+        }
         return BAD_VALUE;
     }
     return OK;

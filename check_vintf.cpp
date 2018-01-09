@@ -25,9 +25,11 @@ namespace vintf {
 template <typename T>
 std::unique_ptr<T> readObject(const std::string& path, const XmlConverter<T>& converter) {
     std::string xml;
-    status_t err = details::gFetcher->fetch(path, xml);
+    std::string error;
+    status_t err = details::gFetcher->fetch(path, xml, &error);
     if (err != OK) {
-        std::cerr << "Error: Cannot read '" << path << "': " << strerror(-err) << std::endl;
+        std::cerr << "Error: Cannot read '" << path << "' (" << strerror(-err) << "): " << error
+                  << std::endl;
         return nullptr;
     }
     auto ret = std::make_unique<T>();

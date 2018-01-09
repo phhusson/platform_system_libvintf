@@ -127,7 +127,7 @@ struct HalManifest : public HalGroup<ManifestHal>, public XmlFileGroup<ManifestX
     friend std::string dump(const HalManifest &vm);
     friend bool operator==(const HalManifest &lft, const HalManifest &rgt);
 
-    status_t fetchAllInformation(const std::string &path);
+    status_t fetchAllInformation(const std::string& path, std::string* error = nullptr);
 
     // Check if all instances in matrixHal is supported in this manifest.
     bool isCompatible(const MatrixHal& matrixHal) const;
