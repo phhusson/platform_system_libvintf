@@ -25,6 +25,7 @@
 
 #include <android-base/file.h>
 #include <android-base/parseint.h>
+#include <android-base/strings.h>
 
 #include <vintf/AssembleVintf.h>
 #include <vintf/KernelConfigParser.h>
@@ -633,7 +634,7 @@ bool AssembleVintf::openCheckFile(const std::string& path) {
 }
 
 bool AssembleVintf::addKernel(const std::string& kernelArg) {
-    auto tokens = details::tokenize(kernelArg);
+    auto tokens = base::Split(kernelArg, ":");
     if (tokens.size() <= 1) {
         std::cerr << "Unrecognized --kernel option '" << kernelArg << "'" << std::endl;
         return false;
