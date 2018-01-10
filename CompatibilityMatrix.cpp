@@ -50,8 +50,8 @@ Version CompatibilityMatrix::getMinimumMetaVersion() const {
     return {1, 0};
 }
 
-status_t CompatibilityMatrix::fetchAllInformation(const std::string &path) {
-    return details::fetchAllInformation(path, gCompatibilityMatrixConverter, this);
+status_t CompatibilityMatrix::fetchAllInformation(const std::string& path, std::string* error) {
+    return details::fetchAllInformation(path, gCompatibilityMatrixConverter, this, error);
 }
 
 std::string CompatibilityMatrix::getXmlSchemaPath(const std::string& xmlFileName,
@@ -108,8 +108,10 @@ bool CompatibilityMatrix::addAllHalsAsOptional(CompatibilityMatrix* other, std::
             std::tie(existingHal, existingVr) = getHalWithMajorVersion(name, vr.majorVer);
 
             if (existingHal == nullptr) {
-                halToAdd.optional = true;
-                if (!add(std::move(halToAdd))) {
+                MatrixHal optionalHalToAdd(halToAdd);
+                optionalHalToAdd.optional = true;
+                optionalHalToAdd.versionRanges = {vr};
+                if (!add(std::move(optionalHalToAdd))) {
                     if (error) {
                         *error = "Cannot add HAL " + name + " for unknown reason.";
                     }
