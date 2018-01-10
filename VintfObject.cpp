@@ -79,11 +79,11 @@ std::shared_ptr<const HalManifest> VintfObject::GetDeviceHalManifest(bool skipCa
     std::unique_lock<std::mutex> _lock(gDeviceManifestMutex);
 
 #ifdef LIBVINTF_TARGET
-    std::string productModel = android::base::GetProperty("ro.product.model", "");
+    std::string productModel = android::base::GetProperty("ro.boot.product.hardware.sku", "");
     if (!productModel.empty()) {
         auto product = Get(&gProductManifest, skipCache,
                            std::bind(&HalManifest::fetchAllInformation, _1,
-                                     "/odm/manifest_" + productModel + ".xml", _2));
+                                     "/odm/etc/manifest_" + productModel + ".xml", _2));
         if (product != nullptr) {
             return product;
         }
@@ -91,7 +91,7 @@ std::shared_ptr<const HalManifest> VintfObject::GetDeviceHalManifest(bool skipCa
 #endif
 
     auto odm = Get(&gOdmManifest, skipCache,
-                   std::bind(&HalManifest::fetchAllInformation, _1, "/odm/manifest.xml", _2));
+                   std::bind(&HalManifest::fetchAllInformation, _1, "/odm/etc/manifest.xml", _2));
     if (odm != nullptr) {
         return odm;
     }
