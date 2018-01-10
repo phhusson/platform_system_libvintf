@@ -258,6 +258,8 @@ std::ostream &operator<<(std::ostream &os, const VersionRange &vr) {
     return os << vr.minVer() << "-" << vr.maxMinor;
 }
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
 bool parse(const std::string &s, VndkVersionRange *vr) {
     std::vector<std::string> v = SplitString(s, '-');
     if (v.size() != 1 && v.size() != 2) {
@@ -287,6 +289,7 @@ std::ostream &operator<<(std::ostream &os, const VndkVersionRange &vr) {
     }
     return os;
 }
+#pragma clang diagnostic pop
 
 bool parse(const std::string &s, KernelVersion *kernelVersion) {
     std::vector<std::string> v = SplitString(s, '.');
