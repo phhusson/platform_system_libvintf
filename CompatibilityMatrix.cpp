@@ -172,23 +172,22 @@ bool operator==(const CompatibilityMatrix &lft, const CompatibilityMatrix &rgt) 
 // Find compatibility_matrix.empty.xml (which has unspecified level) and use it
 // as a base matrix.
 CompatibilityMatrix* CompatibilityMatrix::findOrInsertBaseMatrix(
-    std::vector<std::pair<std::string, CompatibilityMatrix>>* matrices, std::string* error) {
+    std::vector<Named<CompatibilityMatrix>>* matrices, std::string* error) {
     bool multipleFound = false;
     CompatibilityMatrix* matrix = nullptr;
     for (auto& e : *matrices) {
-        if (e.second.level() == Level::UNSPECIFIED) {
-            if (!e.second.mHals.empty()) {
+        if (e.object.level() == Level::UNSPECIFIED) {
+            if (!e.object.mHals.empty()) {
                 if (error) {
-                    *error =
-                        "Error: File \"" + e.first + "\" should not contain " + "HAL elements.";
+                    *error = "Error: File \"" + e.name + "\" should not contain " + "HAL elements.";
                 }
                 return nullptr;
             }
 
-            if (!e.second.mXmlFiles.empty()) {
+            if (!e.object.mXmlFiles.empty()) {
                 if (error) {
-                    *error = "Error: File \"" + e.first + "\" should not contain " +
-                             "XML File elements.";
+                    *error =
+                        "Error: File \"" + e.name + "\" should not contain " + "XML File elements.";
                 }
                 return nullptr;
             }
@@ -197,7 +196,7 @@ CompatibilityMatrix* CompatibilityMatrix::findOrInsertBaseMatrix(
                 multipleFound = true;
             }
 
-            matrix = &e.second;
+            matrix = &e.object;
             // continue to detect multiple files with "unspecified" levels
         }
     }
@@ -208,8 +207,8 @@ CompatibilityMatrix* CompatibilityMatrix::findOrInsertBaseMatrix(
                 "Error: multiple framework compatibility matrix files have "
                 "unspecified level; there should only be one such file.\n";
             for (auto& e : *matrices) {
-                if (e.second.level() == Level::UNSPECIFIED) {
-                    *error += "    " + e.first + "\n";
+                if (e.object.level() == Level::UNSPECIFIED) {
+                    *error += "    " + e.name + "\n";
                 }
             }
         }
@@ -217,7 +216,7 @@ CompatibilityMatrix* CompatibilityMatrix::findOrInsertBaseMatrix(
     }
 
     if (matrix == nullptr) {
-        matrix = &matrices->emplace(matrices->end())->second;
+        matrix = &matrices->emplace(matrices->end())->object;
         matrix->mType = SchemaType::FRAMEWORK;
         matrix->mLevel = Level::UNSPECIFIED;
     }
@@ -225,9 +224,9 @@ CompatibilityMatrix* CompatibilityMatrix::findOrInsertBaseMatrix(
     return matrix;
 }
 
-CompatibilityMatrix* CompatibilityMatrix::combine(
-    Level deviceLevel, std::vector<std::pair<std::string, CompatibilityMatrix>>* matrices,
-    std::string* error) {
+CompatibilityMatrix* CompatibilityMatrix::combine(Level deviceLevel,
+                                                  std::vector<Named<CompatibilityMatrix>>* matrices,
+                                                  std::string* error) {
     if (deviceLevel == Level::UNSPECIFIED) {
         if (error) {
             *error = "Error: device level is unspecified.";
@@ -243,18 +242,18 @@ CompatibilityMatrix* CompatibilityMatrix::combine(
     matrix->mLevel = deviceLevel;
 
     for (auto& e : *matrices) {
-        if (&e.second != matrix && e.second.level() == deviceLevel) {
-            if (!matrix->addAllHals(&e.second, error)) {
+        if (&e.object != matrix && e.object.level() == deviceLevel) {
+            if (!matrix->addAllHals(&e.object, error)) {
                 if (error) {
-                    *error = "File \"" + e.first + "\" cannot be added: HAL " + *error +
+                    *error = "File \"" + e.name + "\" cannot be added: HAL " + *error +
                              " has a conflict.";
                 }
                 return nullptr;
             }
 
-            if (!matrix->addAllXmlFiles(&e.second, error)) {
+            if (!matrix->addAllXmlFiles(&e.object, error)) {
                 if (error) {
-                    *error = "File \"" + e.first + "\" cannot be added: XML File entry " + *error +
+                    *error = "File \"" + e.name + "\" cannot be added: XML File entry " + *error +
                              " has a conflict.";
                 }
                 return nullptr;
@@ -263,20 +262,20 @@ CompatibilityMatrix* CompatibilityMatrix::combine(
     }
 
     for (auto& e : *matrices) {
-        if (&e.second != matrix && e.second.level() != Level::UNSPECIFIED &&
-            e.second.level() > deviceLevel) {
-            if (!matrix->addAllHalsAsOptional(&e.second, error)) {
+        if (&e.object != matrix && e.object.level() != Level::UNSPECIFIED &&
+            e.object.level() > deviceLevel) {
+            if (!matrix->addAllHalsAsOptional(&e.object, error)) {
                 if (error) {
-                    *error = "File \"" + e.first + "\" cannot be added: " + *error +
+                    *error = "File \"" + e.name + "\" cannot be added: " + *error +
                              ". See <hal> with the same name " +
                              "in previously parsed files or previously declared in this file.";
                 }
                 return nullptr;
             }
 
-            if (!matrix->addAllXmlFilesAsOptional(&e.second, error)) {
+            if (!matrix->addAllXmlFilesAsOptional(&e.object, error)) {
                 if (error) {
-                    *error = "File \"" + e.first + "\" cannot be added: XML File entry " + *error +
+                    *error = "File \"" + e.name + "\" cannot be added: XML File entry " + *error +
                              " has a conflict.";
                 }
                 return nullptr;
