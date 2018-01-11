@@ -267,23 +267,23 @@ class AssembleVintfImpl : public AssembleVintf {
     std::basic_ostream<char>& out() const { return mOutRef == nullptr ? std::cout : *mOutRef; }
 
     template <typename S>
-    using Schemas = std::vector<std::pair<std::string, S>>;
+    using Schemas = std::vector<Named<S>>;
     using HalManifests = Schemas<HalManifest>;
     using CompatibilityMatrices = Schemas<CompatibilityMatrix>;
 
     bool assembleHalManifest(HalManifests* halManifests) {
         std::string error;
-        HalManifest* halManifest = &halManifests->front().second;
+        HalManifest* halManifest = &halManifests->front().object;
         for (auto it = halManifests->begin() + 1; it != halManifests->end(); ++it) {
-            const std::string& path = it->first;
-            HalManifest& halToAdd = it->second;
+            const std::string& path = it->name;
+            HalManifest& halToAdd = it->object;
 
             if (halToAdd.level() != Level::UNSPECIFIED) {
                 if (halManifest->level() == Level::UNSPECIFIED) {
                     halManifest->mLevel = halToAdd.level();
                 } else if (halManifest->level() != halToAdd.level()) {
                     std::cerr << "Inconsistent FCM Version in HAL manifests:" << std::endl
-                              << "    File '" << halManifests->front().first << "' has level "
+                              << "    File '" << halManifests->front().name << "' has level "
                               << halManifest->level() << std::endl
                               << "    File '" << path << "' has level " << halToAdd.level()
                               << std::endl;
@@ -401,8 +401,8 @@ class AssembleVintfImpl : public AssembleVintf {
     Level getLowestFcmVersion(const CompatibilityMatrices& matrices) {
         Level ret = Level::UNSPECIFIED;
         for (const auto& e : matrices) {
-            if (ret == Level::UNSPECIFIED || ret > e.second.level()) {
-                ret = e.second.level();
+            if (ret == Level::UNSPECIFIED || ret > e.object.level()) {
+                ret = e.object.level();
             }
         }
         return ret;
@@ -414,11 +414,11 @@ class AssembleVintfImpl : public AssembleVintf {
         KernelSepolicyVersion kernelSepolicyVers;
         Version sepolicyVers;
         std::unique_ptr<HalManifest> checkManifest;
-        if (matrices->front().second.mType == SchemaType::DEVICE) {
-            matrix = &matrices->front().second;
+        if (matrices->front().object.mType == SchemaType::DEVICE) {
+            matrix = &matrices->front().object;
         }
 
-        if (matrices->front().second.mType == SchemaType::FRAMEWORK) {
+        if (matrices->front().object.mType == SchemaType::FRAMEWORK) {
             Level deviceLevel = Level::UNSPECIFIED;
             if (mCheckFile != nullptr) {
                 checkManifest = std::make_unique<HalManifest>();
@@ -438,7 +438,7 @@ class AssembleVintfImpl : public AssembleVintf {
 
             if (deviceLevel == Level::UNSPECIFIED) {
                 // building empty.xml
-                matrix = &matrices->front().second;
+                matrix = &matrices->front().object;
             } else {
                 matrix = CompatibilityMatrix::combine(deviceLevel, matrices, &error);
                 if (matrix == nullptr) {
@@ -470,8 +470,8 @@ class AssembleVintfImpl : public AssembleVintf {
             out() << "<!--" << std::endl;
             out() << "    Input:" << std::endl;
             for (const auto& e : *matrices) {
-                if (!e.first.empty()) {
-                    out() << "        " << getFileNameFromPath(e.first) << std::endl;
+                if (!e.name.empty()) {
+                    out() << "        " << getFileNameFromPath(e.name) << std::endl;
                 }
             }
             out() << "-->" << std::endl;

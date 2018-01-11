@@ -27,6 +27,7 @@
 #include "MapValueIterator.h"
 #include "MatrixHal.h"
 #include "MatrixKernel.h"
+#include "Named.h"
 #include "SchemaType.h"
 #include "Sepolicy.h"
 #include "Vndk.h"
@@ -80,11 +81,11 @@ struct CompatibilityMatrix : public HalGroup<MatrixHal>, public XmlFileGroup<Mat
     // - If level() == deviceLevel, all HAL versions and XML files are added as is
     //   (optionality is kept)
     // - If level() > deviceLevel, all HAL versions and XML files are added as optional.
-    static CompatibilityMatrix* combine(
-        Level deviceLevel, std::vector<std::pair<std::string, CompatibilityMatrix>>* matrices,
-        std::string* error);
+    static CompatibilityMatrix* combine(Level deviceLevel,
+                                        std::vector<Named<CompatibilityMatrix>>* matrices,
+                                        std::string* error);
     static CompatibilityMatrix* findOrInsertBaseMatrix(
-        std::vector<std::pair<std::string, CompatibilityMatrix>>* matrices, std::string* error);
+        std::vector<Named<CompatibilityMatrix>>* matrices, std::string* error);
 
     friend struct HalManifest;
     friend struct RuntimeInfo;
