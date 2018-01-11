@@ -411,8 +411,6 @@ class AssembleVintfImpl : public AssembleVintf {
     bool assembleCompatibilityMatrix(CompatibilityMatrices* matrices) {
         std::string error;
         CompatibilityMatrix* matrix = nullptr;
-        KernelSepolicyVersion kernelSepolicyVers;
-        Version sepolicyVers;
         std::unique_ptr<HalManifest> checkManifest;
         if (matrices->front().object.mType == SchemaType::DEVICE) {
             matrix = &matrices->front().object;
@@ -447,25 +445,21 @@ class AssembleVintfImpl : public AssembleVintf {
                 }
             }
 
-            if (!getFlag("BOARD_SEPOLICY_VERS", &sepolicyVers)) {
-                return false;
-            }
-            if (!getFlag("POLICYVERS", &kernelSepolicyVers)) {
-                return false;
-            }
-
             if (!assembleFrameworkCompatibilityMatrixKernels(matrix)) {
                 return false;
             }
 
-            matrix->framework.mSepolicy =
-                Sepolicy(kernelSepolicyVers, {{sepolicyVers.majorVer, sepolicyVers.minorVer}});
-
-            Version avbMetaVersion;
-            if (!getFlag("FRAMEWORK_VBMETA_VERSION", &avbMetaVersion)) {
-                return false;
+            // set sepolicy.sepolicy-version to BOARD_SEPOLICY_VERS when none is specified.
+            std::vector<VersionRange>* sepolicyVrs =
+                &matrix->framework.mSepolicy.mSepolicyVersionRanges;
+            VersionRange sepolicyVr;
+            if (!sepolicyVrs->empty()) sepolicyVr = sepolicyVrs->front();
+            if (getFlagIfUnset("BOARD_SEPOLICY_VERS", &sepolicyVr)) {
+                *sepolicyVrs = {{sepolicyVr}};
             }
-            matrix->framework.mAvbMetaVersion = avbMetaVersion;
+
+            getFlagIfUnset("POLICYVERS", &matrix->framework.mSepolicy.mKernelSepolicyVersion);
+            getFlagIfUnset("FRAMEWORK_VBMETA_VERSION", &matrix->framework.mAvbMetaVersion);
 
             out() << "<!--" << std::endl;
             out() << "    Input:" << std::endl;
