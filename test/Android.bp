@@ -18,6 +18,7 @@ cc_test {
     host_supported: true,
     gtest: false,
     srcs: [
+        "AssembleVintfTest.cpp",
         "LibVintfTest.cpp",
     ],
 
