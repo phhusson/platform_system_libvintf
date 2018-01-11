@@ -107,6 +107,8 @@ class ObjectFactory {
 };
 extern ObjectFactory<RuntimeInfo>* gRuntimeInfoFactory;
 
+std::vector<std::string> tokenize(const std::string& s, const char* delimiters = ":");
+
 }  // namespace details
 }  // namespace vintf
 }  // namespace android
