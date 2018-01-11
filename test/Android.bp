@@ -27,7 +27,10 @@ cc_test {
         "liblog",
         "libvintf",
     ],
-    static_libs: ["libgtest"],
+    static_libs: [
+        "libgtest",
+        "libassemblevintf",
+    ],
 
     cflags: [
         "-O0",

@@ -78,7 +78,7 @@ struct CompatibilityMatrix : public HalGroup<MatrixHal>, public XmlFileGroup<Mat
     friend struct CompatibilityMatrixConverter;
     friend struct LibVintfTest;
     friend class VintfObject;
-    friend class AssembleVintf;
+    friend class AssembleVintfImpl;
     friend bool operator==(const CompatibilityMatrix &, const CompatibilityMatrix &);
 
     SchemaType mType;

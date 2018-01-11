@@ -122,7 +122,7 @@ struct HalManifest : public HalGroup<ManifestHal>, public XmlFileGroup<ManifestX
    private:
     friend struct HalManifestConverter;
     friend class VintfObject;
-    friend class AssembleVintf;
+    friend class AssembleVintfImpl;
     friend struct LibVintfTest;
     friend std::string dump(const HalManifest &vm);
     friend bool operator==(const HalManifest &lft, const HalManifest &rgt);
