@@ -21,6 +21,9 @@
 #include "parse_string.h"
 #include "utils.h"
 
+#include <iostream>
+#include "parse_xml.h"
+
 namespace android {
 namespace vintf {
 
@@ -164,6 +167,124 @@ bool operator==(const CompatibilityMatrix &lft, const CompatibilityMatrix &rgt) 
             (lft.framework.mKernels == rgt.framework.mKernels &&
              lft.framework.mSepolicy == rgt.framework.mSepolicy &&
              lft.framework.mAvbMetaVersion == rgt.framework.mAvbMetaVersion));
+}
+
+// Find compatibility_matrix.empty.xml (which has unspecified level) and use it
+// as a base matrix.
+CompatibilityMatrix* CompatibilityMatrix::findOrInsertBaseMatrix(
+    std::vector<std::pair<std::string, CompatibilityMatrix>>* matrices, std::string* error) {
+    bool multipleFound = false;
+    CompatibilityMatrix* matrix = nullptr;
+    for (auto& e : *matrices) {
+        if (e.second.level() == Level::UNSPECIFIED) {
+            if (!e.second.mHals.empty()) {
+                if (error) {
+                    *error =
+                        "Error: File \"" + e.first + "\" should not contain " + "HAL elements.";
+                }
+                return nullptr;
+            }
+
+            if (!e.second.mXmlFiles.empty()) {
+                if (error) {
+                    *error = "Error: File \"" + e.first + "\" should not contain " +
+                             "XML File elements.";
+                }
+                return nullptr;
+            }
+
+            if (matrix != nullptr) {
+                multipleFound = true;
+            }
+
+            matrix = &e.second;
+            // continue to detect multiple files with "unspecified" levels
+        }
+    }
+
+    if (multipleFound) {
+        if (error) {
+            *error =
+                "Error: multiple framework compatibility matrix files have "
+                "unspecified level; there should only be one such file.\n";
+            for (auto& e : *matrices) {
+                if (e.second.level() == Level::UNSPECIFIED) {
+                    *error += "    " + e.first + "\n";
+                }
+            }
+        }
+        return nullptr;
+    }
+
+    if (matrix == nullptr) {
+        matrix = &matrices->emplace(matrices->end())->second;
+        matrix->mType = SchemaType::FRAMEWORK;
+        matrix->mLevel = Level::UNSPECIFIED;
+    }
+
+    return matrix;
+}
+
+CompatibilityMatrix* CompatibilityMatrix::combine(
+    Level deviceLevel, std::vector<std::pair<std::string, CompatibilityMatrix>>* matrices,
+    std::string* error) {
+    if (deviceLevel == Level::UNSPECIFIED) {
+        if (error) {
+            *error = "Error: device level is unspecified.";
+        }
+        return nullptr;
+    }
+
+    CompatibilityMatrix* matrix = findOrInsertBaseMatrix(matrices, error);
+    if (matrix == nullptr) {
+        return nullptr;
+    }
+
+    matrix->mLevel = deviceLevel;
+
+    for (auto& e : *matrices) {
+        if (&e.second != matrix && e.second.level() == deviceLevel) {
+            if (!matrix->addAllHals(&e.second, error)) {
+                if (error) {
+                    *error = "File \"" + e.first + "\" cannot be added: HAL " + *error +
+                             " has a conflict.";
+                }
+                return nullptr;
+            }
+
+            if (!matrix->addAllXmlFiles(&e.second, error)) {
+                if (error) {
+                    *error = "File \"" + e.first + "\" cannot be added: XML File entry " + *error +
+                             " has a conflict.";
+                }
+                return nullptr;
+            }
+        }
+    }
+
+    for (auto& e : *matrices) {
+        if (&e.second != matrix && e.second.level() != Level::UNSPECIFIED &&
+            e.second.level() > deviceLevel) {
+            if (!matrix->addAllHalsAsOptional(&e.second, error)) {
+                if (error) {
+                    *error = "File \"" + e.first + "\" cannot be added: " + *error +
+                             ". See <hal> with the same name " +
+                             "in previously parsed files or previously declared in this file.";
+                }
+                return nullptr;
+            }
+
+            if (!matrix->addAllXmlFilesAsOptional(&e.second, error)) {
+                if (error) {
+                    *error = "File \"" + e.first + "\" cannot be added: XML File entry " + *error +
+                             " has a conflict.";
+                }
+                return nullptr;
+            }
+        }
+    }
+
+    return matrix;
 }
 
 } // namespace vintf
