@@ -105,6 +105,20 @@ cc_binary_host {
     ],
 }
 
+cc_library_static {
+    name: "libassemblevintf",
+    host_supported: true,
+    defaults: ["libvintf-defaults"],
+    shared_libs: [
+        "libvintf",
+        "libbase",
+    ],
+    srcs: [
+        "AssembleVintf.cpp",
+    ],
+    export_include_dirs: ["include-test"],
+}
+
 cc_binary_host {
     name: "assemble_vintf",
     defaults: ["libvintf-defaults"],
@@ -112,8 +126,11 @@ cc_binary_host {
         "libvintf",
         "libbase",
     ],
+    static_libs: [
+        "libassemblevintf",
+    ],
     srcs: [
-        "assemble_vintf.cpp"
+        "assemble_vintf_main.cpp"
     ],
 }
 
