@@ -18,6 +18,7 @@
 
 #include <iostream>
 
+#include <android-base/strings.h>
 #include <vintf/AssembleVintf.h>
 #include "utils.h"
 
@@ -76,7 +77,7 @@ int main(int argc, char** argv) {
     while ((res = getopt_long(argc, argv, "hi:o:mc:nl", longopts, &optind)) >= 0) {
         switch (res) {
             case 'i': {
-                for (const auto& inFilePath : details::tokenize(optarg)) {
+                for (const auto& inFilePath : ::android::base::Split(optarg, ":")) {
                     if (!assembleVintf->openInFile(inFilePath.c_str())) {
                         std::cerr << "Failed to open " << inFilePath << std::endl;
                         return 1;
