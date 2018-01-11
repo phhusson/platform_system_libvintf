@@ -420,7 +420,6 @@ class AssembleVintfImpl : public AssembleVintf {
 
         if (matrices->front().second.mType == SchemaType::FRAMEWORK) {
             Level deviceLevel = Level::UNSPECIFIED;
-            std::vector<std::string> fileList;
             if (mCheckFile != nullptr) {
                 checkManifest = std::make_unique<HalManifest>();
                 if (!gHalManifestConverter(checkManifest.get(), read(*mCheckFile))) {
@@ -437,27 +436,13 @@ class AssembleVintfImpl : public AssembleVintf {
                 deviceLevel = getLowestFcmVersion(*matrices);
             }
 
-            for (auto& e : *matrices) {
-                if (e.second.level() == deviceLevel) {
-                    fileList.push_back(e.first);
-                    matrix = &e.second;
-                }
-            }
-            if (matrix == nullptr) {
-                std::cerr << "FATAL ERROR: cannot find matrix with level '" << deviceLevel << "'"
-                          << std::endl;
-                return false;
-            }
-            for (auto& e : *matrices) {
-                if (e.second.level() <= deviceLevel) {
-                    continue;
-                }
-                fileList.push_back(e.first);
-                if (!matrix->addAllHalsAsOptional(&e.second, &error)) {
-                    std::cerr << "File \"" << e.first << "\" cannot be added: " << error
-                              << ". See <hal> with the same name "
-                              << "in previously parsed files or previously declared in this file."
-                              << std::endl;
+            if (deviceLevel == Level::UNSPECIFIED) {
+                // building empty.xml
+                matrix = &matrices->front().second;
+            } else {
+                matrix = CompatibilityMatrix::combine(deviceLevel, matrices, &error);
+                if (matrix == nullptr) {
+                    std::cerr << error << std::endl;
                     return false;
                 }
             }
@@ -484,8 +469,10 @@ class AssembleVintfImpl : public AssembleVintf {
 
             out() << "<!--" << std::endl;
             out() << "    Input:" << std::endl;
-            for (const auto& path : fileList) {
-                out() << "        " << getFileNameFromPath(path) << std::endl;
+            for (const auto& e : *matrices) {
+                if (!e.first.empty()) {
+                    out() << "        " << getFileNameFromPath(e.first) << std::endl;
+                }
             }
             out() << "-->" << std::endl;
         }
