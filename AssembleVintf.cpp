@@ -14,22 +14,24 @@
  * limitations under the License.
  */
 
-#include <getopt.h>
 #include <stdlib.h>
 #include <unistd.h>
 
 #include <fstream>
 #include <iostream>
-#include <unordered_map>
 #include <sstream>
 #include <string>
+#include <unordered_map>
 
 #include <android-base/file.h>
 #include <android-base/parseint.h>
+#include <android-base/strings.h>
 
+#include <vintf/AssembleVintf.h>
 #include <vintf/KernelConfigParser.h>
 #include <vintf/parse_string.h>
 #include <vintf/parse_xml.h>
+#include "utils.h"
 
 #define BUFFER_SIZE sysconf(_SC_PAGESIZE)
 
@@ -58,16 +60,27 @@ class NamedIstream {
 /**
  * Slurps the device manifest file and add build time flag to it.
  */
-class AssembleVintf {
+class AssembleVintfImpl : public AssembleVintf {
     using Condition = std::unique_ptr<KernelConfig>;
     using ConditionedConfig = std::pair<Condition, std::vector<KernelConfig> /* configs */>;
 
    public:
-    template<typename T>
-    static bool getFlag(const std::string& key, T* value) {
-        const char *envValue = getenv(key.c_str());
-        if (envValue == NULL) {
-            std::cerr << "Warning: " << key << " is missing, defaulted to " << (*value)
+    void setFakeEnv(const std::string& key, const std::string& value) { mFakeEnv[key] = value; }
+
+    std::string getEnv(const std::string& key) const {
+        auto it = mFakeEnv.find(key);
+        if (it != mFakeEnv.end()) {
+            return it->second;
+        }
+        const char* envValue = getenv(key.c_str());
+        return envValue != nullptr ? std::string(envValue) : std::string();
+    }
+
+    template <typename T>
+    bool getFlag(const std::string& key, T* value) const {
+        std::string envValue = getEnv(key);
+        if (envValue.empty()) {
+            std::cerr << "Warning: " << key << " is missing, defaulted to " << (*value) << "."
                       << std::endl;
             return true;
         }
@@ -83,15 +96,15 @@ class AssembleVintf {
      * Set *out to environment variable if *out is not a dummy value (i.e. default constructed).
      */
     template <typename T>
-    bool getFlagIfUnset(const std::string& envKey, T* out) {
+    bool getFlagIfUnset(const std::string& envKey, T* out) const {
         bool hasExistingValue = !(*out == T{});
 
         bool hasEnvValue = false;
         T envValue;
-        const char* envCValue = getenv(envKey.c_str());
-        if (envCValue != nullptr) {
-            if (!parse(envCValue, &envValue)) {
-                std::cerr << "Cannot parse " << envCValue << "." << std::endl;
+        std::string envStrValue = getEnv(envKey);
+        if (!envStrValue.empty()) {
+            if (!parse(envStrValue, &envValue)) {
+                std::cerr << "Cannot parse " << envValue << "." << std::endl;
                 return false;
             }
             hasEnvValue = true;
@@ -113,13 +126,10 @@ class AssembleVintf {
         return true;
     }
 
-    static bool getBooleanFlag(const char* key) {
-        const char* envValue = getenv(key);
-        return envValue != nullptr && strcmp(envValue, "true") == 0;
-    }
+    bool getBooleanFlag(const std::string& key) const { return getEnv(key) == std::string("true"); }
 
-    static size_t getIntegerFlag(const char* key, size_t defaultValue = 0) {
-        std::string envValue = getenv(key);
+    size_t getIntegerFlag(const std::string& key, size_t defaultValue = 0) const {
+        std::string envValue = getEnv(key);
         if (envValue.empty()) {
             return defaultValue;
         }
@@ -185,14 +195,10 @@ class AssembleVintf {
         return std::make_unique<KernelConfig>(std::move(sub), Tristate::YES);
     }
 
-    static bool parseFileForKernelConfigs(const std::string& path, std::vector<KernelConfig>* out) {
-        std::ifstream ifs{path};
-        if (!ifs.is_open()) {
-            std::cerr << "File '" << path << "' does not exist or cannot be read." << std::endl;
-            return false;
-        }
+    static bool parseFileForKernelConfigs(std::basic_istream<char>& stream,
+                                          std::vector<KernelConfig>* out) {
         KernelConfigParser parser(true /* processComments */, true /* relaxedFormat */);
-        std::string content = read(ifs);
+        std::string content = read(stream);
         status_t err = parser.process(content.c_str(), content.size());
         if (err != OK) {
             std::cerr << parser.error();
@@ -217,35 +223,32 @@ class AssembleVintf {
         return true;
     }
 
-    static bool parseFilesForKernelConfigs(const std::string& path,
+    static bool parseFilesForKernelConfigs(std::vector<NamedIstream>* streams,
                                            std::vector<ConditionedConfig>* out) {
         out->clear();
         ConditionedConfig commonConfig;
         bool foundCommonConfig = false;
         bool ret = true;
-        char *pathIter;
-        char *modPath = new char[path.length() + 1];
-        strcpy(modPath, path.c_str());
-        pathIter = strtok(modPath, ":");
-        while (ret && pathIter != NULL) {
-            if (isCommonConfig(pathIter)) {
-                ret &= parseFileForKernelConfigs(pathIter, &commonConfig.second);
+
+        for (auto& namedStream : *streams) {
+            if (isCommonConfig(namedStream.name())) {
+                ret &= parseFileForKernelConfigs(namedStream.stream(), &commonConfig.second);
                 foundCommonConfig = true;
             } else {
-                Condition condition = generateCondition(pathIter);
+                Condition condition = generateCondition(namedStream.name());
                 ret &= (condition != nullptr);
 
                 std::vector<KernelConfig> kernelConfigs;
-                if ((ret &= parseFileForKernelConfigs(pathIter, &kernelConfigs)))
+                if ((ret &= parseFileForKernelConfigs(namedStream.stream(), &kernelConfigs)))
                     out->emplace_back(std::move(condition), std::move(kernelConfigs));
             }
-            pathIter = strtok(NULL, ":");
         }
-        delete[] modPath;
 
         if (!foundCommonConfig) {
-            std::cerr << "No android-base.cfg is found in these paths: '" << path << "'"
-                      << std::endl;
+            std::cerr << "No android-base.cfg is found in these paths:" << std::endl;
+            for (auto& namedStream : *streams) {
+                std::cerr << "    " << namedStream.name() << std::endl;
+            }
         }
         ret &= foundCommonConfig;
         // first element is always common configs (no conditions).
@@ -261,28 +264,26 @@ class AssembleVintf {
         return path;
     }
 
-    std::basic_ostream<char>& out() const {
-        return mOutFileRef == nullptr ? std::cout : *mOutFileRef;
-    }
+    std::basic_ostream<char>& out() const { return mOutRef == nullptr ? std::cout : *mOutRef; }
 
     template <typename S>
-    using Schemas = std::vector<std::pair<std::string, S>>;
+    using Schemas = std::vector<Named<S>>;
     using HalManifests = Schemas<HalManifest>;
     using CompatibilityMatrices = Schemas<CompatibilityMatrix>;
 
     bool assembleHalManifest(HalManifests* halManifests) {
         std::string error;
-        HalManifest* halManifest = &halManifests->front().second;
+        HalManifest* halManifest = &halManifests->front().object;
         for (auto it = halManifests->begin() + 1; it != halManifests->end(); ++it) {
-            const std::string& path = it->first;
-            HalManifest& halToAdd = it->second;
+            const std::string& path = it->name;
+            HalManifest& halToAdd = it->object;
 
             if (halToAdd.level() != Level::UNSPECIFIED) {
                 if (halManifest->level() == Level::UNSPECIFIED) {
                     halManifest->mLevel = halToAdd.level();
                 } else if (halManifest->level() != halToAdd.level()) {
                     std::cerr << "Inconsistent FCM Version in HAL manifests:" << std::endl
-                              << "    File '" << halManifests->front().first << "' has level "
+                              << "    File '" << halManifests->front().name << "' has level "
                               << halManifest->level() << std::endl
                               << "    File '" << path << "' has level " << halToAdd.level()
                               << std::endl;
@@ -327,9 +328,9 @@ class AssembleVintf {
         }
         out().flush();
 
-        if (mCheckFile.is_open()) {
+        if (mCheckFile != nullptr) {
             CompatibilityMatrix checkMatrix;
-            if (!gCompatibilityMatrixConverter(&checkMatrix, read(mCheckFile))) {
+            if (!gCompatibilityMatrixConverter(&checkMatrix, read(*mCheckFile))) {
                 std::cerr << "Cannot parse check file as a compatibility matrix: "
                           << gCompatibilityMatrixConverter.lastError() << std::endl;
                 return false;
@@ -344,9 +345,9 @@ class AssembleVintf {
     }
 
     bool assembleFrameworkCompatibilityMatrixKernels(CompatibilityMatrix* matrix) {
-        for (const auto& pair : mKernels) {
+        for (auto& pair : mKernels) {
             std::vector<ConditionedConfig> conditionedConfigs;
-            if (!parseFilesForKernelConfigs(pair.second, &conditionedConfigs)) {
+            if (!parseFilesForKernelConfigs(&pair.second, &conditionedConfigs)) {
                 return false;
             }
             for (ConditionedConfig& conditionedConfig : conditionedConfigs) {
@@ -400,8 +401,8 @@ class AssembleVintf {
     Level getLowestFcmVersion(const CompatibilityMatrices& matrices) {
         Level ret = Level::UNSPECIFIED;
         for (const auto& e : matrices) {
-            if (ret == Level::UNSPECIFIED || ret > e.second.level()) {
-                ret = e.second.level();
+            if (ret == Level::UNSPECIFIED || ret > e.object.level()) {
+                ret = e.object.level();
             }
         }
         return ret;
@@ -410,19 +411,16 @@ class AssembleVintf {
     bool assembleCompatibilityMatrix(CompatibilityMatrices* matrices) {
         std::string error;
         CompatibilityMatrix* matrix = nullptr;
-        KernelSepolicyVersion kernelSepolicyVers;
-        Version sepolicyVers;
         std::unique_ptr<HalManifest> checkManifest;
-        if (matrices->front().second.mType == SchemaType::DEVICE) {
-            matrix = &matrices->front().second;
+        if (matrices->front().object.mType == SchemaType::DEVICE) {
+            matrix = &matrices->front().object;
         }
 
-        if (matrices->front().second.mType == SchemaType::FRAMEWORK) {
+        if (matrices->front().object.mType == SchemaType::FRAMEWORK) {
             Level deviceLevel = Level::UNSPECIFIED;
-            std::vector<std::string> fileList;
-            if (mCheckFile.is_open()) {
+            if (mCheckFile != nullptr) {
                 checkManifest = std::make_unique<HalManifest>();
-                if (!gHalManifestConverter(checkManifest.get(), read(mCheckFile))) {
+                if (!gHalManifestConverter(checkManifest.get(), read(*mCheckFile))) {
                     std::cerr << "Cannot parse check file as a HAL manifest: "
                               << gHalManifestConverter.lastError() << std::endl;
                     return false;
@@ -436,55 +434,39 @@ class AssembleVintf {
                 deviceLevel = getLowestFcmVersion(*matrices);
             }
 
-            for (auto& e : *matrices) {
-                if (e.second.level() == deviceLevel) {
-                    fileList.push_back(e.first);
-                    matrix = &e.second;
-                }
-            }
-            if (matrix == nullptr) {
-                std::cerr << "FATAL ERROR: cannot find matrix with level '" << deviceLevel << "'"
-                          << std::endl;
-                return false;
-            }
-            for (auto& e : *matrices) {
-                if (e.second.level() <= deviceLevel) {
-                    continue;
-                }
-                fileList.push_back(e.first);
-                if (!matrix->addAllHalsAsOptional(&e.second, &error)) {
-                    std::cerr << "File \"" << e.first << "\" cannot be added: " << error
-                              << ". See <hal> with the same name "
-                              << "in previously parsed files or previously declared in this file."
-                              << std::endl;
+            if (deviceLevel == Level::UNSPECIFIED) {
+                // building empty.xml
+                matrix = &matrices->front().object;
+            } else {
+                matrix = CompatibilityMatrix::combine(deviceLevel, matrices, &error);
+                if (matrix == nullptr) {
+                    std::cerr << error << std::endl;
                     return false;
                 }
-            }
-
-            if (!getFlag("BOARD_SEPOLICY_VERS", &sepolicyVers)) {
-                return false;
-            }
-            if (!getFlag("POLICYVERS", &kernelSepolicyVers)) {
-                return false;
             }
 
             if (!assembleFrameworkCompatibilityMatrixKernels(matrix)) {
                 return false;
             }
 
-            matrix->framework.mSepolicy =
-                Sepolicy(kernelSepolicyVers, {{sepolicyVers.majorVer, sepolicyVers.minorVer}});
-
-            Version avbMetaVersion;
-            if (!getFlag("FRAMEWORK_VBMETA_VERSION", &avbMetaVersion)) {
-                return false;
+            // set sepolicy.sepolicy-version to BOARD_SEPOLICY_VERS when none is specified.
+            std::vector<VersionRange>* sepolicyVrs =
+                &matrix->framework.mSepolicy.mSepolicyVersionRanges;
+            VersionRange sepolicyVr;
+            if (!sepolicyVrs->empty()) sepolicyVr = sepolicyVrs->front();
+            if (getFlagIfUnset("BOARD_SEPOLICY_VERS", &sepolicyVr)) {
+                *sepolicyVrs = {{sepolicyVr}};
             }
-            matrix->framework.mAvbMetaVersion = avbMetaVersion;
+
+            getFlagIfUnset("POLICYVERS", &matrix->framework.mSepolicy.mKernelSepolicyVersion);
+            getFlagIfUnset("FRAMEWORK_VBMETA_VERSION", &matrix->framework.mAvbMetaVersion);
 
             out() << "<!--" << std::endl;
             out() << "    Input:" << std::endl;
-            for (const auto& path : fileList) {
-                out() << "        " << getFileNameFromPath(path) << std::endl;
+            for (const auto& e : *matrices) {
+                if (!e.name.empty()) {
+                    out() << "        " << getFileNameFromPath(e.name) << std::endl;
+                }
             }
             out() << "-->" << std::endl;
         }
@@ -533,7 +515,7 @@ class AssembleVintf {
         return assemble(&schemas) ? SUCCESS : FAIL_AND_EXIT;
     }
 
-    bool assemble() {
+    bool assemble() override {
         using std::placeholders::_1;
         if (mInFiles.empty()) {
             std::cerr << "Missing input file." << std::endl;
@@ -541,14 +523,14 @@ class AssembleVintf {
         }
 
         auto status = tryAssemble(gHalManifestConverter, "manifest",
-                                  std::bind(&AssembleVintf::assembleHalManifest, this, _1));
+                                  std::bind(&AssembleVintfImpl::assembleHalManifest, this, _1));
         if (status == SUCCESS) return true;
         if (status == FAIL_AND_EXIT) return false;
 
         resetInFiles();
 
         status = tryAssemble(gCompatibilityMatrixConverter, "compatibility matrix",
-                             std::bind(&AssembleVintf::assembleCompatibilityMatrix, this, _1));
+                             std::bind(&AssembleVintfImpl::assembleCompatibilityMatrix, this, _1));
         if (status == SUCCESS) return true;
         if (status == FAIL_AND_EXIT) return false;
 
@@ -560,22 +542,30 @@ class AssembleVintf {
         return false;
     }
 
-    bool openOutFile(const char* path) {
-        mOutFileRef = std::make_unique<std::ofstream>();
-        mOutFileRef->open(path);
-        return mOutFileRef->is_open();
+    std::ostream& setOutputStream(Ostream&& out) override {
+        mOutRef = std::move(out);
+        return *mOutRef;
     }
 
-    bool openInFile(const char* path) {
-        auto s = std::make_unique<std::ifstream>(path);
-        if (!s->is_open()) return false;
-        mInFiles.emplace(mInFiles.end(), std::string{path}, std::move(s));
-        return true;
+    std::istream& addInputStream(const std::string& name, Istream&& in) override {
+        auto it = mInFiles.emplace(mInFiles.end(), name, std::move(in));
+        return it->stream();
     }
 
-    bool openCheckFile(const char* path) {
-        mCheckFile.open(path);
-        return mCheckFile.is_open();
+    std::istream& setCheckInputStream(Istream&& in) override {
+        mCheckFile = std::move(in);
+        return *mCheckFile;
+    }
+
+    bool hasKernelVersion(const Version& kernelVer) const override {
+        return mKernels.find(kernelVer) != mKernels.end();
+    }
+
+    std::istream& addKernelConfigInputStream(const Version& kernelVer, const std::string& name,
+                                             Istream&& in) override {
+        auto&& kernel = mKernels[kernelVer];
+        auto it = kernel.emplace(kernel.end(), name, std::move(in));
+        return it->stream();
     }
 
     void resetInFiles() {
@@ -585,169 +575,76 @@ class AssembleVintf {
         }
     }
 
-    void setOutputMatrix() { mOutputMatrix = true; }
+    void setOutputMatrix() override { mOutputMatrix = true; }
 
-    bool setHalsOnly() {
+    bool setHalsOnly() override {
         if (mSerializeFlags) return false;
         mSerializeFlags |= SerializeFlag::HALS_ONLY;
         return true;
     }
 
-    bool setNoHals() {
+    bool setNoHals() override {
         if (mSerializeFlags) return false;
         mSerializeFlags |= SerializeFlag::NO_HALS;
         return true;
     }
 
-    bool addKernel(const std::string& kernelArg) {
-        auto ind = kernelArg.find(':');
-        if (ind == std::string::npos) {
-            std::cerr << "Unrecognized --kernel option '" << kernelArg << "'" << std::endl;
-            return false;
-        }
-        std::string kernelVerStr{kernelArg.begin(), kernelArg.begin() + ind};
-        std::string kernelConfigPath{kernelArg.begin() + ind + 1, kernelArg.end()};
-        Version kernelVer;
-        if (!parse(kernelVerStr, &kernelVer)) {
-            std::cerr << "Unrecognized kernel version '" << kernelVerStr << "'" << std::endl;
-            return false;
-        }
-        if (mKernels.find(kernelVer) != mKernels.end()) {
-            std::cerr << "Multiple --kernel for " << kernelVer << " is specified." << std::endl;
-            return false;
-        }
-        mKernels[kernelVer] = kernelConfigPath;
-        return true;
-    }
-
    private:
     std::vector<NamedIstream> mInFiles;
-    std::unique_ptr<std::ofstream> mOutFileRef;
-    std::ifstream mCheckFile;
+    Ostream mOutRef;
+    Istream mCheckFile;
     bool mOutputMatrix = false;
     SerializeFlags mSerializeFlags = SerializeFlag::EVERYTHING;
-    std::map<Version, std::string> mKernels;
+    std::map<Version, std::vector<NamedIstream>> mKernels;
+    std::map<std::string, std::string> mFakeEnv;
 };
+
+bool AssembleVintf::openOutFile(const std::string& path) {
+    return static_cast<std::ofstream&>(setOutputStream(std::make_unique<std::ofstream>(path)))
+        .is_open();
+}
+
+bool AssembleVintf::openInFile(const std::string& path) {
+    return static_cast<std::ifstream&>(addInputStream(path, std::make_unique<std::ifstream>(path)))
+        .is_open();
+}
+
+bool AssembleVintf::openCheckFile(const std::string& path) {
+    return static_cast<std::ifstream&>(setCheckInputStream(std::make_unique<std::ifstream>(path)))
+        .is_open();
+}
+
+bool AssembleVintf::addKernel(const std::string& kernelArg) {
+    auto tokens = base::Split(kernelArg, ":");
+    if (tokens.size() <= 1) {
+        std::cerr << "Unrecognized --kernel option '" << kernelArg << "'" << std::endl;
+        return false;
+    }
+    Version kernelVer;
+    if (!parse(tokens.front(), &kernelVer)) {
+        std::cerr << "Unrecognized kernel version '" << tokens.front() << "'" << std::endl;
+        return false;
+    }
+    if (hasKernelVersion(kernelVer)) {
+        std::cerr << "Multiple --kernel for " << kernelVer << " is specified." << std::endl;
+        return false;
+    }
+    for (auto it = tokens.begin() + 1; it != tokens.end(); ++it) {
+        bool opened =
+            static_cast<std::ifstream&>(
+                addKernelConfigInputStream(kernelVer, *it, std::make_unique<std::ifstream>(*it)))
+                .is_open();
+        if (!opened) {
+            std::cerr << "Cannot open file '" << *it << "'." << std::endl;
+            return false;
+        }
+    }
+    return true;
+}
+
+std::unique_ptr<AssembleVintf> AssembleVintf::newInstance() {
+    return std::make_unique<AssembleVintfImpl>();
+}
 
 }  // namespace vintf
 }  // namespace android
-
-void help() {
-    std::cerr << "assemble_vintf: Checks if a given manifest / matrix file is valid and \n"
-                 "    fill in build-time flags into the given file.\n"
-                 "assemble_vintf -h\n"
-                 "               Display this help text.\n"
-                 "assemble_vintf -i <input file>[:<input file>[...]] [-o <output file>] [-m]\n"
-                 "               [-c [<check file>]]\n"
-                 "               Fill in build-time flags into the given file.\n"
-                 "    -i <input file>[:<input file>[...]]\n"
-                 "               A list of input files. Format is automatically detected for the\n"
-                 "               first file, and the remaining files must have the same format.\n"
-                 "               Files other than the first file should only have <hal> defined;\n"
-                 "               other entries are ignored.\n"
-                 "    -o <output file>\n"
-                 "               Optional output file. If not specified, write to stdout.\n"
-                 "    -m\n"
-                 "               a compatible compatibility matrix is\n"
-                 "               generated instead; for example, given a device manifest,\n"
-                 "               a framework compatibility matrix is generated. This flag\n"
-                 "               is ignored when input is a compatibility matrix.\n"
-                 "    -c [<check file>]\n"
-                 "               After writing the output file, check compatibility between\n"
-                 "               output file and check file.\n"
-                 "               If -c is set but the check file is not specified, a warning\n"
-                 "               message is written to stderr. Return 0.\n"
-                 "               If the check file is specified but is not compatible, an error\n"
-                 "               message is written to stderr. Return 1.\n"
-                 "    --kernel=<version>:<android-base.cfg>[:<android-base-arch.cfg>[...]]\n"
-                 "               Add a kernel entry to framework compatibility matrix.\n"
-                 "               Ignored for other input format.\n"
-                 "               <version> has format: 3.18\n"
-                 "               <android-base.cfg> is the location of android-base.cfg\n"
-                 "               <android-base-arch.cfg> is the location of an optional\n"
-                 "               arch-specific config fragment, more than one may be specified\n"
-                 "    -l, --hals-only\n"
-                 "               Output has only <hal> entries. Cannot be used with -n.\n"
-                 "    -n, --no-hals\n"
-                 "               Output has no <hal> entries (but all other entries).\n"
-                 "               Cannot be used with -l.\n";
-}
-
-int main(int argc, char **argv) {
-    const struct option longopts[] = {{"kernel", required_argument, NULL, 'k'},
-                                      {"hals-only", no_argument, NULL, 'l'},
-                                      {"no-hals", no_argument, NULL, 'n'},
-                                      {0, 0, 0, 0}};
-
-    std::string outFilePath;
-    ::android::vintf::AssembleVintf assembleVintf;
-    int res;
-    int optind;
-    while ((res = getopt_long(argc, argv, "hi:o:mc:nl", longopts, &optind)) >= 0) {
-        switch (res) {
-            case 'i': {
-                char* inFilePath = strtok(optarg, ":");
-                while (inFilePath != NULL) {
-                    if (!assembleVintf.openInFile(inFilePath)) {
-                        std::cerr << "Failed to open " << optarg << std::endl;
-                        return 1;
-                    }
-                    inFilePath = strtok(NULL, ":");
-                }
-            } break;
-
-            case 'o': {
-                outFilePath = optarg;
-                if (!assembleVintf.openOutFile(optarg)) {
-                    std::cerr << "Failed to open " << optarg << std::endl;
-                    return 1;
-                }
-            } break;
-
-            case 'm': {
-                assembleVintf.setOutputMatrix();
-            } break;
-
-            case 'c': {
-                if (strlen(optarg) != 0) {
-                    if (!assembleVintf.openCheckFile(optarg)) {
-                        std::cerr << "Failed to open " << optarg << std::endl;
-                        return 1;
-                    }
-                } else {
-                    std::cerr << "WARNING: no compatibility check is done on "
-                              << (outFilePath.empty() ? "output" : outFilePath) << std::endl;
-                }
-            } break;
-
-            case 'k': {
-                if (!assembleVintf.addKernel(optarg)) {
-                    std::cerr << "ERROR: Unrecognized --kernel argument." << std::endl;
-                    return 1;
-                }
-            } break;
-
-            case 'l': {
-                if (!assembleVintf.setHalsOnly()) {
-                    return 1;
-                }
-            } break;
-
-            case 'n': {
-                if (!assembleVintf.setNoHals()) {
-                    return 1;
-                }
-            } break;
-
-            case 'h':
-            default: {
-                help();
-                return 1;
-            } break;
-        }
-    }
-
-    bool success = assembleVintf.assemble();
-
-    return success ? 0 : 1;
-}
