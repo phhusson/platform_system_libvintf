@@ -39,12 +39,13 @@ extern const XmlConverter<KernelConfigTypedValue> &gKernelConfigTypedValueConver
 extern const XmlConverter<HalManifest> &gHalManifestConverter;
 extern const XmlConverter<CompatibilityMatrix> &gCompatibilityMatrixConverter;
 
-#ifdef LIBVINTF_HOST
-static bool Contains(const std::string& str, const std::string& sub) {
+static bool In(const std::string& sub, const std::string& str) {
     return str.find(sub) != std::string::npos;
 }
-#define EXPECT_CONTAINS(str, sub) \
-    EXPECT_TRUE(Contains((str), (sub))) << "Cannot find \"" << (sub) << "\" in \"" << (str) << "\""
+#define EXPECT_IN(sub, str) EXPECT_TRUE(In((sub), (str))) << (str);
+
+#ifdef LIBVINTF_HOST
+#define EXPECT_CONTAINS(str, sub) EXPECT_IN(sub, str);
 #endif
 
 struct LibVintfTest : public ::testing::Test {
@@ -2280,6 +2281,112 @@ TEST_F(LibVintfTest, AddOptionalXmlFile) {
               "        <path>/foo/bar/quux.xsd</path>\n"
               "    </xmlfile>\n"
               "</compatibility-matrix>\n");
+}
+
+TEST_F(LibVintfTest, VendorNdk) {
+    CompatibilityMatrix cm;
+    std::string error;
+    std::string xml;
+
+    xml =
+        "<compatibility-matrix version=\"1.0\" type=\"device\">\n"
+        "    <vendor-ndk>\n"
+        "        <version>P</version>\n"
+        "        <library>libbase.so</library>\n"
+        "        <library>libjpeg.so</library>\n"
+        "    </vendor-ndk>\n"
+        "</compatibility-matrix>\n";
+    EXPECT_TRUE(gCompatibilityMatrixConverter(&cm, xml))
+        << gCompatibilityMatrixConverter.lastError();
+    EXPECT_EQ(xml, gCompatibilityMatrixConverter(cm));
+
+    {
+        HalManifest manifest;
+        xml =
+            "<manifest version=\"1.0\" type=\"framework\">\n"
+            "    <vendor-ndk>\n"
+            "        <version>27</version>\n"
+            "        <library>libbase.so</library>\n"
+            "        <library>libjpeg.so</library>\n"
+            "    </vendor-ndk>\n"
+            "    <vendor-ndk>\n"
+            "        <version>P</version>\n"
+            "        <library>libbase.so</library>\n"
+            "        <library>libjpeg.so</library>\n"
+            "        <library>libtinyxml2.so</library>\n"
+            "    </vendor-ndk>\n"
+            "</manifest>\n";
+
+        EXPECT_TRUE(gHalManifestConverter(&manifest, xml)) << gHalManifestConverter.lastError();
+        EXPECT_EQ(xml, gHalManifestConverter(manifest));
+        EXPECT_TRUE(manifest.checkCompatibility(cm, &error)) << error;
+    }
+
+    {
+        HalManifest manifest;
+        xml =
+            "<manifest version=\"1.0\" type=\"framework\">\n"
+            "    <vendor-ndk>\n"
+            "        <version>27</version>\n"
+            "        <library>libbase.so</library>\n"
+            "        <library>libjpeg.so</library>\n"
+            "    </vendor-ndk>\n"
+            "</manifest>\n";
+
+        EXPECT_TRUE(gHalManifestConverter(&manifest, xml)) << gHalManifestConverter.lastError();
+        EXPECT_EQ(xml, gHalManifestConverter(manifest));
+        EXPECT_FALSE(manifest.checkCompatibility(cm, &error));
+        EXPECT_IN("Vndk version P is not supported.", error);
+    }
+
+    {
+        HalManifest manifest;
+        xml =
+            "<manifest version=\"1.0\" type=\"framework\">\n"
+            "    <vendor-ndk>\n"
+            "        <version>P</version>\n"
+            "        <library>libbase.so</library>\n"
+            "    </vendor-ndk>\n"
+            "</manifest>\n";
+
+        EXPECT_TRUE(gHalManifestConverter(&manifest, xml)) << gHalManifestConverter.lastError();
+        EXPECT_EQ(xml, gHalManifestConverter(manifest));
+        EXPECT_FALSE(manifest.checkCompatibility(cm, &error));
+        EXPECT_IN("Vndk libs incompatible for version P.", error);
+        EXPECT_IN("libjpeg.so", error);
+    }
+}
+
+TEST_F(LibVintfTest, MissingVendorNdkInMatrix) {
+    CompatibilityMatrix cm;
+    std::string xml;
+    std::string error;
+
+    xml = "<compatibility-matrix version=\"1.0\" type=\"device\"/>\n";
+    EXPECT_TRUE(gCompatibilityMatrixConverter(&cm, xml))
+        << gCompatibilityMatrixConverter.lastError();
+
+    {
+        HalManifest manifest;
+        xml = "<manifest version=\"1.0\" type=\"framework\"/>\n";
+        EXPECT_TRUE(gHalManifestConverter(&manifest, xml)) << gHalManifestConverter.lastError();
+
+        EXPECT_TRUE(manifest.checkCompatibility(cm, &error)) << error;
+    }
+
+    {
+        HalManifest manifest;
+        xml =
+            "<manifest version=\"1.0\" type=\"framework\">\n"
+            "    <vendor-ndk>\n"
+            "        <version>P</version>\n"
+            "        <library>libbase.so</library>\n"
+            "    </vendor-ndk>\n"
+            "</manifest>\n";
+        EXPECT_TRUE(gHalManifestConverter(&manifest, xml)) << gHalManifestConverter.lastError();
+
+        EXPECT_TRUE(manifest.checkCompatibility(cm, &error)) << error;
+    }
 }
 
 } // namespace vintf
