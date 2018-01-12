@@ -225,7 +225,7 @@ TEST_F(AssembleVintfTest, FrameworkMatrix) {
 
     resetOutput();
     getInstance()->setCheckInputStream(makeStream(manifest(1)));
-    getInstance()->assemble();
+    EXPECT_TRUE(getInstance()->assemble());
     EXPECT_IN(
         "<compatibility-matrix version=\"1.0\" type=\"framework\" level=\"1\">\n"
         "    <hal format=\"hidl\" optional=\"true\">\n"
@@ -249,7 +249,7 @@ TEST_F(AssembleVintfTest, FrameworkMatrix) {
 
     resetOutput();
     getInstance()->setCheckInputStream(makeStream(manifest(2)));
-    getInstance()->assemble();
+    EXPECT_TRUE(getInstance()->assemble());
     EXPECT_IN(
         "<compatibility-matrix version=\"1.0\" type=\"framework\" level=\"2\">\n"
         "    <hal format=\"hidl\" optional=\"true\">\n"
@@ -273,7 +273,7 @@ TEST_F(AssembleVintfTest, FrameworkMatrix) {
 
     resetOutput();
     getInstance()->setCheckInputStream(makeStream(manifest(3)));
-    getInstance()->assemble();
+    EXPECT_TRUE(getInstance()->assemble());
     EXPECT_IN(
         "<compatibility-matrix version=\"1.0\" type=\"framework\" level=\"3\">\n"
         "    <hal format=\"hidl\" optional=\"false\">\n"
