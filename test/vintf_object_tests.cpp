@@ -204,6 +204,9 @@ void setupMockFetcher(const std::string& vendorManifestXml, const std::string& s
             fetched = systemMatrixXml;
             return 0;
         }));
+    // Don't list /system/etc/vintf unless otherwise specified.
+    ON_CALL(*fetcher, listFiles(StrEq("/system/etc/vintf/"), _, _))
+        .WillByDefault(Return(::android::OK));
 }
 
 static MockPartitionMounter &mounter() {
@@ -519,6 +522,41 @@ TEST_F(VintfObjectRuntimeInfoTest, GetRuntimeInfo) {
     VintfObject::GetRuntimeInfo(false /* skipCache */, RuntimeInfo::FetchFlag::ALL);
     VintfObject::GetRuntimeInfo(true /* skipCache */, RuntimeInfo::FetchFlag::ALL);
     VintfObject::GetRuntimeInfo(false /* skipCache */, RuntimeInfo::FetchFlag::ALL);
+}
+
+// Test fixture that provides incompatible metadata from the mock device.
+class VintfObjectTest : public testing::Test {
+   protected:
+    virtual void SetUp() {}
+    virtual void TearDown() {
+        Mock::VerifyAndClear(&fetcher());
+        Mock::VerifyAndClear(&mounter());
+    }
+};
+
+// Test framework compatibility matrix is combined at runtime
+TEST_F(VintfObjectTest, FrameworkCompatibilityMatrixCombine) {
+    EXPECT_CALL(fetcher(), listFiles(StrEq("/system/etc/vintf/"), _, _))
+        .WillOnce(Invoke([](const auto&, auto* out, auto*) {
+            *out = {
+                "compatibility_matrix.1.xml",
+                "compatibility_matrix.empty.xml",
+            };
+            return ::android::OK;
+        }));
+    EXPECT_CALL(fetcher(), fetch(StrEq("/system/etc/vintf/compatibility_matrix.1.xml"), _))
+        .WillOnce(Invoke([](const auto&, auto& out) {
+            out = "<compatibility-matrix version=\"1.0\" type=\"framework\" level=\"1\"/>";
+            return ::android::OK;
+        }));
+    EXPECT_CALL(fetcher(), fetch(StrEq("/system/etc/vintf/compatibility_matrix.empty.xml"), _))
+        .WillOnce(Invoke([](const auto&, auto& out) {
+            out = "<compatibility-matrix version=\"1.0\" type=\"framework\"/>";
+            return ::android::OK;
+        }));
+    EXPECT_CALL(fetcher(), fetch(StrEq("/system/compatibility_matrix.xml"), _)).Times(0);
+
+    EXPECT_NE(nullptr, VintfObject::GetFrameworkCompatibilityMatrix(true /* skipCache */));
 }
 
 int main(int argc, char** argv) {
