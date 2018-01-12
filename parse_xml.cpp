@@ -901,7 +901,9 @@ struct CompatibilityMatrixConverter : public XmlNodeConverter<CompatibilityMatri
             }
         } else if (m.mType == SchemaType::DEVICE) {
             if (!(flags & SerializeFlag::NO_VNDK)) {
-                appendChild(root, vndkConverter(m.device.mVndk, d));
+                if (!(m.device.mVndk == Vndk{})) {
+                    appendChild(root, vndkConverter(m.device.mVndk, d));
+                }
             }
         }
 
