@@ -256,14 +256,6 @@ class AssembleVintfImpl : public AssembleVintf {
         return ret;
     }
 
-    static std::string getFileNameFromPath(std::string path) {
-        auto idx = path.find_last_of("\\/");
-        if (idx != std::string::npos) {
-            path.erase(0, idx + 1);
-        }
-        return path;
-    }
-
     std::basic_ostream<char>& out() const { return mOutRef == nullptr ? std::cout : *mOutRef; }
 
     template <typename S>
@@ -465,7 +457,7 @@ class AssembleVintfImpl : public AssembleVintf {
             out() << "    Input:" << std::endl;
             for (const auto& e : *matrices) {
                 if (!e.name.empty()) {
-                    out() << "        " << getFileNameFromPath(e.name) << std::endl;
+                    out() << "        " << base::Basename(e.name) << std::endl;
                 }
             }
             out() << "-->" << std::endl;
