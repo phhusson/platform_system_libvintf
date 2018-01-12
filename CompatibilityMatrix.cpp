@@ -162,7 +162,12 @@ bool CompatibilityMatrix::addAllXmlFilesAsOptional(CompatibilityMatrix* other, s
 bool operator==(const CompatibilityMatrix &lft, const CompatibilityMatrix &rgt) {
     return lft.mType == rgt.mType && lft.mLevel == rgt.mLevel && lft.mHals == rgt.mHals &&
            lft.mXmlFiles == rgt.mXmlFiles &&
-           (lft.mType != SchemaType::DEVICE || (lft.device.mVndk == rgt.device.mVndk)) &&
+           (lft.mType != SchemaType::DEVICE || (
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+            lft.device.mVndk == rgt.device.mVndk
+#pragma clang diagnostic pop
+           )) &&
            (lft.mType != SchemaType::FRAMEWORK ||
             (lft.framework.mKernels == rgt.framework.mKernels &&
              lft.framework.mSepolicy == rgt.framework.mSepolicy &&

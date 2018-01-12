@@ -107,7 +107,10 @@ struct CompatibilityMatrix : public HalGroup<MatrixHal>, public XmlFileGroup<Mat
 
     // entries only for device compatibility matrix.
     struct {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
         Vndk mVndk;
+#pragma clang diagnostic pop
     } device;
 };
 

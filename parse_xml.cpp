@@ -696,10 +696,11 @@ struct SepolicyConverter : public XmlNodeConverter<Sepolicy> {
 };
 const SepolicyConverter sepolicyConverter{};
 
+[[deprecated]]
 const XmlTextConverter<VndkVersionRange> vndkVersionRangeConverter{"version"};
 const XmlTextConverter<std::string> vndkLibraryConverter{"library"};
 
-struct VndkConverter : public XmlNodeConverter<Vndk> {
+struct [[deprecated]] VndkConverter : public XmlNodeConverter<Vndk> {
     std::string elementName() const override { return "vndk"; }
     void mutateNode(const Vndk &object, NodeType *root, DocType *d) const override {
         appendChild(root, vndkVersionRangeConverter(object.mVersionRange, d));
@@ -714,6 +715,7 @@ struct VndkConverter : public XmlNodeConverter<Vndk> {
     }
 };
 
+[[deprecated]]
 const VndkConverter vndkConverter{};
 
 struct HalManifestSepolicyConverter : public XmlNodeConverter<Version> {
@@ -769,7 +771,10 @@ struct HalManifestConverter : public XmlNodeConverter<HalManifest> {
             }
         } else if (m.mType == SchemaType::FRAMEWORK) {
             if (!(flags & SerializeFlag::NO_VNDK)) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
                 appendChildren(root, vndkConverter, m.framework.mVndks, d);
+#pragma clang diagnostic pop
             }
         }
 
@@ -799,6 +804,8 @@ struct HalManifestConverter : public XmlNodeConverter<HalManifest> {
                 return false;
             }
         } else if (object->mType == SchemaType::FRAMEWORK) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
             if (!parseChildren(root, vndkConverter, &object->framework.mVndks)) {
                 return false;
             }
@@ -809,6 +816,7 @@ struct HalManifestConverter : public XmlNodeConverter<HalManifest> {
                     return false;
                 }
             }
+#pragma clang diagnostic pop
         }
         for (auto &&hal : hals) {
             std::string description{hal.name};
@@ -901,9 +909,12 @@ struct CompatibilityMatrixConverter : public XmlNodeConverter<CompatibilityMatri
             }
         } else if (m.mType == SchemaType::DEVICE) {
             if (!(flags & SerializeFlag::NO_VNDK)) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
                 if (!(m.device.mVndk == Vndk{})) {
                     appendChild(root, vndkConverter(m.device.mVndk, d));
                 }
+#pragma clang diagnostic pop
             }
         }
 
@@ -946,9 +957,12 @@ struct CompatibilityMatrixConverter : public XmlNodeConverter<CompatibilityMatri
         } else if (object->mType == SchemaType::DEVICE) {
             // <vndk> can be missing because it can be determined at build time, not hard-coded
             // in the XML file.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
             if (!parseOptionalChild(root, vndkConverter, {}, &object->device.mVndk)) {
                 return false;
             }
+#pragma clang diagnostic pop
         }
 
         if (!kMetaVersion.minorAtLeast(version)) {
