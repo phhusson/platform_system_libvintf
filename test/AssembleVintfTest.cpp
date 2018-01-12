@@ -33,7 +33,7 @@ class AssembleVintfTest : public ::testing::Test {
    public:
     virtual void SetUp() override {
         mInstance = AssembleVintf::newInstance();
-        auto s = std::make_unique<std::stringstream>();
+        auto s = makeStream("");
         mOutputStream = s.get();
         mInstance->setOutputStream(std::move(s));
     }
@@ -52,7 +52,11 @@ class AssembleVintfTest : public ::testing::Test {
     }
 
     void addInput(const std::string& name, const std::string& s) {
-        getInstance()->addInputStream(name, std::make_unique<std::stringstream>(s));
+        getInstance()->addInputStream(name, makeStream(s));
+    }
+
+    std::unique_ptr<std::stringstream> makeStream(const std::string& s) {
+        return std::make_unique<std::stringstream>(s);
     }
 
     std::unique_ptr<AssembleVintf> mInstance;
@@ -73,14 +77,12 @@ TEST_F(AssembleVintfTest, FrameworkMatrixEmpty) {
         {"BOARD_SEPOLICY_VERS", "10000.0"},
         {"FRAMEWORK_VBMETA_VERSION", "1.0"},
     });
-    getInstance()->addKernelConfigInputStream({3, 18}, "android-base.cfg",
-                                              std::make_unique<std::stringstream>(kernel318));
+    getInstance()->addKernelConfigInputStream({3, 18}, "android-base.cfg", makeStream(kernel318));
     getInstance()->addKernelConfigInputStream({3, 18}, "android-base-arm64.cfg",
-                                              std::make_unique<std::stringstream>(kernel318_64));
-    getInstance()->addKernelConfigInputStream({4, 4}, "android-base.cfg",
-                                              std::make_unique<std::stringstream>(kernel44));
+                                              makeStream(kernel318_64));
+    getInstance()->addKernelConfigInputStream({4, 4}, "android-base.cfg", makeStream(kernel44));
     getInstance()->addKernelConfigInputStream({4, 4}, "android-base-arm64.cfg",
-                                              std::make_unique<std::stringstream>(kernel44_64));
+                                              makeStream(kernel44_64));
 
     EXPECT_TRUE(getInstance()->assemble());
 
@@ -222,8 +224,8 @@ TEST_F(AssembleVintfTest, FrameworkMatrix) {
     getInstance()->setFakeEnv("PRODUCT_ENFORCE_VINTF_MANIFEST", "true");
 
     resetOutput();
-    getInstance()->setCheckInputStream(std::make_unique<std::stringstream>(manifest(1)));
-    getInstance()->assemble();
+    getInstance()->setCheckInputStream(makeStream(manifest(1)));
+    EXPECT_TRUE(getInstance()->assemble());
     EXPECT_IN(
         "<compatibility-matrix version=\"1.0\" type=\"framework\" level=\"1\">\n"
         "    <hal format=\"hidl\" optional=\"true\">\n"
@@ -246,8 +248,8 @@ TEST_F(AssembleVintfTest, FrameworkMatrix) {
         getOutput());
 
     resetOutput();
-    getInstance()->setCheckInputStream(std::make_unique<std::stringstream>(manifest(2)));
-    getInstance()->assemble();
+    getInstance()->setCheckInputStream(makeStream(manifest(2)));
+    EXPECT_TRUE(getInstance()->assemble());
     EXPECT_IN(
         "<compatibility-matrix version=\"1.0\" type=\"framework\" level=\"2\">\n"
         "    <hal format=\"hidl\" optional=\"true\">\n"
@@ -270,8 +272,8 @@ TEST_F(AssembleVintfTest, FrameworkMatrix) {
         getOutput());
 
     resetOutput();
-    getInstance()->setCheckInputStream(std::make_unique<std::stringstream>(manifest(3)));
-    getInstance()->assemble();
+    getInstance()->setCheckInputStream(makeStream(manifest(3)));
+    EXPECT_TRUE(getInstance()->assemble());
     EXPECT_IN(
         "<compatibility-matrix version=\"1.0\" type=\"framework\" level=\"3\">\n"
         "    <hal format=\"hidl\" optional=\"false\">\n"
