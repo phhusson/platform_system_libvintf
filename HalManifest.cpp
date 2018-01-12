@@ -213,6 +213,47 @@ std::vector<std::string> HalManifest::checkIncompatibility(const CompatibilityMa
     return incompatible;
 }
 
+static bool checkVendorNdkCompatibility(const VendorNdk& matVendorNdk,
+                                        const std::vector<VendorNdk>& manifestVendorNdk,
+                                        std::string* error) {
+    // For pre-P vendor images, device compatibility matrix does not specify <vendor-ndk>
+    // tag. Ignore the check for these devices.
+    if (matVendorNdk.version().empty()) {
+        return true;
+    }
+    for (const auto& vndk : manifestVendorNdk) {
+        if (vndk.version() != matVendorNdk.version()) {
+            continue;
+        }
+        // version matches, check libraries
+        std::vector<std::string> diff;
+        std::set_difference(matVendorNdk.libraries().begin(), matVendorNdk.libraries().end(),
+                            vndk.libraries().begin(), vndk.libraries().end(),
+                            std::inserter(diff, diff.begin()));
+        if (!diff.empty()) {
+            if (error != nullptr) {
+                *error = "Vndk libs incompatible for version " + matVendorNdk.version() +
+                         ". These libs are not in framework manifest:";
+                for (const auto& name : diff) {
+                    *error += " " + name;
+                }
+            }
+            return false;
+        }
+        return true;
+    }
+
+    // no match is found.
+    if (error != nullptr) {
+        *error = "Vndk version " + matVendorNdk.version() + " is not supported. " +
+                 "Supported versions in framework manifest are:";
+        for (const auto& vndk : manifestVendorNdk) {
+            *error += " " + vndk.version();
+        }
+    }
+    return false;
+}
+
 bool HalManifest::checkCompatibility(const CompatibilityMatrix &mat, std::string *error) const {
     if (mType == mat.mType) {
         if (error != nullptr) {
@@ -233,37 +274,9 @@ bool HalManifest::checkCompatibility(const CompatibilityMatrix &mat, std::string
         return false;
     }
     if (mType == SchemaType::FRAMEWORK) {
-    // TODO(b/36400653) enable this. It is disabled since vndk is not yet defined.
-#ifdef VINTF_CHECK_VNDK
-        bool match = false;
-        const auto &matVndk = mat.device.mVndk;
-        for (const auto &vndk : framework.mVndks) {
-            if (!vndk.mVersionRange.in(matVndk.mVersionRange)) {
-                continue;
-            }
-            // version matches, check libaries
-            std::vector<std::string> diff;
-            std::set_difference(matVndk.mLibraries.begin(), matVndk.mLibraries.end(),
-                    vndk.mLibraries.begin(), vndk.mLibraries.end(),
-                    std::inserter(diff, diff.begin()))
-            if (!diff.empty()) {
-                if (error != nullptr) {
-                    *error = "Vndk libs incompatible.";
-                    for (const auto &name : diff) {
-                        *error += " " + name;
-                    }
-                }
-                return false;
-            }
-            match = true;
-            break;
+        if (!checkVendorNdkCompatibility(mat.device.mVendorNdk, framework.mVendorNdks, error)) {
+            return false;
         }
-        if (!match) {
-            if (error != nullptr) {
-                *error = "Vndk version " + to_string(matVndk.mVersionRange) + " is not supported.";
-            }
-        }
-#endif
     } else if (mType == SchemaType::DEVICE) {
         bool match = false;
         for (const auto &range : mat.framework.mSepolicy.sepolicyVersions()) {
@@ -332,9 +345,9 @@ const Version &HalManifest::sepolicyVersion() const {
     return device.mSepolicyVersion;
 }
 
-const std::vector<Vndk> &HalManifest::vndks() const {
+const std::vector<VendorNdk>& HalManifest::vendorNdks() const {
     CHECK(mType == SchemaType::FRAMEWORK);
-    return framework.mVndks;
+    return framework.mVendorNdks;
 }
 
 std::string HalManifest::getXmlFilePath(const std::string& xmlFileName,
@@ -360,12 +373,13 @@ bool operator==(const HalManifest &lft, const HalManifest &rgt) {
            lft.mXmlFiles == rgt.mXmlFiles &&
            (lft.mType != SchemaType::DEVICE ||
             (lft.device.mSepolicyVersion == rgt.device.mSepolicyVersion)) &&
-           (lft.mType != SchemaType::FRAMEWORK || (
+           (lft.mType != SchemaType::FRAMEWORK ||
+            (
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
-            lft.framework.mVndks == rgt.framework.mVndks
+                lft.framework.mVndks == rgt.framework.mVndks &&
 #pragma clang diagnostic pop
-           ));
+                lft.framework.mVendorNdks == rgt.framework.mVendorNdks));
 }
 
 } // namespace vintf

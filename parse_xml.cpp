@@ -698,6 +698,8 @@ const SepolicyConverter sepolicyConverter{};
 
 [[deprecated]]
 const XmlTextConverter<VndkVersionRange> vndkVersionRangeConverter{"version"};
+
+const XmlTextConverter<std::string> vndkVersionConverter{"version"};
 const XmlTextConverter<std::string> vndkLibraryConverter{"library"};
 
 struct [[deprecated]] VndkConverter : public XmlNodeConverter<Vndk> {
@@ -717,6 +719,23 @@ struct [[deprecated]] VndkConverter : public XmlNodeConverter<Vndk> {
 
 [[deprecated]]
 const VndkConverter vndkConverter{};
+
+struct VendorNdkConverter : public XmlNodeConverter<VendorNdk> {
+    std::string elementName() const override { return "vendor-ndk"; }
+    void mutateNode(const VendorNdk& object, NodeType* root, DocType* d) const override {
+        appendChild(root, vndkVersionConverter(object.mVersion, d));
+        appendChildren(root, vndkLibraryConverter, object.mLibraries, d);
+    }
+    bool buildObject(VendorNdk* object, NodeType* root) const override {
+        if (!parseChild(root, vndkVersionConverter, &object->mVersion) ||
+            !parseChildren(root, vndkLibraryConverter, &object->mLibraries)) {
+            return false;
+        }
+        return true;
+    }
+};
+
+const VendorNdkConverter vendorNdkConverter{};
 
 struct HalManifestSepolicyConverter : public XmlNodeConverter<Version> {
     std::string elementName() const override { return "sepolicy"; }
@@ -775,6 +794,8 @@ struct HalManifestConverter : public XmlNodeConverter<HalManifest> {
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
                 appendChildren(root, vndkConverter, m.framework.mVndks, d);
 #pragma clang diagnostic pop
+
+                appendChildren(root, vendorNdkConverter, m.framework.mVendorNdks, d);
             }
         }
 
@@ -817,6 +838,10 @@ struct HalManifestConverter : public XmlNodeConverter<HalManifest> {
                 }
             }
 #pragma clang diagnostic pop
+
+            if (!parseChildren(root, vendorNdkConverter, &object->framework.mVendorNdks)) {
+                return false;
+            }
         }
         for (auto &&hal : hals) {
             std::string description{hal.name};
@@ -915,6 +940,10 @@ struct CompatibilityMatrixConverter : public XmlNodeConverter<CompatibilityMatri
                     appendChild(root, vndkConverter(m.device.mVndk, d));
                 }
 #pragma clang diagnostic pop
+
+                if (!(m.device.mVendorNdk == VendorNdk{})) {
+                    appendChild(root, vendorNdkConverter(m.device.mVendorNdk, d));
+                }
             }
         }
 
@@ -963,6 +992,10 @@ struct CompatibilityMatrixConverter : public XmlNodeConverter<CompatibilityMatri
                 return false;
             }
 #pragma clang diagnostic pop
+
+            if (!parseOptionalChild(root, vendorNdkConverter, {}, &object->device.mVendorNdk)) {
+                return false;
+            }
         }
 
         if (!kMetaVersion.minorAtLeast(version)) {
