@@ -360,7 +360,12 @@ bool operator==(const HalManifest &lft, const HalManifest &rgt) {
            lft.mXmlFiles == rgt.mXmlFiles &&
            (lft.mType != SchemaType::DEVICE ||
             (lft.device.mSepolicyVersion == rgt.device.mSepolicyVersion)) &&
-           (lft.mType != SchemaType::FRAMEWORK || (lft.framework.mVndks == rgt.framework.mVndks));
+           (lft.mType != SchemaType::FRAMEWORK || (
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+            lft.framework.mVndks == rgt.framework.mVndks
+#pragma clang diagnostic pop
+           ));
 }
 
 } // namespace vintf

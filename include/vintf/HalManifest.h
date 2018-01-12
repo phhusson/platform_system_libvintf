@@ -103,6 +103,7 @@ struct HalManifest : public HalGroup<ManifestHal>, public XmlFileGroup<ManifestX
 
     // framework.mVndks. Assume type == framework.
     // Abort if type != framework.
+    [[deprecated]]
     const std::vector<Vndk> &vndks() const;
 
     // If the corresponding <xmlfile> with the given version exists,
@@ -147,7 +148,10 @@ struct HalManifest : public HalGroup<ManifestHal>, public XmlFileGroup<ManifestX
 
     // entries for framework hal manifest only
     struct {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
         std::vector<Vndk> mVndks;
+#pragma clang diagnostic pop
     } framework;
 };
 
