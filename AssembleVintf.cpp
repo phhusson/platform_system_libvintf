@@ -151,18 +151,6 @@ class AssembleVintfImpl : public AssembleVintf {
         return ::android::base::Basename(path) == gBaseConfig;
     }
 
-    static Level convertFromApiLevel(size_t apiLevel) {
-        if (apiLevel < 26) {
-            return Level::LEGACY;
-        } else if (apiLevel == 26) {
-            return Level::O;
-        } else if (apiLevel == 27) {
-            return Level::O_MR1;
-        } else {
-            return Level::UNSPECIFIED;
-        }
-    }
-
     // nullptr on any error, otherwise the condition.
     static Condition generateCondition(const std::string& path) {
         std::string fname = ::android::base::Basename(path);
@@ -367,7 +355,7 @@ class AssembleVintfImpl : public AssembleVintf {
         if (shippingApiLevel) {
             std::cerr << "Warning: Shipping FCM Version is inferred from Shipping API level. "
                       << "Declare Shipping FCM Version in device manifest directly." << std::endl;
-            manifest->mLevel = convertFromApiLevel(shippingApiLevel);
+            manifest->mLevel = details::convertFromApiLevel(shippingApiLevel);
             if (manifest->mLevel == Level::UNSPECIFIED) {
                 std::cerr << "Error: Shipping FCM Version cannot be inferred from Shipping API "
                           << "level " << shippingApiLevel << "."
