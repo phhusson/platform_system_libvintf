@@ -288,5 +288,73 @@ TEST_F(AssembleVintfTest, FrameworkMatrix) {
         getOutput());
 }
 
+TEST_F(AssembleVintfTest, MatrixVendorNdk) {
+    addInput("compatibility_matrix.xml",
+             "<compatibility-matrix version=\"1.0\" type=\"device\"/>\n");
+    getInstance()->setFakeEnv("REQUIRED_VNDK_VERSION", "P");
+    EXPECT_TRUE(getInstance()->assemble());
+    EXPECT_IN(
+        "<compatibility-matrix version=\"1.0\" type=\"device\">\n"
+        "    <vendor-ndk>\n"
+        "        <version>P</version>\n"
+        "    </vendor-ndk>\n"
+        "</compatibility-matrix>\n",
+        getOutput());
+}
+
+TEST_F(AssembleVintfTest, ManifestVendorNdk) {
+    addInput("manifest.xml", "<manifest version=\"1.0\" type=\"framework\"/>\n");
+    getInstance()->setFakeEnv("PROVIDED_VNDK_VERSIONS", "P  26 27   ");
+    EXPECT_TRUE(getInstance()->assemble());
+    EXPECT_IN(
+        "<manifest version=\"1.0\" type=\"framework\">\n"
+        "    <vendor-ndk>\n"
+        "        <version>P</version>\n"
+        "    </vendor-ndk>\n"
+        "    <vendor-ndk>\n"
+        "        <version>26</version>\n"
+        "    </vendor-ndk>\n"
+        "    <vendor-ndk>\n"
+        "        <version>27</version>\n"
+        "    </vendor-ndk>\n"
+        "</manifest>\n",
+        getOutput());
+}
+
+TEST_F(AssembleVintfTest, VendorNdkCheckEmpty) {
+    addInput("manifest.xml", "<manifest version=\"1.0\" type=\"framework\"/>\n");
+    getInstance()->setFakeEnv("PROVIDED_VNDK_VERSIONS", "P 26 27 ");
+
+    std::string matrix = "<compatibility-matrix version=\"1.0\" type=\"device\"/>\n";
+    getInstance()->setCheckInputStream(makeStream(matrix));
+    EXPECT_TRUE(getInstance()->assemble());
+}
+
+TEST_F(AssembleVintfTest, VendorNdkCheckIncompat) {
+    addInput("manifest.xml", "<manifest version=\"1.0\" type=\"framework\"/>\n");
+    getInstance()->setFakeEnv("PROVIDED_VNDK_VERSIONS", "P 26 27 ");
+    std::string matrix =
+        "<compatibility-matrix version=\"1.0\" type=\"device\">\n"
+        "    <vendor-ndk>\n"
+        "        <version>O</version>\n"
+        "    </vendor-ndk>\n"
+        "</compatibility-matrix>\n";
+    getInstance()->setCheckInputStream(makeStream(matrix));
+    EXPECT_FALSE(getInstance()->assemble());
+}
+
+TEST_F(AssembleVintfTest, VendorNdkCheckCompat) {
+    addInput("manifest.xml", "<manifest version=\"1.0\" type=\"framework\"/>\n");
+    getInstance()->setFakeEnv("PROVIDED_VNDK_VERSIONS", "P 26 27 ");
+    std::string matrix =
+        "<compatibility-matrix version=\"1.0\" type=\"device\">\n"
+        "    <vendor-ndk>\n"
+        "        <version>27</version>\n"
+        "    </vendor-ndk>\n"
+        "</compatibility-matrix>\n";
+    getInstance()->setCheckInputStream(makeStream(matrix));
+    EXPECT_TRUE(getInstance()->assemble());
+}
+
 }  // namespace vintf
 }  // namespace android

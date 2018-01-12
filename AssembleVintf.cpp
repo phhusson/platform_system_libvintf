@@ -289,6 +289,15 @@ class AssembleVintfImpl : public AssembleVintf {
             }
         }
 
+        if (halManifest->mType == SchemaType::FRAMEWORK) {
+            for (auto&& v : base::Split(getEnv("PROVIDED_VNDK_VERSIONS"), " ")) {
+                v = base::Trim(v);
+                if (!v.empty()) {
+                    halManifest->framework.mVendorNdks.emplace_back(std::move(v));
+                }
+            }
+        }
+
         if (mOutputMatrix) {
             CompatibilityMatrix generatedMatrix = halManifest->generateCompatibleMatrix();
             if (!halManifest->checkCompatibility(generatedMatrix, &error)) {
@@ -394,6 +403,19 @@ class AssembleVintfImpl : public AssembleVintf {
         std::unique_ptr<HalManifest> checkManifest;
         if (matrices->front().object.mType == SchemaType::DEVICE) {
             matrix = &matrices->front().object;
+
+            auto vndkVersion = base::Trim(getEnv("REQUIRED_VNDK_VERSION"));
+            if (!vndkVersion.empty()) {
+                auto& valueInMatrix = matrix->device.mVendorNdk;
+                if (!valueInMatrix.version().empty() && valueInMatrix.version() != vndkVersion) {
+                    std::cerr << "Hard-coded <vendor-ndk> version in device compatibility matrix ("
+                              << matrices->front().name << "), '" << valueInMatrix.version()
+                              << "', does not match value inferred "
+                              << "from BOARD_VNDK_VERSION '" << vndkVersion << "'" << std::endl;
+                    return false;
+                }
+                valueInMatrix = VendorNdk{std::move(vndkVersion)};
+            }
         }
 
         if (matrices->front().object.mType == SchemaType::FRAMEWORK) {
