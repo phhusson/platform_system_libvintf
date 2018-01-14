@@ -107,6 +107,19 @@ class ObjectFactory {
 };
 extern ObjectFactory<RuntimeInfo>* gRuntimeInfoFactory;
 
+// TODO(b/70628538): Do not infer from Shipping API level.
+inline Level convertFromApiLevel(size_t apiLevel) {
+    if (apiLevel < 26) {
+        return Level::LEGACY;
+    } else if (apiLevel == 26) {
+        return Level::O;
+    } else if (apiLevel == 27) {
+        return Level::O_MR1;
+    } else {
+        return Level::UNSPECIFIED;
+    }
+}
+
 }  // namespace details
 }  // namespace vintf
 }  // namespace android

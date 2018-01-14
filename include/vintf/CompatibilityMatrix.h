@@ -27,8 +27,10 @@
 #include "MapValueIterator.h"
 #include "MatrixHal.h"
 #include "MatrixKernel.h"
+#include "Named.h"
 #include "SchemaType.h"
 #include "Sepolicy.h"
+#include "VendorNdk.h"
 #include "Vndk.h"
 #include "XmlFileGroup.h"
 
@@ -73,12 +75,25 @@ struct CompatibilityMatrix : public HalGroup<MatrixHal>, public XmlFileGroup<Mat
 
     status_t fetchAllInformation(const std::string& path, std::string* error = nullptr);
 
+    // Combine a subset of "matrices". For each CompatibilityMatrix in matrices,
+    // - If level() == UNSPECIFIED, use it as the base matrix (for non-HAL, non-XML-file
+    //   requirements).
+    // - If level() < deviceLevel, ignore
+    // - If level() == deviceLevel, all HAL versions and XML files are added as is
+    //   (optionality is kept)
+    // - If level() > deviceLevel, all HAL versions and XML files are added as optional.
+    static CompatibilityMatrix* combine(Level deviceLevel,
+                                        std::vector<Named<CompatibilityMatrix>>* matrices,
+                                        std::string* error);
+    static CompatibilityMatrix* findOrInsertBaseMatrix(
+        std::vector<Named<CompatibilityMatrix>>* matrices, std::string* error);
+
     friend struct HalManifest;
     friend struct RuntimeInfo;
     friend struct CompatibilityMatrixConverter;
     friend struct LibVintfTest;
     friend class VintfObject;
-    friend class AssembleVintf;
+    friend class AssembleVintfImpl;
     friend bool operator==(const CompatibilityMatrix &, const CompatibilityMatrix &);
 
     SchemaType mType;
@@ -93,7 +108,12 @@ struct CompatibilityMatrix : public HalGroup<MatrixHal>, public XmlFileGroup<Mat
 
     // entries only for device compatibility matrix.
     struct {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
         Vndk mVndk;
+#pragma clang diagnostic pop
+
+        VendorNdk mVendorNdk;
     } device;
 };
 

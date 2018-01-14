@@ -39,7 +39,12 @@ std::ostream& operator<<(std::ostream& os, Level l);
 std::ostream &operator<<(std::ostream &os, const ManifestHal &hal);
 std::ostream &operator<<(std::ostream &os, const Version &ver);
 std::ostream &operator<<(std::ostream &os, const VersionRange &vr);
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
 std::ostream &operator<<(std::ostream &os, const VndkVersionRange &vr);
+#pragma clang diagnostic pop
+
 std::ostream &operator<<(std::ostream &os, const KernelVersion &ver);
 std::ostream &operator<<(std::ostream &os, const TransportArch &ta);
 std::ostream &operator<<(std::ostream &os, const ManifestHal &hal);
@@ -65,7 +70,12 @@ bool parse(const std::string& s, Level* l);
 bool parse(const std::string &s, KernelSepolicyVersion *ksv);
 bool parse(const std::string &s, Version *ver);
 bool parse(const std::string &s, VersionRange *vr);
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
 bool parse(const std::string &s, VndkVersionRange *vr);
+#pragma clang diagnostic pop
+
 bool parse(const std::string &s, KernelVersion *ver);
 // if return true, ta->isValid() must be true.
 bool parse(const std::string &s, TransportArch *ta);

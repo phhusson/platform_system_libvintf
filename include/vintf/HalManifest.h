@@ -28,6 +28,7 @@
 #include "ManifestHal.h"
 #include "MapValueIterator.h"
 #include "SchemaType.h"
+#include "VendorNdk.h"
 #include "Version.h"
 #include "Vndk.h"
 #include "XmlFileGroup.h"
@@ -101,9 +102,9 @@ struct HalManifest : public HalGroup<ManifestHal>, public XmlFileGroup<ManifestX
     // Abort if type != device.
     const Version &sepolicyVersion() const;
 
-    // framework.mVndks. Assume type == framework.
+    // framework.mVendorNdks. Assume type == framework.
     // Abort if type != framework.
-    const std::vector<Vndk> &vndks() const;
+    const std::vector<VendorNdk>& vendorNdks() const;
 
     // If the corresponding <xmlfile> with the given version exists,
     // - Return the overridden <path> if it is present,
@@ -122,7 +123,7 @@ struct HalManifest : public HalGroup<ManifestHal>, public XmlFileGroup<ManifestX
    private:
     friend struct HalManifestConverter;
     friend class VintfObject;
-    friend class AssembleVintf;
+    friend class AssembleVintfImpl;
     friend struct LibVintfTest;
     friend std::string dump(const HalManifest &vm);
     friend bool operator==(const HalManifest &lft, const HalManifest &rgt);
@@ -147,7 +148,12 @@ struct HalManifest : public HalGroup<ManifestHal>, public XmlFileGroup<ManifestX
 
     // entries for framework hal manifest only
     struct {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
         std::vector<Vndk> mVndks;
+#pragma clang diagnostic pop
+
+        std::vector<VendorNdk> mVendorNdks;
     } framework;
 };
 

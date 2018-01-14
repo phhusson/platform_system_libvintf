@@ -18,6 +18,7 @@ cc_test {
     host_supported: true,
     gtest: false,
     srcs: [
+        "AssembleVintfTest.cpp",
         "LibVintfTest.cpp",
     ],
 
@@ -27,11 +28,15 @@ cc_test {
         "liblog",
         "libvintf",
     ],
-    static_libs: ["libgtest"],
+    static_libs: [
+        "libgtest",
+        "libassemblevintf",
+    ],
 
     cflags: [
         "-O0",
         "-g",
+        "-Wno-deprecated-declarations",
     ],
     target: {
         host: {
