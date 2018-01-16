@@ -22,6 +22,7 @@
 #include "CompatibilityMatrix.h"
 #include "DisabledChecks.h"
 #include "HalManifest.h"
+#include "Named.h"
 #include "RuntimeInfo.h"
 
 namespace android {
@@ -110,6 +111,13 @@ public:
     static int32_t CheckCompatibility(const std::vector<std::string>& packageInfo,
                                       std::string* error = nullptr,
                                       DisabledChecks disabledChecks = ENABLE_ALL_CHECKS);
+
+   private:
+    static status_t GetCombinedFrameworkMatrix(
+        const std::shared_ptr<const HalManifest>& deviceManifest, CompatibilityMatrix* out,
+        std::string* error = nullptr);
+    static std::vector<Named<CompatibilityMatrix>> GetAllFrameworkMatrixLevels(
+        std::string* error = nullptr);
 };
 
 enum : int32_t {

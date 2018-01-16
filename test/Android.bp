@@ -68,6 +68,8 @@ cc_test {
     cflags: [
         "-O0",
         "-g",
+        // Unexpected logging of string pointer warning from gmock
+        "-Wno-user-defined-warnings"
     ],
     target: {
         android: {
