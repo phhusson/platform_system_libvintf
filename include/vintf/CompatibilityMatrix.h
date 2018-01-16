@@ -82,6 +82,7 @@ struct CompatibilityMatrix : public HalGroup<MatrixHal>, public XmlFileGroup<Mat
     // - If level() == deviceLevel, all HAL versions and XML files are added as is
     //   (optionality is kept)
     // - If level() > deviceLevel, all HAL versions and XML files are added as optional.
+    // Return a pointer into one of the elements in "matrices".
     static CompatibilityMatrix* combine(Level deviceLevel,
                                         std::vector<Named<CompatibilityMatrix>>* matrices,
                                         std::string* error);
