@@ -20,6 +20,8 @@
 #include "parse_xml.h"
 #include "utils.h"
 
+#include <dirent.h>
+
 #include <functional>
 #include <memory>
 #include <mutex>
@@ -29,6 +31,8 @@
 #endif
 
 #include <android-base/logging.h>
+
+#define FRAMEWORK_MATRIX_DIR "/system/etc/vintf/"
 
 using std::placeholders::_1;
 using std::placeholders::_2;
@@ -119,9 +123,128 @@ std::shared_ptr<const CompatibilityMatrix> VintfObject::GetDeviceCompatibilityMa
 // static
 std::shared_ptr<const CompatibilityMatrix> VintfObject::GetFrameworkCompatibilityMatrix(bool skipCache) {
     static LockedSharedPtr<CompatibilityMatrix> gFrameworkMatrix;
+    static LockedSharedPtr<CompatibilityMatrix> gCombinedFrameworkMatrix;
+    static std::mutex gFrameworkCompatibilityMatrixMutex;
+
+    // To avoid deadlock, get device manifest before any locks.
+    auto deviceManifest = GetDeviceHalManifest();
+
+    std::unique_lock<std::mutex> _lock(gFrameworkCompatibilityMatrixMutex);
+
+    auto combined =
+        Get(&gCombinedFrameworkMatrix, skipCache,
+            std::bind(&VintfObject::GetCombinedFrameworkMatrix, deviceManifest, _1, _2));
+    if (combined != nullptr) {
+        return combined;
+    }
+
     return Get(&gFrameworkMatrix, skipCache,
                std::bind(&CompatibilityMatrix::fetchAllInformation, _1,
                          "/system/compatibility_matrix.xml", _2));
+}
+
+status_t VintfObject::GetCombinedFrameworkMatrix(
+    const std::shared_ptr<const HalManifest>& deviceManifest, CompatibilityMatrix* out,
+    std::string* error) {
+    auto matrixFragments = GetAllFrameworkMatrixLevels(error);
+    if (matrixFragments.empty()) {
+        return NAME_NOT_FOUND;
+    }
+
+    Level deviceLevel = Level::UNSPECIFIED;
+
+    if (deviceManifest != nullptr) {
+        deviceLevel = deviceManifest->level();
+    }
+
+    // TODO(b/70628538): Do not infer from Shipping API level.
+#ifdef LIBVINTF_TARGET
+    if (deviceLevel == Level::UNSPECIFIED) {
+        auto shippingApi =
+            android::base::GetUintProperty<uint64_t>("ro.product.first_api_level", 0u);
+        if (shippingApi != 0u) {
+            deviceLevel = details::convertFromApiLevel(shippingApi);
+        }
+    }
+#endif
+
+    if (deviceLevel == Level::UNSPECIFIED) {
+        // Cannot infer FCM version. Combine all matrices by assuming
+        // Shipping FCM Version == min(all supported FCM Versions in the framework)
+        for (auto&& pair : matrixFragments) {
+            Level fragmentLevel = pair.object.level();
+            if (fragmentLevel != Level::UNSPECIFIED && deviceLevel > fragmentLevel) {
+                deviceLevel = fragmentLevel;
+            }
+        }
+    }
+
+    if (deviceLevel == Level::UNSPECIFIED) {
+        // None of the fragments specify any FCM version. Should never happen except
+        // for inconsistent builds.
+        if (error) {
+            *error = "No framework compatibility matrix files under " FRAMEWORK_MATRIX_DIR
+                     " declare FCM version.";
+        }
+        return NAME_NOT_FOUND;
+    }
+
+    CompatibilityMatrix* combined =
+        CompatibilityMatrix::combine(deviceLevel, &matrixFragments, error);
+    if (combined == nullptr) {
+        return BAD_VALUE;
+    }
+    *out = std::move(*combined);
+    return OK;
+}
+
+std::vector<Named<CompatibilityMatrix>> VintfObject::GetAllFrameworkMatrixLevels(
+    std::string* error) {
+    std::vector<std::string> fileNames;
+    std::vector<Named<CompatibilityMatrix>> results;
+
+    if (details::gFetcher->listFiles(FRAMEWORK_MATRIX_DIR, &fileNames, error) != OK) {
+        return {};
+    }
+    for (const std::string& fileName : fileNames) {
+        std::string path = FRAMEWORK_MATRIX_DIR + fileName;
+
+        std::string content;
+        std::string fetchError;
+        status_t status = details::gFetcher->fetch(path, content, &fetchError);
+        if (status != OK) {
+            if (error) {
+                *error += "Ignore file " + path + ": " + fetchError + "\n";
+            }
+            continue;
+        }
+
+        auto it = results.emplace(results.end());
+        if (!gCompatibilityMatrixConverter(&it->object, content)) {
+            if (error) {
+                // TODO(b/71874788): do not use lastError() because it is not thread-safe.
+                *error +=
+                    "Ignore file " + path + ": " + gCompatibilityMatrixConverter.lastError() + "\n";
+            }
+            results.erase(it);
+            continue;
+        }
+    }
+
+    if (results.empty()) {
+        if (error) {
+            *error = "No framework matrices under " FRAMEWORK_MATRIX_DIR
+                     " can be fetched or parsed.\n" +
+                     *error;
+        }
+    } else {
+        if (error && !error->empty()) {
+            LOG(WARNING) << *error;
+            *error = "";
+        }
+    }
+
+    return results;
 }
 
 // static
