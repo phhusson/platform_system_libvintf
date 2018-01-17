@@ -2635,6 +2635,82 @@ TEST_F(LibVintfTest, ManifestAddOverrideHalRemoveAll) {
         gHalManifestConverter(manifest, SerializeFlag::HALS_ONLY));
 }
 
+// Make sure missing tags in old VINTF files does not cause incompatibilities.
+TEST_F(LibVintfTest, Empty) {
+    CompatibilityMatrix cm;
+    HalManifest manifest;
+    std::string xml;
+    std::string error;
+
+    xml = "<compatibility-matrix version=\"1.0\" type=\"device\"/>\n";
+    EXPECT_TRUE(gCompatibilityMatrixConverter(&cm, xml))
+        << gCompatibilityMatrixConverter.lastError();
+
+    xml = "<manifest version=\"1.0\" type=\"framework\"/>\n";
+    EXPECT_TRUE(gHalManifestConverter(&manifest, xml)) << gHalManifestConverter.lastError();
+
+    EXPECT_TRUE(manifest.checkCompatibility(cm, &error)) << error;
+}
+
+TEST_F(LibVintfTest, SystemSdk) {
+    CompatibilityMatrix cm;
+    std::string xml;
+    std::string error;
+
+    xml =
+        "<compatibility-matrix version=\"1.0\" type=\"device\">\n"
+        "    <system-sdk>\n"
+        "        <version>1</version>\n"
+        "        <version>P</version>\n"
+        "    </system-sdk>\n"
+        "</compatibility-matrix>\n";
+    EXPECT_TRUE(gCompatibilityMatrixConverter(&cm, xml))
+        << gCompatibilityMatrixConverter.lastError();
+    EXPECT_EQ(xml, gCompatibilityMatrixConverter(cm, ~SerializeFlag::NO_SSDK));
+
+    {
+        HalManifest manifest;
+        xml =
+            "<manifest version=\"1.0\" type=\"framework\">\n"
+            "    <system-sdk>\n"
+            "        <version>1</version>\n"
+            "        <version>P</version>\n"
+            "    </system-sdk>\n"
+            "</manifest>\n";
+        EXPECT_TRUE(gHalManifestConverter(&manifest, xml)) << gHalManifestConverter.lastError();
+        EXPECT_EQ(xml, gHalManifestConverter(manifest, ~SerializeFlag::NO_SSDK));
+
+        EXPECT_TRUE(manifest.checkCompatibility(cm, &error)) << error;
+    }
+
+    {
+        HalManifest manifest;
+        xml =
+            "<manifest version=\"1.0\" type=\"framework\">\n"
+            "    <system-sdk>\n"
+            "        <version>1</version>\n"
+            "        <version>3</version>\n"
+            "        <version>P</version>\n"
+            "    </system-sdk>\n"
+            "</manifest>\n";
+        EXPECT_TRUE(gHalManifestConverter(&manifest, xml)) << gHalManifestConverter.lastError();
+        EXPECT_TRUE(manifest.checkCompatibility(cm, &error));
+    }
+
+    {
+        HalManifest manifest;
+        xml =
+            "<manifest version=\"1.0\" type=\"framework\">\n"
+            "    <system-sdk>\n"
+            "        <version>1</version>\n"
+            "    </system-sdk>\n"
+            "</manifest>\n";
+        EXPECT_TRUE(gHalManifestConverter(&manifest, xml)) << gHalManifestConverter.lastError();
+        EXPECT_FALSE(manifest.checkCompatibility(cm, &error));
+        EXPECT_TRUE(error.find("System SDK") != std::string::npos) << error;
+    }
+}
+
 } // namespace vintf
 } // namespace android
 

@@ -28,6 +28,7 @@
 #include "ManifestHal.h"
 #include "MapValueIterator.h"
 #include "SchemaType.h"
+#include "SystemSdk.h"
 #include "VendorNdk.h"
 #include "Version.h"
 #include "Vndk.h"
@@ -158,6 +159,7 @@ struct HalManifest : public HalGroup<ManifestHal>, public XmlFileGroup<ManifestX
 #pragma clang diagnostic pop
 
         std::vector<VendorNdk> mVendorNdks;
+        SystemSdk mSystemSdk;
     } framework;
 };
 

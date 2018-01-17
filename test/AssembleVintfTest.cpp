@@ -356,5 +356,36 @@ TEST_F(AssembleVintfTest, VendorNdkCheckCompat) {
     EXPECT_TRUE(getInstance()->assemble());
 }
 
+TEST_F(AssembleVintfTest, MatrixSystemSdk) {
+    addInput("compatibility_matrix.xml",
+             "<compatibility-matrix version=\"1.0\" type=\"device\"/>\n");
+    getInstance()->setFakeEnv("BOARD_SYSTEMSDK_VERSIONS", "P 1 2 ");
+    EXPECT_TRUE(getInstance()->assemble());
+    EXPECT_IN(
+        "<compatibility-matrix version=\"1.0\" type=\"device\">\n"
+        "    <system-sdk>\n"
+        "        <version>1</version>\n"
+        "        <version>2</version>\n"
+        "        <version>P</version>\n"
+        "    </system-sdk>\n"
+        "</compatibility-matrix>\n",
+        getOutput());
+}
+
+TEST_F(AssembleVintfTest, ManifestSystemSdk) {
+    addInput("manifest.xml", "<manifest version=\"1.0\" type=\"framework\"/>\n");
+    getInstance()->setFakeEnv("PRODUCT_SYSTEMSDK_VERSIONS", "P 1 2 ");
+    EXPECT_TRUE(getInstance()->assemble());
+    EXPECT_IN(
+        "<manifest version=\"1.0\" type=\"framework\">\n"
+        "    <system-sdk>\n"
+        "        <version>1</version>\n"
+        "        <version>2</version>\n"
+        "        <version>P</version>\n"
+        "    </system-sdk>\n"
+        "</manifest>\n",
+        getOutput());
+}
+
 }  // namespace vintf
 }  // namespace android
