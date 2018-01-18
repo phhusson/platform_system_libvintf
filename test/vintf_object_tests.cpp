@@ -231,6 +231,7 @@ class VintfObjectTestBase : public testing::Test {
     }
 
     void expectVendorManifest(size_t times = 1) {
+        EXPECT_CALL(fetcher(), fetch(StrEq("/vendor/etc/manifest.xml"), _)).Times(times);
         if (!productModel.empty()) {
             EXPECT_CALL(fetcher(), fetch(StrEq("/odm/etc/manifest_" + productModel + ".xml"), _))
                 .Times(times);
@@ -556,6 +557,199 @@ TEST_F(VintfObjectTest, FrameworkCompatibilityMatrixCombine) {
     expectSystemMatrix(0);
 
     EXPECT_NE(nullptr, VintfObject::GetFrameworkCompatibilityMatrix(true /* skipCache */));
+}
+
+// VintfObject: load ODM manifest and override vendor manifest
+
+// Priority for loading vendor manifest:
+
+// 1. If {sku} sysprop is set and both files exist,
+//
+
+// 2. If both files exist,
+//
+
+// 3. If file exists, /vendor/etc/manifest.xml
+
+// 4. If {sku} sysprop is set and file exists,
+// /odm/etc/manifest_{sku}.xml
+
+// 5. If file exists, /odm/etc/manifest.xml
+
+// 6. If file exists, /vendor/manifest.xml
+
+const std::string vendorEtcManifest =
+    "<manifest version=\"1.0\" type=\"device\">\n"
+    "    <hal format=\"hidl\">\n"
+    "        <name>android.hardware.foo</name>\n"
+    "        <transport>hwbinder</transport>\n"
+    "        <version>1.0</version>\n"
+    "        <version>2.0</version>\n"
+    "        <interface>\n"
+    "            <name>IVendorEtc</name>\n"
+    "            <instance>default</instance>\n"
+    "        </interface>\n"
+    "    </hal>\n"
+    "</manifest>\n";
+
+const std::string vendorManifest =
+    "<manifest version=\"1.0\" type=\"device\">\n"
+    "    <hal format=\"hidl\">\n"
+    "        <name>android.hardware.foo</name>\n"
+    "        <transport>hwbinder</transport>\n"
+    "        <version>1.0</version>\n"
+    "        <interface>\n"
+    "            <name>IVendor</name>\n"
+    "            <instance>default</instance>\n"
+    "        </interface>\n"
+    "    </hal>\n"
+    "</manifest>\n";
+
+const std::string odmProductManifest =
+    "<manifest version=\"1.0\" type=\"device\">\n"
+    "    <hal format=\"hidl\" override=\"true\">\n"
+    "        <name>android.hardware.foo</name>\n"
+    "        <transport>hwbinder</transport>\n"
+    "        <version>1.1</version>\n"
+    "        <interface>\n"
+    "            <name>IOdmProduct</name>\n"
+    "            <instance>default</instance>\n"
+    "        </interface>\n"
+    "    </hal>\n"
+    "</manifest>\n";
+
+const std::string odmManifest =
+    "<manifest version=\"1.0\" type=\"device\">\n"
+    "    <hal format=\"hidl\" override=\"true\">\n"
+    "        <name>android.hardware.foo</name>\n"
+    "        <transport>hwbinder</transport>\n"
+    "        <version>1.1</version>\n"
+    "        <interface>\n"
+    "            <name>IOdm</name>\n"
+    "            <instance>default</instance>\n"
+    "        </interface>\n"
+    "    </hal>\n"
+    "</manifest>\n";
+
+bool containsVendorManifest(const std::shared_ptr<const HalManifest>& p) {
+    return !p->getInstances("android.hardware.foo", {1, 0}, "IVendor").empty();
+}
+
+bool containsVendorEtcManifest(const std::shared_ptr<const HalManifest>& p) {
+    return !p->getInstances("android.hardware.foo", {2, 0}, "IVendorEtc").empty();
+}
+
+bool vendorEtcManifestOverridden(const std::shared_ptr<const HalManifest>& p) {
+    return p->getInstances("android.hardware.foo", {1, 0}, "IVendorEtc").empty();
+}
+
+bool containsOdmManifest(const std::shared_ptr<const HalManifest>& p) {
+    return !p->getInstances("android.hardware.foo", {1, 1}, "IOdm").empty();
+}
+
+bool containsOdmProductManifest(const std::shared_ptr<const HalManifest>& p) {
+    return !p->getInstances("android.hardware.foo", {1, 1}, "IOdmProduct").empty();
+}
+
+// Test /vendor/etc/manifest.xml + /odm/etc/manifest_{sku}.xml
+TEST_F(VintfObjectTest, DeviceManifestCombine1) {
+    if (productModel.empty()) return;
+
+    expectFetch("/vendor/etc/manifest.xml", vendorEtcManifest);
+    expectFetch("/odm/etc/manifest_" + productModel + ".xml", odmProductManifest);
+
+    auto p = VintfObject::GetDeviceHalManifest(true /* skipCache */);
+    ASSERT_NE(nullptr, p);
+    EXPECT_FALSE(containsVendorManifest(p));
+    EXPECT_TRUE(vendorEtcManifestOverridden(p));
+    EXPECT_TRUE(containsVendorEtcManifest(p));
+    EXPECT_FALSE(containsOdmManifest(p));
+    EXPECT_TRUE(containsOdmProductManifest(p));
+}
+
+// Test /vendor/etc/manifest.xml + /odm/etc/manifest.xml
+TEST_F(VintfObjectTest, DeviceManifestCombine2) {
+    expectFetch("/vendor/etc/manifest.xml", vendorEtcManifest);
+    if (!productModel.empty()) {
+        expectFetch("/odm/etc/manifest_" + productModel + ".xml");
+    }
+    expectFetch("/odm/etc/manifest.xml", odmManifest);
+
+    auto p = VintfObject::GetDeviceHalManifest(true /* skipCache */);
+    ASSERT_NE(nullptr, p);
+    EXPECT_FALSE(containsVendorManifest(p));
+    EXPECT_TRUE(vendorEtcManifestOverridden(p));
+    EXPECT_TRUE(containsVendorEtcManifest(p));
+    EXPECT_TRUE(containsOdmManifest(p));
+    EXPECT_FALSE(containsOdmProductManifest(p));
+}
+
+// Test /vendor/etc/manifest.xml
+TEST_F(VintfObjectTest, DeviceManifestCombine3) {
+    expectFetch("/vendor/etc/manifest.xml", vendorEtcManifest);
+    if (!productModel.empty()) {
+        expectFetch("/odm/etc/manifest_" + productModel + ".xml");
+    }
+    expectFetch("/odm/etc/manifest.xml");
+
+    auto p = VintfObject::GetDeviceHalManifest(true /* skipCache */);
+    ASSERT_NE(nullptr, p);
+    EXPECT_FALSE(containsVendorManifest(p));
+    EXPECT_FALSE(vendorEtcManifestOverridden(p));
+    EXPECT_TRUE(containsVendorEtcManifest(p));
+    EXPECT_FALSE(containsOdmManifest(p));
+    EXPECT_FALSE(containsOdmProductManifest(p));
+}
+
+// Test /odm/etc/manifest_{sku}.xml
+TEST_F(VintfObjectTest, DeviceManifestCombine4) {
+    if (productModel.empty()) return;
+
+    expectFetch("/vendor/etc/manifest.xml");
+    expectFetch("/odm/etc/manifest_" + productModel + ".xml", odmProductManifest);
+
+    auto p = VintfObject::GetDeviceHalManifest(true /* skipCache */);
+    ASSERT_NE(nullptr, p);
+    EXPECT_FALSE(containsVendorManifest(p));
+    EXPECT_TRUE(vendorEtcManifestOverridden(p));
+    EXPECT_FALSE(containsVendorEtcManifest(p));
+    EXPECT_FALSE(containsOdmManifest(p));
+    EXPECT_TRUE(containsOdmProductManifest(p));
+}
+
+// Test /odm/etc/manifest.xml
+TEST_F(VintfObjectTest, DeviceManifestCombine5) {
+    expectFetch("/vendor/etc/manifest.xml");
+    if (!productModel.empty()) {
+        expectFetch("/odm/etc/manifest_" + productModel + ".xml");
+    }
+    expectFetch("/odm/etc/manifest.xml", odmManifest);
+
+    auto p = VintfObject::GetDeviceHalManifest(true /* skipCache */);
+    ASSERT_NE(nullptr, p);
+    EXPECT_FALSE(containsVendorManifest(p));
+    EXPECT_TRUE(vendorEtcManifestOverridden(p));
+    EXPECT_FALSE(containsVendorEtcManifest(p));
+    EXPECT_TRUE(containsOdmManifest(p));
+    EXPECT_FALSE(containsOdmProductManifest(p));
+}
+
+// Test /vendor/manifest.xml
+TEST_F(VintfObjectTest, DeviceManifestCombine6) {
+    expectFetch("/vendor/etc/manifest.xml");
+    if (!productModel.empty()) {
+        expectFetch("/odm/etc/manifest_" + productModel + ".xml");
+    }
+    expectFetch("/odm/etc/manifest.xml");
+    expectFetch("/vendor/manifest.xml", vendorManifest);
+
+    auto p = VintfObject::GetDeviceHalManifest(true /* skipCache */);
+    ASSERT_NE(nullptr, p);
+    EXPECT_TRUE(containsVendorManifest(p));
+    EXPECT_TRUE(vendorEtcManifestOverridden(p));
+    EXPECT_FALSE(containsVendorEtcManifest(p));
+    EXPECT_FALSE(containsOdmManifest(p));
+    EXPECT_FALSE(containsOdmProductManifest(p));
 }
 
 int main(int argc, char** argv) {
