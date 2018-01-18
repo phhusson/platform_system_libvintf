@@ -97,6 +97,9 @@ struct HalGroup {
     std::set<std::string> getInstances(const std::string& halName, const Version& version,
                                        const std::string& interfaceName) const {
         const Hal* hal = getHal(halName, version);
+        if (hal == nullptr) {
+            return {};
+        }
         return hal->getInstances(interfaceName);
     }
 
