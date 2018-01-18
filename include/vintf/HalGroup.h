@@ -46,7 +46,7 @@ struct HalGroup {
     }
 
     // Add an hal to this HalGroup so that it can be constructed programatically.
-    bool add(Hal&& hal) {
+    virtual bool add(Hal&& hal) {
         if (!shouldAdd(hal)) {
             return false;
         }

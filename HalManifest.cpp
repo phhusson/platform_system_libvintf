@@ -37,6 +37,9 @@ bool HalManifest::shouldAdd(const ManifestHal& hal) const {
     if (!hal.isValid()) {
         return false;
     }
+    if (hal.isOverride) {
+        return true;
+    }
     auto existingHals = mHals.equal_range(hal.name);
     std::set<size_t> existingMajorVersions;
     for (auto it = existingHals.first; it != existingHals.second; ++it) {
@@ -51,6 +54,48 @@ bool HalManifest::shouldAdd(const ManifestHal& hal) const {
         }
     }
     return true;
+}
+
+// Remove elements from "list" if p(element) returns true.
+template <typename List, typename Predicate>
+static void removeIf(List& list, Predicate predicate) {
+    for (auto it = list.begin(); it != list.end();) {
+        if (predicate(*it)) {
+            it = list.erase(it);
+        } else {
+            ++it;
+        }
+    }
+}
+
+void HalManifest::removeHals(const std::string& name, size_t majorVer) {
+    removeIf(mHals, [&name, majorVer](auto& existingHalPair) {
+        auto& existingHal = existingHalPair.second;
+        if (existingHal.name != name) {
+            return false;
+        }
+        auto& existingVersions = existingHal.versions;
+        removeIf(existingVersions, [majorVer](const auto& existingVersion) {
+            return existingVersion.majorVer == majorVer;
+        });
+        return existingVersions.empty();
+    });
+}
+
+bool HalManifest::add(ManifestHal&& halToAdd) {
+    if (halToAdd.isOverride) {
+        if (halToAdd.versions.empty()) {
+            // Special syntax when there are no <version> tags at all. Remove all existing HALs
+            // with the given name.
+            mHals.erase(halToAdd.name);
+        }
+        // If there are <version> tags, remove all existing major versions that causes a conflict.
+        for (const Version& versionToAdd : halToAdd.versions) {
+            removeHals(halToAdd.name, versionToAdd.majorVer);
+        }
+    }
+
+    return HalGroup::add(std::move(halToAdd));
 }
 
 bool HalManifest::shouldAddXmlFile(const ManifestXmlFile& xmlFile) const {
