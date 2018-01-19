@@ -47,6 +47,8 @@ struct HalManifest : public HalGroup<ManifestHal>, public XmlFileGroup<ManifestX
     // Construct a device HAL manifest.
     HalManifest() : mType(SchemaType::DEVICE) {}
 
+    bool add(ManifestHal&& hal) override;
+
     // Given a component name (e.g. "android.hardware.camera"),
     // return getHal(name)->transport if the component exist and v exactly matches
     // one of the versions in that component, else EMPTY
@@ -135,6 +137,8 @@ struct HalManifest : public HalGroup<ManifestHal>, public XmlFileGroup<ManifestX
 
     std::vector<std::string> checkIncompatibleXmlFiles(const CompatibilityMatrix& mat,
                                                        bool includeOptional = true) const;
+
+    void removeHals(const std::string& name, size_t majorVer);
 
     SchemaType mType;
     Level mLevel = Level::UNSPECIFIED;
