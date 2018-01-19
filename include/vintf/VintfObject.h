@@ -119,6 +119,7 @@ public:
     static std::vector<Named<CompatibilityMatrix>> GetAllFrameworkMatrixLevels(
         std::string* error = nullptr);
     static status_t FetchDeviceHalManifest(HalManifest* out, std::string* error = nullptr);
+    static status_t FetchDeviceMatrix(CompatibilityMatrix* out, std::string* error = nullptr);
 };
 
 enum : int32_t {
@@ -139,6 +140,7 @@ extern const std::string kOdmLegacyVintfDir;
 extern const std::string kOdmLegacyManifest;
 extern const std::string kVendorManifest;
 extern const std::string kSystemManifest;
+extern const std::string kVendorMatrix;
 extern const std::string kVendorLegacyManifest;
 extern const std::string kVendorLegacyMatrix;
 extern const std::string kSystemLegacyMatrix;
