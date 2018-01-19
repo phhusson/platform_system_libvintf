@@ -2389,6 +2389,30 @@ TEST_F(LibVintfTest, MissingVendorNdkInMatrix) {
     }
 }
 
+TEST_F(LibVintfTest, ManifestHalOverride) {
+    HalManifest manifest;
+    std::string xml =
+        "<manifest version=\"1.0\" type=\"device\">\n"
+        "    <hal format=\"hidl\" override=\"true\">\n"
+        "        <name>android.hardware.foo</name>\n"
+        "        <transport>hwbinder</transport>\n"
+        "        <version>1.0</version>\n"
+        "    </hal>\n"
+        "    <hal format=\"hidl\">\n"
+        "        <name>android.hardware.bar</name>\n"
+        "        <transport>hwbinder</transport>\n"
+        "        <version>1.0</version>\n"
+        "    </hal>\n"
+        "</manifest>\n";
+    EXPECT_TRUE(gHalManifestConverter(&manifest, xml)) << gHalManifestConverter.lastError();
+    const ManifestHal* foo = manifest.getHal("android.hardware.foo", {1, 0});
+    ASSERT_NE(nullptr, foo);
+    EXPECT_TRUE(foo->isOverride);
+    const ManifestHal* bar = manifest.getHal("android.hardware.bar", {1, 0});
+    ASSERT_NE(nullptr, bar);
+    EXPECT_FALSE(bar->isOverride);
+}
+
 } // namespace vintf
 } // namespace android
 
