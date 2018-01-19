@@ -559,25 +559,6 @@ TEST_F(VintfObjectTest, FrameworkCompatibilityMatrixCombine) {
     EXPECT_NE(nullptr, VintfObject::GetFrameworkCompatibilityMatrix(true /* skipCache */));
 }
 
-// VintfObject: load ODM manifest and override vendor manifest
-
-// Priority for loading vendor manifest:
-
-// 1. If {sku} sysprop is set and both files exist,
-//
-
-// 2. If both files exist,
-//
-
-// 3. If file exists, /vendor/etc/manifest.xml
-
-// 4. If {sku} sysprop is set and file exists,
-// /odm/etc/manifest_{sku}.xml
-
-// 5. If file exists, /odm/etc/manifest.xml
-
-// 6. If file exists, /vendor/manifest.xml
-
 const std::string vendorEtcManifest =
     "<manifest version=\"1.0\" type=\"device\">\n"
     "    <hal format=\"hidl\">\n"
