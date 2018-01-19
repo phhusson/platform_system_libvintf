@@ -194,6 +194,8 @@ void setupMockFetcher(const std::string& vendorManifestXml, const std::string& s
             fetched = systemManifestXml;
             return 0;
         }));
+    ON_CALL(*fetcher, fetch(StrEq(kVendorMatrix), _))
+        .WillByDefault(Return(::android::NAME_NOT_FOUND));
     ON_CALL(*fetcher, fetch(StrEq(kVendorLegacyMatrix), _))
         .WillByDefault(Invoke([vendorMatrixXml](const std::string& path, std::string& fetched) {
             (void)path;
@@ -245,6 +247,7 @@ class VintfObjectTestBase : public testing::Test {
     }
 
     void expectVendorMatrix(size_t times = 1) {
+        EXPECT_CALL(fetcher(), fetch(StrEq(kVendorMatrix), _)).Times(times);
         EXPECT_CALL(fetcher(), fetch(StrEq(kVendorLegacyMatrix), _)).Times(times);
     }
 
