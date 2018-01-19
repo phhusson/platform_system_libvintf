@@ -169,61 +169,32 @@ status_t VintfObject::GetCombinedFrameworkMatrix(
 }
 
 // Priority for loading vendor manifest:
-// 1. If {sku} sysprop is set and both files exist,
-// /vendor/etc/vintf/manifest.xml + /odm/etc/manifest_{sku}.xml
-// 2. If both files exist,
-// /vendor/etc/vintf/manifest.xml + /odm/etc/manifest.xml
-// 3. If file exists, /vendor/etc/vintf/manifest.xml
-// 4. If {sku} sysprop is set and file exists,
-// /odm/etc/manifest_{sku}.xml
-// 5. If file exists, /odm/etc/manifest.xml
-// 6. If file exists, /vendor/manifest.xml
+// 1. /vendor/etc/vintf/manifest.xml + ODM manifest
+// 2. /vendor/etc/vintf/manifest.xml
+// 3. ODM manifest
+// 4. /vendor/manifest.xml
 // where:
-// {sku} is the value of ro.boot.product.hardware.sku
 // A + B means adding <hal> tags from B to A (so that <hal>s from B can override A)
 status_t VintfObject::FetchDeviceHalManifest(HalManifest* out, std::string* error) {
-    // fetchAllInformation returns NAME_NOT_FOUND if file is missing.
-    HalManifest vendorManifest;
-    status_t vendorStatus = vendorManifest.fetchAllInformation(kVendorManifest, error);
+    status_t vendorStatus = FetchOneHalManifest(kVendorManifest, out, error);
     if (vendorStatus != OK && vendorStatus != NAME_NOT_FOUND) {
         return vendorStatus;
     }
 
     HalManifest odmManifest;
-    status_t odmStatus = NAME_NOT_FOUND;
-
-#ifdef LIBVINTF_TARGET
-    std::string productModel = android::base::GetProperty("ro.boot.product.hardware.sku", "");
-    if (!productModel.empty()) {
-        odmStatus = odmManifest.fetchAllInformation(
-            kOdmLegacyVintfDir + "manifest_" + productModel + ".xml", error);
-        if (odmStatus != OK && odmStatus != NAME_NOT_FOUND) {
-            return odmStatus;
-        }
-    }
-#endif
-
-    if (odmStatus == NAME_NOT_FOUND) {
-        odmStatus = odmManifest.fetchAllInformation(kOdmLegacyManifest, error);
-        if (odmStatus != OK && odmStatus != NAME_NOT_FOUND) {
-            return odmStatus;
-        }
+    status_t odmStatus = FetchOdmHalManifest(&odmManifest, error);
+    if (odmStatus != OK && odmStatus != NAME_NOT_FOUND) {
+        return odmStatus;
     }
 
-    // Both files exist. Use vendor manifest as base manifest and let ODM manifest override it.
-    if (vendorStatus == OK && odmStatus == OK) {
-        *out = std::move(vendorManifest);
-        out->addAllHals(&odmManifest);
-        return OK;
-    }
-
-    // Only vendor manifest exists. Use it.
     if (vendorStatus == OK) {
-        *out = std::move(vendorManifest);
+        if (odmStatus == OK) {
+            out->addAllHals(&odmManifest);
+        }
         return OK;
     }
 
-    // Only ODM manifest exists. use it.
+    // vendorStatus != OK, "out" is not changed.
     if (odmStatus == OK) {
         *out = std::move(odmManifest);
         return OK;
@@ -231,6 +202,65 @@ status_t VintfObject::FetchDeviceHalManifest(HalManifest* out, std::string* erro
 
     // Use legacy /vendor/manifest.xml
     return out->fetchAllInformation(kVendorLegacyManifest, error);
+}
+
+// "out" is written to iff return status is OK.
+// Priority:
+// 1. if {sku} is defined, /odm/etc/vintf/manifest_{sku}.xml
+// 2. /odm/etc/vintf/manifest.xml
+// 3. if {sku} is defined, /odm/etc/manifest_{sku}.xml
+// 4. /odm/etc/manifest.xml
+// where:
+// {sku} is the value of ro.boot.product.hardware.sku
+status_t VintfObject::FetchOdmHalManifest(HalManifest* out, std::string* error) {
+    status_t status;
+
+#ifdef LIBVINTF_TARGET
+    std::string productModel;
+    productModel = android::base::GetProperty("ro.boot.product.hardware.sku", "");
+
+    if (!productModel.empty()) {
+        status =
+            FetchOneHalManifest(kOdmVintfDir + "manifest_" + productModel + ".xml", out, error);
+        if (status == OK || status != NAME_NOT_FOUND) {
+            return status;
+        }
+    }
+#endif
+
+    status = FetchOneHalManifest(kOdmManifest, out, error);
+    if (status == OK || status != NAME_NOT_FOUND) {
+        return status;
+    }
+
+#ifdef LIBVINTF_TARGET
+    if (!productModel.empty()) {
+        status = FetchOneHalManifest(kOdmLegacyVintfDir + "manifest_" + productModel + ".xml", out,
+                                     error);
+        if (status == OK || status != NAME_NOT_FOUND) {
+            return status;
+        }
+    }
+#endif
+
+    status = FetchOneHalManifest(kOdmLegacyManifest, out, error);
+    if (status == OK || status != NAME_NOT_FOUND) {
+        return status;
+    }
+
+    return NAME_NOT_FOUND;
+}
+
+// Fetch one manifest.xml file. "out" is written to iff return status is OK.
+// Returns NAME_NOT_FOUND if file is missing.
+status_t VintfObject::FetchOneHalManifest(const std::string& path, HalManifest* out,
+                                          std::string* error) {
+    HalManifest ret;
+    status_t status = ret.fetchAllInformation(path, error);
+    if (status == OK) {
+        *out = std::move(ret);
+    }
+    return status;
 }
 
 status_t VintfObject::FetchDeviceMatrix(CompatibilityMatrix* out, std::string* error) {
@@ -515,10 +545,12 @@ int32_t checkCompatibility(const std::vector<std::string>& xmls, bool mount,
 
 const std::string kSystemVintfDir = "/system/etc/vintf/";
 const std::string kVendorVintfDir = "/vendor/etc/vintf/";
+const std::string kOdmVintfDir = "/odm/etc/vintf/";
 
 const std::string kVendorManifest = kVendorVintfDir + "manifest.xml";
 const std::string kSystemManifest = kSystemVintfDir + "manifest.xml";
 const std::string kVendorMatrix = kVendorVintfDir + "compatibility_matrix.xml";
+const std::string kOdmManifest = kOdmVintfDir + "manifest.xml";
 
 const std::string kVendorLegacyManifest = "/vendor/manifest.xml";
 const std::string kVendorLegacyMatrix = "/vendor/compatibility_matrix.xml";
