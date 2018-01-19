@@ -46,7 +46,7 @@ class FileFetcher {
             if (error) {
                 *error = "Cannot open " + path;
             }
-            return INVALID_OPERATION;
+            return NAME_NOT_FOUND;
         }
 
         std::stringstream ss;

@@ -74,34 +74,7 @@ static std::shared_ptr<const T> Get(
 // static
 std::shared_ptr<const HalManifest> VintfObject::GetDeviceHalManifest(bool skipCache) {
     static LockedSharedPtr<HalManifest> gVendorManifest;
-    static LockedSharedPtr<HalManifest> gOdmManifest;
-#ifdef LIBVINTF_TARGET
-    static LockedSharedPtr<HalManifest> gProductManifest;
-#endif
-    static std::mutex gDeviceManifestMutex;
-
-    std::unique_lock<std::mutex> _lock(gDeviceManifestMutex);
-
-#ifdef LIBVINTF_TARGET
-    std::string productModel = android::base::GetProperty("ro.boot.product.hardware.sku", "");
-    if (!productModel.empty()) {
-        auto product = Get(&gProductManifest, skipCache,
-                           std::bind(&HalManifest::fetchAllInformation, _1,
-                                     "/odm/etc/manifest_" + productModel + ".xml", _2));
-        if (product != nullptr) {
-            return product;
-        }
-    }
-#endif
-
-    auto odm = Get(&gOdmManifest, skipCache,
-                   std::bind(&HalManifest::fetchAllInformation, _1, "/odm/etc/manifest.xml", _2));
-    if (odm != nullptr) {
-        return odm;
-    }
-
-    return Get(&gVendorManifest, skipCache,
-               std::bind(&HalManifest::fetchAllInformation, _1, "/vendor/manifest.xml", _2));
+    return Get(&gVendorManifest, skipCache, &VintfObject::FetchDeviceHalManifest);
 }
 
 // static
@@ -196,6 +169,71 @@ status_t VintfObject::GetCombinedFrameworkMatrix(
     }
     *out = std::move(*combined);
     return OK;
+}
+
+// Priority for loading vendor manifest:
+// 1. If {sku} sysprop is set and both files exist,
+// /vendor/etc/manifest.xml + /odm/etc/manifest_{sku}.xml
+// 2. If both files exist,
+// /vendor/etc/manifest.xml + /odm/etc/manifest.xml
+// 3. If file exists, /vendor/etc/manifest.xml
+// 4. If {sku} sysprop is set and file exists,
+// /odm/etc/manifest_{sku}.xml
+// 5. If file exists, /odm/etc/manifest.xml
+// 6. If file exists, /vendor/manifest.xml
+// where:
+// {sku} is the value of ro.boot.product.hardware.sku
+// A + B means adding <hal> tags from B to A (so that <hal>s from B can override A)
+status_t VintfObject::FetchDeviceHalManifest(HalManifest* out, std::string* error) {
+    // fetchAllInformation returns NAME_NOT_FOUND if file is missing.
+    HalManifest vendorManifest;
+    status_t vendorStatus = vendorManifest.fetchAllInformation("/vendor/etc/manifest.xml", error);
+    if (vendorStatus != OK && vendorStatus != NAME_NOT_FOUND) {
+        return vendorStatus;
+    }
+
+    HalManifest odmManifest;
+    status_t odmStatus = NAME_NOT_FOUND;
+
+#ifdef LIBVINTF_TARGET
+    std::string productModel = android::base::GetProperty("ro.boot.product.hardware.sku", "");
+    if (!productModel.empty()) {
+        odmStatus =
+            odmManifest.fetchAllInformation("/odm/etc/manifest_" + productModel + ".xml", error);
+        if (odmStatus != OK && odmStatus != NAME_NOT_FOUND) {
+            return odmStatus;
+        }
+    }
+#endif
+
+    if (odmStatus == NAME_NOT_FOUND) {
+        odmStatus = odmManifest.fetchAllInformation("/odm/etc/manifest.xml", error);
+        if (odmStatus != OK && odmStatus != NAME_NOT_FOUND) {
+            return odmStatus;
+        }
+    }
+
+    // Both files exist. Use vendor manifest as base manifest and let ODM manifest override it.
+    if (vendorStatus == OK && odmStatus == OK) {
+        *out = std::move(vendorManifest);
+        out->addAllHals(&odmManifest);
+        return OK;
+    }
+
+    // Only vendor manifest exists. Use it.
+    if (vendorStatus == OK) {
+        *out = std::move(vendorManifest);
+        return OK;
+    }
+
+    // Only ODM manifest exists. use it.
+    if (odmStatus == OK) {
+        *out = std::move(odmManifest);
+        return OK;
+    }
+
+    // Use legacy /vendor/manifest.xml
+    return out->fetchAllInformation("/vendor/manifest.xml", error);
 }
 
 std::vector<Named<CompatibilityMatrix>> VintfObject::GetAllFrameworkMatrixLevels(
