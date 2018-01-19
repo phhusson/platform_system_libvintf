@@ -47,6 +47,7 @@ struct ManifestHal {
     std::vector<Version> versions;
     TransportArch transportArch;
     std::map<std::string, HalInterface> interfaces;
+    bool isOverride = false;
 
     inline bool hasInterface(const std::string& interface_name) const {
         return interfaces.find(interface_name) != interfaces.end();
