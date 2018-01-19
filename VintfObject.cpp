@@ -32,13 +32,13 @@
 
 #include <android-base/logging.h>
 
-#define FRAMEWORK_MATRIX_DIR "/system/etc/vintf/"
-
 using std::placeholders::_1;
 using std::placeholders::_2;
 
 namespace android {
 namespace vintf {
+
+using namespace details;
 
 template <typename T>
 struct LockedSharedPtr {
@@ -81,7 +81,7 @@ std::shared_ptr<const HalManifest> VintfObject::GetDeviceHalManifest(bool skipCa
 std::shared_ptr<const HalManifest> VintfObject::GetFrameworkHalManifest(bool skipCache) {
     static LockedSharedPtr<HalManifest> gFrameworkManifest;
     return Get(&gFrameworkManifest, skipCache,
-               std::bind(&HalManifest::fetchAllInformation, _1, "/system/manifest.xml", _2));
+               std::bind(&HalManifest::fetchAllInformation, _1, kSystemManifest, _2));
 }
 
 
@@ -89,8 +89,7 @@ std::shared_ptr<const HalManifest> VintfObject::GetFrameworkHalManifest(bool ski
 std::shared_ptr<const CompatibilityMatrix> VintfObject::GetDeviceCompatibilityMatrix(bool skipCache) {
     static LockedSharedPtr<CompatibilityMatrix> gDeviceMatrix;
     return Get(&gDeviceMatrix, skipCache,
-               std::bind(&CompatibilityMatrix::fetchAllInformation, _1,
-                         "/vendor/compatibility_matrix.xml", _2));
+               std::bind(&CompatibilityMatrix::fetchAllInformation, _1, kVendorLegacyMatrix, _2));
 }
 
 // static
@@ -112,8 +111,7 @@ std::shared_ptr<const CompatibilityMatrix> VintfObject::GetFrameworkCompatibilit
     }
 
     return Get(&gFrameworkMatrix, skipCache,
-               std::bind(&CompatibilityMatrix::fetchAllInformation, _1,
-                         "/system/compatibility_matrix.xml", _2));
+               std::bind(&CompatibilityMatrix::fetchAllInformation, _1, kSystemLegacyMatrix, _2));
 }
 
 status_t VintfObject::GetCombinedFrameworkMatrix(
@@ -156,7 +154,7 @@ status_t VintfObject::GetCombinedFrameworkMatrix(
         // None of the fragments specify any FCM version. Should never happen except
         // for inconsistent builds.
         if (error) {
-            *error = "No framework compatibility matrix files under " FRAMEWORK_MATRIX_DIR
+            *error = "No framework compatibility matrix files under " + kSystemVintfDir +
                      " declare FCM version.";
         }
         return NAME_NOT_FOUND;
@@ -187,7 +185,7 @@ status_t VintfObject::GetCombinedFrameworkMatrix(
 status_t VintfObject::FetchDeviceHalManifest(HalManifest* out, std::string* error) {
     // fetchAllInformation returns NAME_NOT_FOUND if file is missing.
     HalManifest vendorManifest;
-    status_t vendorStatus = vendorManifest.fetchAllInformation("/vendor/etc/manifest.xml", error);
+    status_t vendorStatus = vendorManifest.fetchAllInformation(kVendorManifest, error);
     if (vendorStatus != OK && vendorStatus != NAME_NOT_FOUND) {
         return vendorStatus;
     }
@@ -198,8 +196,8 @@ status_t VintfObject::FetchDeviceHalManifest(HalManifest* out, std::string* erro
 #ifdef LIBVINTF_TARGET
     std::string productModel = android::base::GetProperty("ro.boot.product.hardware.sku", "");
     if (!productModel.empty()) {
-        odmStatus =
-            odmManifest.fetchAllInformation("/odm/etc/manifest_" + productModel + ".xml", error);
+        odmStatus = odmManifest.fetchAllInformation(
+            kOdmLegacyVintfDir + "manifest_" + productModel + ".xml", error);
         if (odmStatus != OK && odmStatus != NAME_NOT_FOUND) {
             return odmStatus;
         }
@@ -207,7 +205,7 @@ status_t VintfObject::FetchDeviceHalManifest(HalManifest* out, std::string* erro
 #endif
 
     if (odmStatus == NAME_NOT_FOUND) {
-        odmStatus = odmManifest.fetchAllInformation("/odm/etc/manifest.xml", error);
+        odmStatus = odmManifest.fetchAllInformation(kOdmLegacyManifest, error);
         if (odmStatus != OK && odmStatus != NAME_NOT_FOUND) {
             return odmStatus;
         }
@@ -233,7 +231,7 @@ status_t VintfObject::FetchDeviceHalManifest(HalManifest* out, std::string* erro
     }
 
     // Use legacy /vendor/manifest.xml
-    return out->fetchAllInformation("/vendor/manifest.xml", error);
+    return out->fetchAllInformation(kVendorLegacyManifest, error);
 }
 
 std::vector<Named<CompatibilityMatrix>> VintfObject::GetAllFrameworkMatrixLevels(
@@ -241,11 +239,11 @@ std::vector<Named<CompatibilityMatrix>> VintfObject::GetAllFrameworkMatrixLevels
     std::vector<std::string> fileNames;
     std::vector<Named<CompatibilityMatrix>> results;
 
-    if (details::gFetcher->listFiles(FRAMEWORK_MATRIX_DIR, &fileNames, error) != OK) {
+    if (details::gFetcher->listFiles(kSystemVintfDir, &fileNames, error) != OK) {
         return {};
     }
     for (const std::string& fileName : fileNames) {
-        std::string path = FRAMEWORK_MATRIX_DIR + fileName;
+        std::string path = kSystemVintfDir + fileName;
 
         std::string content;
         std::string fetchError;
@@ -271,9 +269,8 @@ std::vector<Named<CompatibilityMatrix>> VintfObject::GetAllFrameworkMatrixLevels
 
     if (results.empty()) {
         if (error) {
-            *error = "No framework matrices under " FRAMEWORK_MATRIX_DIR
-                     " can be fetched or parsed.\n" +
-                     *error;
+            *error = "No framework matrices under " + kSystemVintfDir +
+                     " can be fetched or parsed.\n" + *error;
         }
     } else {
         if (error && !error->empty()) {
@@ -507,6 +504,18 @@ int32_t checkCompatibility(const std::vector<std::string>& xmls, bool mount,
 
     return COMPATIBLE;
 }
+
+const std::string kSystemVintfDir = "/system/etc/vintf/";
+const std::string kVendorVintfDir = "/vendor/etc/";
+
+const std::string kVendorManifest = kVendorVintfDir + "manifest.xml";
+const std::string kSystemManifest = "/system/manifest.xml";
+
+const std::string kVendorLegacyManifest = "/vendor/manifest.xml";
+const std::string kVendorLegacyMatrix = "/vendor/compatibility_matrix.xml";
+const std::string kSystemLegacyMatrix = "/system/compatibility_matrix.xml";
+const std::string kOdmLegacyVintfDir = "/odm/etc/";
+const std::string kOdmLegacyManifest = kOdmLegacyVintfDir + "manifest.xml";
 
 } // namespace details
 
