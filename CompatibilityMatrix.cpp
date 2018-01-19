@@ -168,7 +168,8 @@ bool operator==(const CompatibilityMatrix &lft, const CompatibilityMatrix &rgt) 
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
                 lft.device.mVndk == rgt.device.mVndk &&
 #pragma clang diagnostic pop
-                lft.device.mVendorNdk == rgt.device.mVendorNdk)) &&
+                lft.device.mVendorNdk == rgt.device.mVendorNdk &&
+                lft.device.mSystemSdk == rgt.device.mSystemSdk)) &&
            (lft.mType != SchemaType::FRAMEWORK ||
             (lft.framework.mKernels == rgt.framework.mKernels &&
              lft.framework.mSepolicy == rgt.framework.mSepolicy &&

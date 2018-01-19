@@ -30,6 +30,7 @@
 #include "Named.h"
 #include "SchemaType.h"
 #include "Sepolicy.h"
+#include "SystemSdk.h"
 #include "VendorNdk.h"
 #include "Vndk.h"
 #include "XmlFileGroup.h"
@@ -115,6 +116,7 @@ struct CompatibilityMatrix : public HalGroup<MatrixHal>, public XmlFileGroup<Mat
 #pragma clang diagnostic pop
 
         VendorNdk mVendorNdk;
+        SystemSdk mSystemSdk;
     } device;
 };
 
