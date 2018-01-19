@@ -171,10 +171,10 @@ status_t VintfObject::GetCombinedFrameworkMatrix(
 
 // Priority for loading vendor manifest:
 // 1. If {sku} sysprop is set and both files exist,
-// /vendor/etc/manifest.xml + /odm/etc/manifest_{sku}.xml
+// /vendor/etc/vintf/manifest.xml + /odm/etc/manifest_{sku}.xml
 // 2. If both files exist,
-// /vendor/etc/manifest.xml + /odm/etc/manifest.xml
-// 3. If file exists, /vendor/etc/manifest.xml
+// /vendor/etc/vintf/manifest.xml + /odm/etc/manifest.xml
+// 3. If file exists, /vendor/etc/vintf/manifest.xml
 // 4. If {sku} sysprop is set and file exists,
 // /odm/etc/manifest_{sku}.xml
 // 5. If file exists, /odm/etc/manifest.xml
@@ -506,7 +506,7 @@ int32_t checkCompatibility(const std::vector<std::string>& xmls, bool mount,
 }
 
 const std::string kSystemVintfDir = "/system/etc/vintf/";
-const std::string kVendorVintfDir = "/vendor/etc/";
+const std::string kVendorVintfDir = "/vendor/etc/vintf/";
 
 const std::string kVendorManifest = kVendorVintfDir + "manifest.xml";
 const std::string kSystemManifest = "/system/manifest.xml";
