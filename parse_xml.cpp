@@ -596,10 +596,14 @@ struct ManifestHalConverter : public XmlNodeConverter<ManifestHal> {
         appendChild(root, transportArchConverter(hal.transportArch, d));
         appendChildren(root, versionConverter, hal.versions, d);
         appendChildren(root, halInterfaceConverter, iterateValues(hal.interfaces), d);
+        if (hal.isOverride) {
+            appendAttr(root, "override", hal.isOverride);
+        }
     }
     bool buildObject(ManifestHal *object, NodeType *root) const override {
         std::vector<HalInterface> interfaces;
         if (!parseOptionalAttr(root, "format", HalFormat::HIDL, &object->format) ||
+            !parseOptionalAttr(root, "override", false, &object->isOverride) ||
             !parseTextElement(root, "name", &object->name) ||
             !parseOptionalChild(root, transportArchConverter, {}, &object->transportArch) ||
             !parseChildren(root, versionConverter, &object->versions) ||
