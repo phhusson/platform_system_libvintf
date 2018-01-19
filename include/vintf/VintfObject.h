@@ -118,6 +118,7 @@ public:
         std::string* error = nullptr);
     static std::vector<Named<CompatibilityMatrix>> GetAllFrameworkMatrixLevels(
         std::string* error = nullptr);
+    static status_t FetchDeviceHalManifest(HalManifest* out, std::string* error = nullptr);
 };
 
 enum : int32_t {
