@@ -177,8 +177,12 @@ void setupMockFetcher(const std::string& vendorManifestXml, const std::string& s
     if (!productModel.empty()) {
         ON_CALL(*fetcher, fetch(StrEq(kOdmLegacyVintfDir + "manifest_" + productModel + ".xml"), _))
             .WillByDefault(Return(::android::NAME_NOT_FOUND));
+        ON_CALL(*fetcher, fetch(StrEq(kOdmVintfDir + "manifest_" + productModel + ".xml"), _))
+            .WillByDefault(Return(::android::NAME_NOT_FOUND));
     }
     ON_CALL(*fetcher, fetch(StrEq(kOdmLegacyManifest), _))
+        .WillByDefault(Return(::android::NAME_NOT_FOUND));
+    ON_CALL(*fetcher, fetch(StrEq(kOdmManifest), _))
         .WillByDefault(Return(::android::NAME_NOT_FOUND));
     ON_CALL(*fetcher, fetch(StrEq(kVendorManifest), _))
         .WillByDefault(Return(::android::NAME_NOT_FOUND));
@@ -237,8 +241,12 @@ class VintfObjectTestBase : public testing::Test {
             EXPECT_CALL(fetcher(),
                         fetch(StrEq(kOdmLegacyVintfDir + "manifest_" + productModel + ".xml"), _))
                 .Times(times);
+            EXPECT_CALL(fetcher(),
+                        fetch(StrEq(kOdmVintfDir + "manifest_" + productModel + ".xml"), _))
+                .Times(times);
         }
         EXPECT_CALL(fetcher(), fetch(StrEq(kOdmLegacyManifest), _)).Times(times);
+        EXPECT_CALL(fetcher(), fetch(StrEq(kOdmManifest), _)).Times(times);
         EXPECT_CALL(fetcher(), fetch(StrEq(kVendorLegacyManifest), _)).Times(times);
     }
 
@@ -255,13 +263,26 @@ class VintfObjectTestBase : public testing::Test {
         EXPECT_CALL(fetcher(), fetch(StrEq(kSystemLegacyMatrix), _)).Times(times);
     }
 
-    void expectFetch(const std::string& path, const std::string& content = "", size_t times = 1) {
+    // Expect that a file exist and should be fetched once.
+    void expectFetch(const std::string& path, const std::string& content) {
         EXPECT_CALL(fetcher(), fetch(StrEq(path), _))
-            .Times(times)
-            .WillRepeatedly(Invoke([content](const auto&, auto& out) {
+            .WillOnce(Invoke([content](const auto&, auto& out) {
                 out = content;
-                return content.empty() ? ::android::NAME_NOT_FOUND : ::android::OK;
+                return ::android::OK;
             }));
+    }
+
+    // Expect that the file should never be fetched (whether it exists or not).
+    void expectNeverFetch(const std::string& path) {
+        EXPECT_CALL(fetcher(), fetch(StrEq(path), _)).Times(0);
+    }
+
+    // Expect that the file does not exist, and can be fetched 0 or more times.
+    template <typename Matcher>
+    void expectFileNotExist(const Matcher& matcher) {
+        EXPECT_CALL(fetcher(), fetch(matcher, _))
+            .Times(AnyNumber())
+            .WillRepeatedly(Return(::android::NAME_NOT_FOUND));
     }
 
     std::string productModel;
@@ -635,105 +656,124 @@ bool containsOdmProductManifest(const std::shared_ptr<const HalManifest>& p) {
     return !p->getInstances("android.hardware.foo", {1, 1}, "IOdmProduct").empty();
 }
 
-// Test /vendor/etc/manifest.xml + /odm/etc/manifest_{sku}.xml
-TEST_F(VintfObjectTest, DeviceManifestCombine1) {
-    if (productModel.empty()) return;
+class DeviceManifestTest : public VintfObjectTestBase {
+   protected:
+    virtual void SetUp() override {}
 
-    expectFetch(kVendorManifest, vendorEtcManifest);
-    expectFetch(kOdmLegacyVintfDir + "manifest_" + productModel + ".xml", odmProductManifest);
-
-    auto p = VintfObject::GetDeviceHalManifest(true /* skipCache */);
-    ASSERT_NE(nullptr, p);
-    EXPECT_FALSE(containsVendorManifest(p));
-    EXPECT_TRUE(vendorEtcManifestOverridden(p));
-    EXPECT_TRUE(containsVendorEtcManifest(p));
-    EXPECT_FALSE(containsOdmManifest(p));
-    EXPECT_TRUE(containsOdmProductManifest(p));
-}
-
-// Test /vendor/etc/manifest.xml + /odm/etc/manifest.xml
-TEST_F(VintfObjectTest, DeviceManifestCombine2) {
-    expectFetch(kVendorManifest, vendorEtcManifest);
-    if (!productModel.empty()) {
-        expectFetch(kOdmLegacyVintfDir + "manifest_" + productModel + ".xml");
+    // Expect that /vendor/etc/vintf/manifest.xml is fetched.
+    void expectVendorManifest() { expectFetch(kVendorManifest, vendorEtcManifest); }
+    // /vendor/etc/vintf/manifest.xml does not exist.
+    void noVendorManifest() { expectFileNotExist(StrEq(kVendorManifest)); }
+    // Expect some ODM manifest is fetched.
+    void expectOdmManifest() {
+        if (!productModel.empty()) {
+            expectFileNotExist(StrEq(kOdmVintfDir + "manifest_" + productModel + ".xml"));
+        }
+        expectFetch(kOdmManifest, odmManifest);
     }
-    expectFetch(kOdmLegacyManifest, odmManifest);
+    void noOdmManifest() { expectFileNotExist(StartsWith("/odm/")); }
+    std::shared_ptr<const HalManifest> get() {
+        return VintfObject::GetDeviceHalManifest(true /* skipCache */);
+    }
+};
 
-    auto p = VintfObject::GetDeviceHalManifest(true /* skipCache */);
+// Test /vendor/etc/vintf/manifest.xml + ODM manifest
+TEST_F(DeviceManifestTest, Combine1) {
+    expectVendorManifest();
+    expectOdmManifest();
+    auto p = get();
     ASSERT_NE(nullptr, p);
-    EXPECT_FALSE(containsVendorManifest(p));
-    EXPECT_TRUE(vendorEtcManifestOverridden(p));
     EXPECT_TRUE(containsVendorEtcManifest(p));
+    EXPECT_TRUE(vendorEtcManifestOverridden(p));
     EXPECT_TRUE(containsOdmManifest(p));
-    EXPECT_FALSE(containsOdmProductManifest(p));
+    EXPECT_FALSE(containsVendorManifest(p));
 }
 
-// Test /vendor/etc/manifest.xml
-TEST_F(VintfObjectTest, DeviceManifestCombine3) {
-    expectFetch(kVendorManifest, vendorEtcManifest);
-    if (!productModel.empty()) {
-        expectFetch(kOdmLegacyVintfDir + "manifest_" + productModel + ".xml");
-    }
-    expectFetch(kOdmLegacyManifest);
-
-    auto p = VintfObject::GetDeviceHalManifest(true /* skipCache */);
+// Test /vendor/etc/vintf/manifest.xml
+TEST_F(DeviceManifestTest, Combine2) {
+    expectVendorManifest();
+    noOdmManifest();
+    auto p = get();
     ASSERT_NE(nullptr, p);
-    EXPECT_FALSE(containsVendorManifest(p));
+    EXPECT_TRUE(containsVendorEtcManifest(p));
     EXPECT_FALSE(vendorEtcManifestOverridden(p));
-    EXPECT_TRUE(containsVendorEtcManifest(p));
     EXPECT_FALSE(containsOdmManifest(p));
-    EXPECT_FALSE(containsOdmProductManifest(p));
+    EXPECT_FALSE(containsVendorManifest(p));
 }
 
-// Test /odm/etc/manifest_{sku}.xml
-TEST_F(VintfObjectTest, DeviceManifestCombine4) {
-    if (productModel.empty()) return;
-
-    expectFetch(kVendorManifest);
-    expectFetch(kOdmLegacyVintfDir + "manifest_" + productModel + ".xml", odmProductManifest);
-
-    auto p = VintfObject::GetDeviceHalManifest(true /* skipCache */);
+// Test ODM manifest
+TEST_F(DeviceManifestTest, Combine3) {
+    noVendorManifest();
+    expectOdmManifest();
+    auto p = get();
     ASSERT_NE(nullptr, p);
-    EXPECT_FALSE(containsVendorManifest(p));
-    EXPECT_TRUE(vendorEtcManifestOverridden(p));
     EXPECT_FALSE(containsVendorEtcManifest(p));
-    EXPECT_FALSE(containsOdmManifest(p));
-    EXPECT_TRUE(containsOdmProductManifest(p));
-}
-
-// Test /odm/etc/manifest.xml
-TEST_F(VintfObjectTest, DeviceManifestCombine5) {
-    expectFetch(kVendorManifest);
-    if (!productModel.empty()) {
-        expectFetch(kOdmLegacyVintfDir + "manifest_" + productModel + ".xml");
-    }
-    expectFetch(kOdmLegacyManifest, odmManifest);
-
-    auto p = VintfObject::GetDeviceHalManifest(true /* skipCache */);
-    ASSERT_NE(nullptr, p);
-    EXPECT_FALSE(containsVendorManifest(p));
     EXPECT_TRUE(vendorEtcManifestOverridden(p));
-    EXPECT_FALSE(containsVendorEtcManifest(p));
     EXPECT_TRUE(containsOdmManifest(p));
-    EXPECT_FALSE(containsOdmProductManifest(p));
+    EXPECT_FALSE(containsVendorManifest(p));
 }
 
 // Test /vendor/manifest.xml
-TEST_F(VintfObjectTest, DeviceManifestCombine6) {
-    expectFetch(kVendorManifest);
-    if (!productModel.empty()) {
-        expectFetch(kOdmLegacyVintfDir + "manifest_" + productModel + ".xml");
-    }
-    expectFetch(kOdmLegacyManifest);
+TEST_F(DeviceManifestTest, Combine4) {
+    noVendorManifest();
+    noOdmManifest();
     expectFetch(kVendorLegacyManifest, vendorManifest);
-
-    auto p = VintfObject::GetDeviceHalManifest(true /* skipCache */);
+    auto p = get();
     ASSERT_NE(nullptr, p);
-    EXPECT_TRUE(containsVendorManifest(p));
-    EXPECT_TRUE(vendorEtcManifestOverridden(p));
     EXPECT_FALSE(containsVendorEtcManifest(p));
+    EXPECT_TRUE(vendorEtcManifestOverridden(p));
     EXPECT_FALSE(containsOdmManifest(p));
-    EXPECT_FALSE(containsOdmProductManifest(p));
+    EXPECT_TRUE(containsVendorManifest(p));
+}
+
+class OdmManifestTest : public VintfObjectTestBase {
+   protected:
+    virtual void SetUp() override {
+        // Assume /vendor/etc/vintf/manifest.xml does not exist to simplify
+        // testing logic.
+        expectFileNotExist(StrEq(kVendorManifest));
+        // Expect that the legacy /vendor/manifest.xml is never fetched.
+        expectNeverFetch(kVendorLegacyManifest);
+        // Assume no files exist under /odm/ unless otherwise specified.
+        expectFileNotExist(StartsWith("/odm/"));
+    }
+    std::shared_ptr<const HalManifest> get() {
+        return VintfObject::GetDeviceHalManifest(true /* skipCache */);
+    }
+};
+
+TEST_F(OdmManifestTest, OdmProductManifest) {
+    if (productModel.empty()) return;
+    expectFetch(kOdmVintfDir + "manifest_" + productModel + ".xml", odmProductManifest);
+    // /odm/etc/vintf/manifest.xml should not be fetched when the product variant exists.
+    expectNeverFetch(kOdmManifest);
+    auto p = get();
+    ASSERT_NE(nullptr, p);
+    EXPECT_TRUE(containsOdmProductManifest(p));
+}
+
+TEST_F(OdmManifestTest, OdmManifest) {
+    expectFetch(kOdmManifest, odmManifest);
+    auto p = get();
+    ASSERT_NE(nullptr, p);
+    EXPECT_TRUE(containsOdmManifest(p));
+}
+
+TEST_F(OdmManifestTest, OdmLegacyProductManifest) {
+    if (productModel.empty()) return;
+    expectFetch(kOdmLegacyVintfDir + "manifest_" + productModel + ".xml", odmProductManifest);
+    // /odm/manifest.xml should not be fetched when the product variant exists.
+    expectNeverFetch(kOdmLegacyManifest);
+    auto p = get();
+    ASSERT_NE(nullptr, p);
+    EXPECT_TRUE(containsOdmProductManifest(p));
+}
+
+TEST_F(OdmManifestTest, OdmLegacyManifest) {
+    expectFetch(kOdmLegacyManifest, odmManifest);
+    auto p = get();
+    ASSERT_NE(nullptr, p);
+    EXPECT_TRUE(containsOdmManifest(p));
 }
 
 int main(int argc, char** argv) {
