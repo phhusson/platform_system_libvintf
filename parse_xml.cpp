@@ -596,10 +596,14 @@ struct ManifestHalConverter : public XmlNodeConverter<ManifestHal> {
         appendChild(root, transportArchConverter(hal.transportArch, d));
         appendChildren(root, versionConverter, hal.versions, d);
         appendChildren(root, halInterfaceConverter, iterateValues(hal.interfaces), d);
+        if (hal.isOverride) {
+            appendAttr(root, "override", hal.isOverride);
+        }
     }
     bool buildObject(ManifestHal *object, NodeType *root) const override {
         std::vector<HalInterface> interfaces;
         if (!parseOptionalAttr(root, "format", HalFormat::HIDL, &object->format) ||
+            !parseOptionalAttr(root, "override", false, &object->isOverride) ||
             !parseTextElement(root, "name", &object->name) ||
             !parseOptionalChild(root, transportArchConverter, {}, &object->transportArch) ||
             !parseChildren(root, versionConverter, &object->versions) ||
@@ -737,6 +741,20 @@ struct VendorNdkConverter : public XmlNodeConverter<VendorNdk> {
 
 const VendorNdkConverter vendorNdkConverter{};
 
+const XmlTextConverter<std::string> systemSdkVersionConverter{"version"};
+
+struct SystemSdkConverter : public XmlNodeConverter<SystemSdk> {
+    std::string elementName() const override { return "system-sdk"; }
+    void mutateNode(const SystemSdk& object, NodeType* root, DocType* d) const override {
+        appendChildren(root, systemSdkVersionConverter, object.versions(), d);
+    }
+    bool buildObject(SystemSdk* object, NodeType* root) const override {
+        return parseChildren(root, systemSdkVersionConverter, &object->mVersions);
+    }
+};
+
+const SystemSdkConverter systemSdkConverter{};
+
 struct HalManifestSepolicyConverter : public XmlNodeConverter<Version> {
     std::string elementName() const override { return "sepolicy"; }
     void mutateNode(const Version &m, NodeType *root, DocType *d) const override {
@@ -797,6 +815,11 @@ struct HalManifestConverter : public XmlNodeConverter<HalManifest> {
 
                 appendChildren(root, vendorNdkConverter, m.framework.mVendorNdks, d);
             }
+            if (!(flags & SerializeFlag::NO_SSDK)) {
+                if (!m.framework.mSystemSdk.empty()) {
+                    appendChild(root, systemSdkConverter(m.framework.mSystemSdk, d));
+                }
+            }
         }
 
         if (!(flags & SerializeFlag::NO_XMLFILES)) {
@@ -840,6 +863,10 @@ struct HalManifestConverter : public XmlNodeConverter<HalManifest> {
 #pragma clang diagnostic pop
 
             if (!parseChildren(root, vendorNdkConverter, &object->framework.mVendorNdks)) {
+                return false;
+            }
+
+            if (!parseOptionalChild(root, systemSdkConverter, {}, &object->framework.mSystemSdk)) {
                 return false;
             }
         }
@@ -945,6 +972,12 @@ struct CompatibilityMatrixConverter : public XmlNodeConverter<CompatibilityMatri
                     appendChild(root, vendorNdkConverter(m.device.mVendorNdk, d));
                 }
             }
+
+            if (!(flags & SerializeFlag::NO_SSDK)) {
+                if (!m.device.mSystemSdk.empty()) {
+                    appendChild(root, systemSdkConverter(m.device.mSystemSdk, d));
+                }
+            }
         }
 
         if (!(flags & SerializeFlag::NO_XMLFILES)) {
@@ -994,6 +1027,10 @@ struct CompatibilityMatrixConverter : public XmlNodeConverter<CompatibilityMatri
 #pragma clang diagnostic pop
 
             if (!parseOptionalChild(root, vendorNdkConverter, {}, &object->device.mVendorNdk)) {
+                return false;
+            }
+
+            if (!parseOptionalChild(root, systemSdkConverter, {}, &object->device.mSystemSdk)) {
                 return false;
             }
         }

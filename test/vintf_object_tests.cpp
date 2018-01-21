@@ -175,38 +175,45 @@ void setupMockFetcher(const std::string& vendorManifestXml, const std::string& s
     MockFileFetcher* fetcher = static_cast<MockFileFetcher*>(gFetcher);
 
     if (!productModel.empty()) {
-        ON_CALL(*fetcher, fetch(StrEq("/odm/etc/manifest_" + productModel + ".xml"), _))
+        ON_CALL(*fetcher, fetch(StrEq(kOdmLegacyVintfDir + "manifest_" + productModel + ".xml"), _))
+            .WillByDefault(Return(::android::NAME_NOT_FOUND));
+        ON_CALL(*fetcher, fetch(StrEq(kOdmVintfDir + "manifest_" + productModel + ".xml"), _))
             .WillByDefault(Return(::android::NAME_NOT_FOUND));
     }
-    ON_CALL(*fetcher, fetch(StrEq("/odm/etc/manifest.xml"), _))
+    ON_CALL(*fetcher, fetch(StrEq(kOdmLegacyManifest), _))
         .WillByDefault(Return(::android::NAME_NOT_FOUND));
-    ON_CALL(*fetcher, fetch(StrEq("/vendor/manifest.xml"), _))
+    ON_CALL(*fetcher, fetch(StrEq(kOdmManifest), _))
+        .WillByDefault(Return(::android::NAME_NOT_FOUND));
+    ON_CALL(*fetcher, fetch(StrEq(kVendorManifest), _))
+        .WillByDefault(Return(::android::NAME_NOT_FOUND));
+    ON_CALL(*fetcher, fetch(StrEq(kVendorLegacyManifest), _))
         .WillByDefault(Invoke([vendorManifestXml](const std::string& path, std::string& fetched) {
             (void)path;
             fetched = vendorManifestXml;
             return 0;
         }));
-    ON_CALL(*fetcher, fetch(StrEq("/system/manifest.xml"), _))
+    ON_CALL(*fetcher, fetch(StrEq(kSystemManifest), _))
         .WillByDefault(Invoke([systemManifestXml](const std::string& path, std::string& fetched) {
             (void)path;
             fetched = systemManifestXml;
             return 0;
         }));
-    ON_CALL(*fetcher, fetch(StrEq("/vendor/compatibility_matrix.xml"), _))
+    ON_CALL(*fetcher, fetch(StrEq(kVendorMatrix), _))
+        .WillByDefault(Return(::android::NAME_NOT_FOUND));
+    ON_CALL(*fetcher, fetch(StrEq(kVendorLegacyMatrix), _))
         .WillByDefault(Invoke([vendorMatrixXml](const std::string& path, std::string& fetched) {
             (void)path;
             fetched = vendorMatrixXml;
             return 0;
         }));
-    ON_CALL(*fetcher, fetch(StrEq("/system/compatibility_matrix.xml"), _))
+    ON_CALL(*fetcher, fetch(StrEq(kSystemLegacyMatrix), _))
         .WillByDefault(Invoke([systemMatrixXml](const std::string& path, std::string& fetched) {
             (void)path;
             fetched = systemMatrixXml;
             return 0;
         }));
     // Don't list /system/etc/vintf unless otherwise specified.
-    ON_CALL(*fetcher, listFiles(StrEq("/system/etc/vintf/"), _, _))
-        .WillByDefault(Return(::android::OK));
+    ON_CALL(*fetcher, listFiles(StrEq(kSystemVintfDir), _, _)).WillByDefault(Return(::android::OK));
 }
 
 static MockPartitionMounter &mounter() {
@@ -215,22 +222,81 @@ static MockPartitionMounter &mounter() {
 static MockFileFetcher &fetcher() {
     return *static_cast<MockFileFetcher*>(gFetcher);
 }
-// Test fixture that provides compatible metadata from the mock device.
-class VintfObjectCompatibleTest : public testing::Test {
+
+class VintfObjectTestBase : public testing::Test {
    protected:
     virtual void SetUp() {
-        mounter().reset();
 #ifdef LIBVINTF_TARGET
         productModel = android::base::GetProperty("ro.boot.product.hardware.sku", "");
 #endif
-        setupMockFetcher(vendorManifestXml1, systemMatrixXml1, systemManifestXml1, vendorMatrixXml1,
-                         productModel);
     }
     virtual void TearDown() {
         Mock::VerifyAndClear(&mounter());
         Mock::VerifyAndClear(&fetcher());
     }
+
+    void expectVendorManifest(size_t times = 1) {
+        EXPECT_CALL(fetcher(), fetch(StrEq(kVendorManifest), _)).Times(times);
+        if (!productModel.empty()) {
+            EXPECT_CALL(fetcher(),
+                        fetch(StrEq(kOdmLegacyVintfDir + "manifest_" + productModel + ".xml"), _))
+                .Times(times);
+            EXPECT_CALL(fetcher(),
+                        fetch(StrEq(kOdmVintfDir + "manifest_" + productModel + ".xml"), _))
+                .Times(times);
+        }
+        EXPECT_CALL(fetcher(), fetch(StrEq(kOdmLegacyManifest), _)).Times(times);
+        EXPECT_CALL(fetcher(), fetch(StrEq(kOdmManifest), _)).Times(times);
+        EXPECT_CALL(fetcher(), fetch(StrEq(kVendorLegacyManifest), _)).Times(times);
+    }
+
+    void expectSystemManifest(size_t times = 1) {
+        EXPECT_CALL(fetcher(), fetch(StrEq(kSystemManifest), _)).Times(times);
+    }
+
+    void expectVendorMatrix(size_t times = 1) {
+        EXPECT_CALL(fetcher(), fetch(StrEq(kVendorMatrix), _)).Times(times);
+        EXPECT_CALL(fetcher(), fetch(StrEq(kVendorLegacyMatrix), _)).Times(times);
+    }
+
+    void expectSystemMatrix(size_t times = 1) {
+        EXPECT_CALL(fetcher(), fetch(StrEq(kSystemLegacyMatrix), _)).Times(times);
+    }
+
+    // Expect that a file exist and should be fetched once.
+    void expectFetch(const std::string& path, const std::string& content) {
+        EXPECT_CALL(fetcher(), fetch(StrEq(path), _))
+            .WillOnce(Invoke([content](const auto&, auto& out) {
+                out = content;
+                return ::android::OK;
+            }));
+    }
+
+    // Expect that the file should never be fetched (whether it exists or not).
+    void expectNeverFetch(const std::string& path) {
+        EXPECT_CALL(fetcher(), fetch(StrEq(path), _)).Times(0);
+    }
+
+    // Expect that the file does not exist, and can be fetched 0 or more times.
+    template <typename Matcher>
+    void expectFileNotExist(const Matcher& matcher) {
+        EXPECT_CALL(fetcher(), fetch(matcher, _))
+            .Times(AnyNumber())
+            .WillRepeatedly(Return(::android::NAME_NOT_FOUND));
+    }
+
     std::string productModel;
+};
+
+// Test fixture that provides compatible metadata from the mock device.
+class VintfObjectCompatibleTest : public VintfObjectTestBase {
+   protected:
+    virtual void SetUp() {
+        VintfObjectTestBase::SetUp();
+        mounter().reset();
+        setupMockFetcher(vendorManifestXml1, systemMatrixXml1, systemManifestXml1, vendorMatrixXml1,
+                         productModel);
+    }
 };
 
 // Tests that local info is checked.
@@ -238,14 +304,10 @@ TEST_F(VintfObjectCompatibleTest, TestDeviceCompatibility) {
     std::string error;
     std::vector<std::string> packageInfo;
 
-    if (!productModel.empty()) {
-        EXPECT_CALL(fetcher(), fetch(StrEq("/odm/etc/manifest_" + productModel + ".xml"), _));
-    }
-    EXPECT_CALL(fetcher(), fetch(StrEq("/odm/etc/manifest.xml"), _));
-    EXPECT_CALL(fetcher(), fetch(StrEq("/vendor/manifest.xml"), _));
-    EXPECT_CALL(fetcher(), fetch(StrEq("/system/manifest.xml"), _));
-    EXPECT_CALL(fetcher(), fetch(StrEq("/vendor/compatibility_matrix.xml"), _));
-    EXPECT_CALL(fetcher(), fetch(StrEq("/system/compatibility_matrix.xml"), _));
+    expectVendorManifest();
+    expectSystemManifest();
+    expectVendorMatrix();
+    expectSystemMatrix();
     EXPECT_CALL(mounter(), mountSystem()).Times(0);
     EXPECT_CALL(mounter(), umountSystem()).Times(0);
     EXPECT_CALL(mounter(), mountVendor()).Times(0);
@@ -281,14 +343,10 @@ TEST_F(VintfObjectCompatibleTest, TestInputVsDeviceSuccess) {
     std::string error;
     std::vector<std::string> packageInfo = {systemMatrixXml1};
 
-    if (!productModel.empty()) {
-        EXPECT_CALL(fetcher(), fetch(StrEq("/odm/etc/manifest_" + productModel + ".xml"), _));
-    }
-    EXPECT_CALL(fetcher(), fetch(StrEq("/odm/etc/manifest.xml"), _));
-    EXPECT_CALL(fetcher(), fetch(StrEq("/vendor/manifest.xml"), _));
-    EXPECT_CALL(fetcher(), fetch(StrEq("/system/manifest.xml"), _));
-    EXPECT_CALL(fetcher(), fetch(StrEq("/vendor/compatibility_matrix.xml"), _));
-    EXPECT_CALL(fetcher(), fetch(StrEq("/system/compatibility_matrix.xml"), _)).Times(0);
+    expectVendorManifest();
+    expectSystemManifest();
+    expectVendorMatrix();
+    expectSystemMatrix(0);
     EXPECT_CALL(mounter(), mountSystem()).Times(0);
     EXPECT_CALL(mounter(), umountSystem()).Times(0);
     EXPECT_CALL(mounter(), mountVendor()).Times(0);
@@ -346,14 +404,10 @@ TEST_F(VintfObjectCompatibleTest, TestFrameworkOnlyOta) {
     std::string error;
     std::vector<std::string> packageInfo = {systemMatrixXml1, systemManifestXml1};
 
-    if (!productModel.empty()) {
-        EXPECT_CALL(fetcher(), fetch(StrEq("/odm/etc/manifest_" + productModel + ".xml"), _));
-    }
-    EXPECT_CALL(fetcher(), fetch(StrEq("/odm/etc/manifest.xml"), _));
-    EXPECT_CALL(fetcher(), fetch(StrEq("/vendor/manifest.xml"), _));
-    EXPECT_CALL(fetcher(), fetch(StrEq("/system/manifest.xml"), _)).Times(0);
-    EXPECT_CALL(fetcher(), fetch(StrEq("/vendor/compatibility_matrix.xml"), _));
-    EXPECT_CALL(fetcher(), fetch(StrEq("/system/compatibility_matrix.xml"), _)).Times(0);
+    expectVendorManifest();
+    expectSystemManifest(0);
+    expectVendorMatrix();
+    expectSystemMatrix(0);
     EXPECT_CALL(mounter(), mountSystem()).Times(0);
     EXPECT_CALL(mounter(), umountSystem()).Times(0);
     EXPECT_CALL(mounter(), mountVendor()).Times(0);
@@ -388,15 +442,10 @@ TEST_F(VintfObjectCompatibleTest, TestFullOta) {
     std::vector<std::string> packageInfo = {systemMatrixXml1, systemManifestXml1,
             vendorMatrixXml1, vendorManifestXml1};
 
-    if (!productModel.empty()) {
-        EXPECT_CALL(fetcher(), fetch(StrEq("/odm/etc/manifest_" + productModel + ".xml"), _))
-            .Times(0);
-    }
-    EXPECT_CALL(fetcher(), fetch(StrEq("/odm/etc/manifest.xml"), _)).Times(0);
-    EXPECT_CALL(fetcher(), fetch(StrEq("/vendor/manifest.xml"), _)).Times(0);
-    EXPECT_CALL(fetcher(), fetch(StrEq("/system/manifest.xml"), _)).Times(0);
-    EXPECT_CALL(fetcher(), fetch(StrEq("/vendor/compatibility_matrix.xml"), _)).Times(0);
-    EXPECT_CALL(fetcher(), fetch(StrEq("/system/compatibility_matrix.xml"), _)).Times(0);
+    expectVendorManifest(0);
+    expectSystemManifest(0);
+    expectVendorMatrix(0);
+    expectSystemMatrix(0);
     EXPECT_CALL(mounter(), mountSystem()).Times(0);
     EXPECT_CALL(mounter(), umountSystem()).Times(0);
     EXPECT_CALL(mounter(), mountVendor()).Times(0);
@@ -428,21 +477,14 @@ TEST_F(VintfObjectCompatibleTest, TestFullOnlyOtaMount) {
 }
 
 // Test fixture that provides incompatible metadata from the mock device.
-class VintfObjectIncompatibleTest : public testing::Test {
+class VintfObjectIncompatibleTest : public VintfObjectTestBase {
    protected:
     virtual void SetUp() {
+        VintfObjectTestBase::SetUp();
         mounter().reset();
-#ifdef LIBVINTF_TARGET
-        productModel = android::base::GetProperty("ro.boot.product.hardware.sku", "");
-#endif
         setupMockFetcher(vendorManifestXml1, systemMatrixXml2, systemManifestXml1, vendorMatrixXml1,
                          productModel);
     }
-    virtual void TearDown() {
-        Mock::VerifyAndClear(&mounter());
-        Mock::VerifyAndClear(&fetcher());
-    }
-    std::string productModel;
 };
 
 // Fetch all metadata from device and ensure that it fails.
@@ -450,14 +492,10 @@ TEST_F(VintfObjectIncompatibleTest, TestDeviceCompatibility) {
     std::string error;
     std::vector<std::string> packageInfo;
 
-    if (!productModel.empty()) {
-        EXPECT_CALL(fetcher(), fetch(StrEq("/odm/etc/manifest_" + productModel + ".xml"), _));
-    }
-    EXPECT_CALL(fetcher(), fetch(StrEq("/odm/etc/manifest.xml"), _));
-    EXPECT_CALL(fetcher(), fetch(StrEq("/vendor/manifest.xml"), _));
-    EXPECT_CALL(fetcher(), fetch(StrEq("/system/manifest.xml"), _));
-    EXPECT_CALL(fetcher(), fetch(StrEq("/vendor/compatibility_matrix.xml"), _));
-    EXPECT_CALL(fetcher(), fetch(StrEq("/system/compatibility_matrix.xml"), _));
+    expectVendorManifest();
+    expectSystemManifest();
+    expectVendorMatrix();
+    expectSystemMatrix();
 
     int result = VintfObject::CheckCompatibility(packageInfo, &error);
 
@@ -469,14 +507,10 @@ TEST_F(VintfObjectIncompatibleTest, TestInputVsDeviceSuccess) {
     std::string error;
     std::vector<std::string> packageInfo = {systemMatrixXml1};
 
-    if (!productModel.empty()) {
-        EXPECT_CALL(fetcher(), fetch(StrEq("/odm/etc/manifest_" + productModel + ".xml"), _));
-    }
-    EXPECT_CALL(fetcher(), fetch(StrEq("/odm/etc/manifest.xml"), _));
-    EXPECT_CALL(fetcher(), fetch(StrEq("/vendor/manifest.xml"), _));
-    EXPECT_CALL(fetcher(), fetch(StrEq("/system/manifest.xml"), _));
-    EXPECT_CALL(fetcher(), fetch(StrEq("/vendor/compatibility_matrix.xml"), _));
-    EXPECT_CALL(fetcher(), fetch(StrEq("/system/compatibility_matrix.xml"), _)).Times(0);
+    expectVendorManifest();
+    expectSystemManifest();
+    expectVendorMatrix();
+    expectSystemMatrix(0);
 
     int result = VintfObject::CheckCompatibility(packageInfo, &error);
 
@@ -525,18 +559,14 @@ TEST_F(VintfObjectRuntimeInfoTest, GetRuntimeInfo) {
 }
 
 // Test fixture that provides incompatible metadata from the mock device.
-class VintfObjectTest : public testing::Test {
+class VintfObjectTest : public VintfObjectTestBase {
    protected:
     virtual void SetUp() {}
-    virtual void TearDown() {
-        Mock::VerifyAndClear(&fetcher());
-        Mock::VerifyAndClear(&mounter());
-    }
 };
 
 // Test framework compatibility matrix is combined at runtime
 TEST_F(VintfObjectTest, FrameworkCompatibilityMatrixCombine) {
-    EXPECT_CALL(fetcher(), listFiles(StrEq("/system/etc/vintf/"), _, _))
+    EXPECT_CALL(fetcher(), listFiles(StrEq(kSystemVintfDir), _, _))
         .WillOnce(Invoke([](const auto&, auto* out, auto*) {
             *out = {
                 "compatibility_matrix.1.xml",
@@ -544,19 +574,206 @@ TEST_F(VintfObjectTest, FrameworkCompatibilityMatrixCombine) {
             };
             return ::android::OK;
         }));
-    EXPECT_CALL(fetcher(), fetch(StrEq("/system/etc/vintf/compatibility_matrix.1.xml"), _))
-        .WillOnce(Invoke([](const auto&, auto& out) {
-            out = "<compatibility-matrix version=\"1.0\" type=\"framework\" level=\"1\"/>";
-            return ::android::OK;
-        }));
-    EXPECT_CALL(fetcher(), fetch(StrEq("/system/etc/vintf/compatibility_matrix.empty.xml"), _))
-        .WillOnce(Invoke([](const auto&, auto& out) {
-            out = "<compatibility-matrix version=\"1.0\" type=\"framework\"/>";
-            return ::android::OK;
-        }));
-    EXPECT_CALL(fetcher(), fetch(StrEq("/system/compatibility_matrix.xml"), _)).Times(0);
+    expectFetch(kSystemVintfDir + "compatibility_matrix.1.xml",
+                "<compatibility-matrix version=\"1.0\" type=\"framework\" level=\"1\"/>");
+    expectFetch(kSystemVintfDir + "compatibility_matrix.empty.xml",
+                "<compatibility-matrix version=\"1.0\" type=\"framework\"/>");
+    expectSystemMatrix(0);
 
     EXPECT_NE(nullptr, VintfObject::GetFrameworkCompatibilityMatrix(true /* skipCache */));
+}
+
+const std::string vendorEtcManifest =
+    "<manifest version=\"1.0\" type=\"device\">\n"
+    "    <hal format=\"hidl\">\n"
+    "        <name>android.hardware.foo</name>\n"
+    "        <transport>hwbinder</transport>\n"
+    "        <version>1.0</version>\n"
+    "        <version>2.0</version>\n"
+    "        <interface>\n"
+    "            <name>IVendorEtc</name>\n"
+    "            <instance>default</instance>\n"
+    "        </interface>\n"
+    "    </hal>\n"
+    "</manifest>\n";
+
+const std::string vendorManifest =
+    "<manifest version=\"1.0\" type=\"device\">\n"
+    "    <hal format=\"hidl\">\n"
+    "        <name>android.hardware.foo</name>\n"
+    "        <transport>hwbinder</transport>\n"
+    "        <version>1.0</version>\n"
+    "        <interface>\n"
+    "            <name>IVendor</name>\n"
+    "            <instance>default</instance>\n"
+    "        </interface>\n"
+    "    </hal>\n"
+    "</manifest>\n";
+
+const std::string odmProductManifest =
+    "<manifest version=\"1.0\" type=\"device\">\n"
+    "    <hal format=\"hidl\" override=\"true\">\n"
+    "        <name>android.hardware.foo</name>\n"
+    "        <transport>hwbinder</transport>\n"
+    "        <version>1.1</version>\n"
+    "        <interface>\n"
+    "            <name>IOdmProduct</name>\n"
+    "            <instance>default</instance>\n"
+    "        </interface>\n"
+    "    </hal>\n"
+    "</manifest>\n";
+
+const std::string odmManifest =
+    "<manifest version=\"1.0\" type=\"device\">\n"
+    "    <hal format=\"hidl\" override=\"true\">\n"
+    "        <name>android.hardware.foo</name>\n"
+    "        <transport>hwbinder</transport>\n"
+    "        <version>1.1</version>\n"
+    "        <interface>\n"
+    "            <name>IOdm</name>\n"
+    "            <instance>default</instance>\n"
+    "        </interface>\n"
+    "    </hal>\n"
+    "</manifest>\n";
+
+bool containsVendorManifest(const std::shared_ptr<const HalManifest>& p) {
+    return !p->getInstances("android.hardware.foo", {1, 0}, "IVendor").empty();
+}
+
+bool containsVendorEtcManifest(const std::shared_ptr<const HalManifest>& p) {
+    return !p->getInstances("android.hardware.foo", {2, 0}, "IVendorEtc").empty();
+}
+
+bool vendorEtcManifestOverridden(const std::shared_ptr<const HalManifest>& p) {
+    return p->getInstances("android.hardware.foo", {1, 0}, "IVendorEtc").empty();
+}
+
+bool containsOdmManifest(const std::shared_ptr<const HalManifest>& p) {
+    return !p->getInstances("android.hardware.foo", {1, 1}, "IOdm").empty();
+}
+
+bool containsOdmProductManifest(const std::shared_ptr<const HalManifest>& p) {
+    return !p->getInstances("android.hardware.foo", {1, 1}, "IOdmProduct").empty();
+}
+
+class DeviceManifestTest : public VintfObjectTestBase {
+   protected:
+    virtual void SetUp() override {}
+
+    // Expect that /vendor/etc/vintf/manifest.xml is fetched.
+    void expectVendorManifest() { expectFetch(kVendorManifest, vendorEtcManifest); }
+    // /vendor/etc/vintf/manifest.xml does not exist.
+    void noVendorManifest() { expectFileNotExist(StrEq(kVendorManifest)); }
+    // Expect some ODM manifest is fetched.
+    void expectOdmManifest() {
+        if (!productModel.empty()) {
+            expectFileNotExist(StrEq(kOdmVintfDir + "manifest_" + productModel + ".xml"));
+        }
+        expectFetch(kOdmManifest, odmManifest);
+    }
+    void noOdmManifest() { expectFileNotExist(StartsWith("/odm/")); }
+    std::shared_ptr<const HalManifest> get() {
+        return VintfObject::GetDeviceHalManifest(true /* skipCache */);
+    }
+};
+
+// Test /vendor/etc/vintf/manifest.xml + ODM manifest
+TEST_F(DeviceManifestTest, Combine1) {
+    expectVendorManifest();
+    expectOdmManifest();
+    auto p = get();
+    ASSERT_NE(nullptr, p);
+    EXPECT_TRUE(containsVendorEtcManifest(p));
+    EXPECT_TRUE(vendorEtcManifestOverridden(p));
+    EXPECT_TRUE(containsOdmManifest(p));
+    EXPECT_FALSE(containsVendorManifest(p));
+}
+
+// Test /vendor/etc/vintf/manifest.xml
+TEST_F(DeviceManifestTest, Combine2) {
+    expectVendorManifest();
+    noOdmManifest();
+    auto p = get();
+    ASSERT_NE(nullptr, p);
+    EXPECT_TRUE(containsVendorEtcManifest(p));
+    EXPECT_FALSE(vendorEtcManifestOverridden(p));
+    EXPECT_FALSE(containsOdmManifest(p));
+    EXPECT_FALSE(containsVendorManifest(p));
+}
+
+// Test ODM manifest
+TEST_F(DeviceManifestTest, Combine3) {
+    noVendorManifest();
+    expectOdmManifest();
+    auto p = get();
+    ASSERT_NE(nullptr, p);
+    EXPECT_FALSE(containsVendorEtcManifest(p));
+    EXPECT_TRUE(vendorEtcManifestOverridden(p));
+    EXPECT_TRUE(containsOdmManifest(p));
+    EXPECT_FALSE(containsVendorManifest(p));
+}
+
+// Test /vendor/manifest.xml
+TEST_F(DeviceManifestTest, Combine4) {
+    noVendorManifest();
+    noOdmManifest();
+    expectFetch(kVendorLegacyManifest, vendorManifest);
+    auto p = get();
+    ASSERT_NE(nullptr, p);
+    EXPECT_FALSE(containsVendorEtcManifest(p));
+    EXPECT_TRUE(vendorEtcManifestOverridden(p));
+    EXPECT_FALSE(containsOdmManifest(p));
+    EXPECT_TRUE(containsVendorManifest(p));
+}
+
+class OdmManifestTest : public VintfObjectTestBase {
+   protected:
+    virtual void SetUp() override {
+        // Assume /vendor/etc/vintf/manifest.xml does not exist to simplify
+        // testing logic.
+        expectFileNotExist(StrEq(kVendorManifest));
+        // Expect that the legacy /vendor/manifest.xml is never fetched.
+        expectNeverFetch(kVendorLegacyManifest);
+        // Assume no files exist under /odm/ unless otherwise specified.
+        expectFileNotExist(StartsWith("/odm/"));
+    }
+    std::shared_ptr<const HalManifest> get() {
+        return VintfObject::GetDeviceHalManifest(true /* skipCache */);
+    }
+};
+
+TEST_F(OdmManifestTest, OdmProductManifest) {
+    if (productModel.empty()) return;
+    expectFetch(kOdmVintfDir + "manifest_" + productModel + ".xml", odmProductManifest);
+    // /odm/etc/vintf/manifest.xml should not be fetched when the product variant exists.
+    expectNeverFetch(kOdmManifest);
+    auto p = get();
+    ASSERT_NE(nullptr, p);
+    EXPECT_TRUE(containsOdmProductManifest(p));
+}
+
+TEST_F(OdmManifestTest, OdmManifest) {
+    expectFetch(kOdmManifest, odmManifest);
+    auto p = get();
+    ASSERT_NE(nullptr, p);
+    EXPECT_TRUE(containsOdmManifest(p));
+}
+
+TEST_F(OdmManifestTest, OdmLegacyProductManifest) {
+    if (productModel.empty()) return;
+    expectFetch(kOdmLegacyVintfDir + "manifest_" + productModel + ".xml", odmProductManifest);
+    // /odm/manifest.xml should not be fetched when the product variant exists.
+    expectNeverFetch(kOdmLegacyManifest);
+    auto p = get();
+    ASSERT_NE(nullptr, p);
+    EXPECT_TRUE(containsOdmProductManifest(p));
+}
+
+TEST_F(OdmManifestTest, OdmLegacyManifest) {
+    expectFetch(kOdmLegacyManifest, odmManifest);
+    auto p = get();
+    ASSERT_NE(nullptr, p);
+    EXPECT_TRUE(containsOdmManifest(p));
 }
 
 int main(int argc, char** argv) {

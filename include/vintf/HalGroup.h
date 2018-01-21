@@ -46,7 +46,7 @@ struct HalGroup {
     }
 
     // Add an hal to this HalGroup so that it can be constructed programatically.
-    bool add(Hal&& hal) {
+    virtual bool add(Hal&& hal) {
         if (!shouldAdd(hal)) {
             return false;
         }
@@ -97,6 +97,9 @@ struct HalGroup {
     std::set<std::string> getInstances(const std::string& halName, const Version& version,
                                        const std::string& interfaceName) const {
         const Hal* hal = getHal(halName, version);
+        if (hal == nullptr) {
+            return {};
+        }
         return hal->getInstances(interfaceName);
     }
 

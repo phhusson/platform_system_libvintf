@@ -36,6 +36,7 @@ std::ostream &operator<<(std::ostream &os, Tristate tr);
 std::ostream &operator<<(std::ostream &os, SchemaType ksv);
 std::ostream& operator<<(std::ostream& os, XmlSchemaFormat f);
 std::ostream& operator<<(std::ostream& os, Level l);
+std::ostream& operator<<(std::ostream& os, KernelSepolicyVersion v);
 std::ostream &operator<<(std::ostream &os, const ManifestHal &hal);
 std::ostream &operator<<(std::ostream &os, const Version &ver);
 std::ostream &operator<<(std::ostream &os, const VersionRange &vr);

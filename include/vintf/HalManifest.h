@@ -28,6 +28,7 @@
 #include "ManifestHal.h"
 #include "MapValueIterator.h"
 #include "SchemaType.h"
+#include "SystemSdk.h"
 #include "VendorNdk.h"
 #include "Version.h"
 #include "Vndk.h"
@@ -46,6 +47,8 @@ struct HalManifest : public HalGroup<ManifestHal>, public XmlFileGroup<ManifestX
 
     // Construct a device HAL manifest.
     HalManifest() : mType(SchemaType::DEVICE) {}
+
+    bool add(ManifestHal&& hal) override;
 
     // Given a component name (e.g. "android.hardware.camera"),
     // return getHal(name)->transport if the component exist and v exactly matches
@@ -136,6 +139,8 @@ struct HalManifest : public HalGroup<ManifestHal>, public XmlFileGroup<ManifestX
     std::vector<std::string> checkIncompatibleXmlFiles(const CompatibilityMatrix& mat,
                                                        bool includeOptional = true) const;
 
+    void removeHals(const std::string& name, size_t majorVer);
+
     SchemaType mType;
     Level mLevel = Level::UNSPECIFIED;
     // version attribute. Default is 1.0 for manifests created programatically.
@@ -154,6 +159,7 @@ struct HalManifest : public HalGroup<ManifestHal>, public XmlFileGroup<ManifestX
 #pragma clang diagnostic pop
 
         std::vector<VendorNdk> mVendorNdks;
+        SystemSdk mSystemSdk;
     } framework;
 };
 

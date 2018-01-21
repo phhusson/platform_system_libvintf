@@ -76,6 +76,18 @@ class AssembleVintfImpl : public AssembleVintf {
         return envValue != nullptr ? std::string(envValue) : std::string();
     }
 
+    // Get environment variable and split with space.
+    std::vector<std::string> getEnvList(const std::string& key) const {
+        std::vector<std::string> ret;
+        for (auto&& v : base::Split(getEnv(key), " ")) {
+            v = base::Trim(v);
+            if (!v.empty()) {
+                ret.push_back(v);
+            }
+        }
+        return ret;
+    }
+
     template <typename T>
     bool getFlag(const std::string& key, T* value) const {
         std::string envValue = getEnv(key);
@@ -290,11 +302,12 @@ class AssembleVintfImpl : public AssembleVintf {
         }
 
         if (halManifest->mType == SchemaType::FRAMEWORK) {
-            for (auto&& v : base::Split(getEnv("PROVIDED_VNDK_VERSIONS"), " ")) {
-                v = base::Trim(v);
-                if (!v.empty()) {
-                    halManifest->framework.mVendorNdks.emplace_back(std::move(v));
-                }
+            for (auto&& v : getEnvList("PROVIDED_VNDK_VERSIONS")) {
+                halManifest->framework.mVendorNdks.emplace_back(std::move(v));
+            }
+
+            for (auto&& v : getEnvList("PRODUCT_SYSTEMSDK_VERSIONS")) {
+                halManifest->framework.mSystemSdk.mVersions.emplace(std::move(v));
             }
         }
 
@@ -415,6 +428,10 @@ class AssembleVintfImpl : public AssembleVintf {
                     return false;
                 }
                 valueInMatrix = VendorNdk{std::move(vndkVersion)};
+            }
+
+            for (auto&& v : getEnvList("BOARD_SYSTEMSDK_VERSIONS")) {
+                matrix->device.mSystemSdk.mVersions.emplace(std::move(v));
             }
         }
 

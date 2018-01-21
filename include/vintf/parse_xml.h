@@ -30,6 +30,7 @@ enum SerializeFlag : uint32_t {
     NO_VNDK = 1 << 3,
     NO_KERNEL = 1 << 4,
     NO_XMLFILES = 1 << 5,
+    NO_SSDK = 1 << 6,
 
     EVERYTHING = 0,
     HALS_ONLY = ~NO_HALS,

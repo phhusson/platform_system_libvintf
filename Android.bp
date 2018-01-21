@@ -24,10 +24,30 @@ cc_defaults {
     ],
 }
 
+cc_defaults {
+    name: "libvintf-common-srcs",
+    srcs: [
+        "parse_string.cpp",
+        "parse_xml.cpp",
+        "CompatibilityMatrix.cpp",
+        "HalManifest.cpp",
+        "HalInterface.cpp",
+        "KernelConfigTypedValue.cpp",
+        "RuntimeInfo.cpp",
+        "ManifestHal.cpp",
+        "MatrixHal.cpp",
+        "MatrixKernel.cpp",
+        "SystemSdk.cpp",
+        "TransportArch.cpp",
+        "VintfObject.cpp",
+        "XmlFile.cpp",
+    ]
+}
+
 cc_library {
     name: "libvintf",
     host_supported: true,
-    defaults: ["libvintf-defaults"],
+    defaults: ["libvintf-defaults", "libvintf-common-srcs"],
     shared_libs: [
         "libbase",
         "liblog",
@@ -38,20 +58,7 @@ cc_library {
     local_include_dirs: ["include/vintf"],
 
     srcs: [
-        "parse_string.cpp",
-        "parse_xml.cpp",
-        "CompatibilityMatrix.cpp",
-        "HalManifest.cpp",
-        "HalInterface.cpp",
         "KernelConfigParser.cpp",
-        "KernelConfigTypedValue.cpp",
-        "RuntimeInfo.cpp",
-        "ManifestHal.cpp",
-        "MatrixHal.cpp",
-        "MatrixKernel.cpp",
-        "TransportArch.cpp",
-        "VintfObject.cpp",
-        "XmlFile.cpp",
         "utils.cpp",
     ],
 
@@ -136,7 +143,7 @@ cc_binary_host {
 
 cc_library_static {
     name: "libvintftest",
-    defaults: ["libvintf-defaults"],
+    defaults: ["libvintf-defaults", "libvintf-common-srcs"],
     host_supported: true,
     shared_libs: [
         "libbase",
@@ -148,19 +155,6 @@ cc_library_static {
     local_include_dirs: ["include/vintf", "test", "."],
 
     srcs: [
-        "parse_string.cpp",
-        "parse_xml.cpp",
-        "CompatibilityMatrix.cpp",
-        "HalManifest.cpp",
-        "HalInterface.cpp",
-        "KernelConfigTypedValue.cpp",
-        "RuntimeInfo.cpp",
-        "ManifestHal.cpp",
-        "MatrixHal.cpp",
-        "MatrixKernel.cpp",
-        "TransportArch.cpp",
-        "VintfObject.cpp",
-        "XmlFile.cpp",
         "test/RuntimeInfo-fake.cpp",
         "test/utils-fake.cpp",
     ],

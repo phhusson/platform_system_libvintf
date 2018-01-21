@@ -118,6 +118,11 @@ public:
         std::string* error = nullptr);
     static std::vector<Named<CompatibilityMatrix>> GetAllFrameworkMatrixLevels(
         std::string* error = nullptr);
+    static status_t FetchDeviceHalManifest(HalManifest* out, std::string* error = nullptr);
+    static status_t FetchDeviceMatrix(CompatibilityMatrix* out, std::string* error = nullptr);
+    static status_t FetchOdmHalManifest(HalManifest* out, std::string* error = nullptr);
+    static status_t FetchOneHalManifest(const std::string& path, HalManifest* out,
+                                        std::string* error = nullptr);
 };
 
 enum : int32_t {
@@ -131,6 +136,20 @@ class PartitionMounter;
 int32_t checkCompatibility(const std::vector<std::string>& xmls, bool mount,
                            const PartitionMounter& partitionMounter, std::string* error,
                            DisabledChecks disabledChecks = ENABLE_ALL_CHECKS);
+
+extern const std::string kSystemVintfDir;
+extern const std::string kVendorVintfDir;
+extern const std::string kOdmVintfDir;
+extern const std::string kOdmLegacyVintfDir;
+extern const std::string kOdmLegacyManifest;
+extern const std::string kVendorManifest;
+extern const std::string kSystemManifest;
+extern const std::string kVendorMatrix;
+extern const std::string kOdmManifest;
+extern const std::string kVendorLegacyManifest;
+extern const std::string kVendorLegacyMatrix;
+extern const std::string kSystemLegacyMatrix;
+
 } // namespace details
 
 } // namespace vintf
