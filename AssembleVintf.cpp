@@ -306,7 +306,7 @@ class AssembleVintfImpl : public AssembleVintf {
                 halManifest->framework.mVendorNdks.emplace_back(std::move(v));
             }
 
-            for (auto&& v : getEnvList("PRODUCT_SYSTEMSDK_VERSIONS")) {
+            for (auto&& v : getEnvList("PLATFORM_SYSTEMSDK_VERSIONS")) {
                 halManifest->framework.mSystemSdk.mVersions.emplace(std::move(v));
             }
         }
