@@ -357,8 +357,7 @@ class AssembleVintfImpl : public AssembleVintf {
                 return false;
             }
             for (ConditionedConfig& conditionedConfig : conditionedConfigs) {
-                MatrixKernel kernel(KernelVersion{pair.first.majorVer, pair.first.minorVer, 0u},
-                                    std::move(conditionedConfig.second));
+                MatrixKernel kernel(KernelVersion{pair.first}, std::move(conditionedConfig.second));
                 if (conditionedConfig.first != nullptr)
                     kernel.mConditions.push_back(std::move(*conditionedConfig.first));
                 matrix->framework.mKernels.push_back(std::move(kernel));
@@ -583,12 +582,12 @@ class AssembleVintfImpl : public AssembleVintf {
         return *mCheckFile;
     }
 
-    bool hasKernelVersion(const Version& kernelVer) const override {
+    bool hasKernelVersion(const KernelVersion& kernelVer) const override {
         return mKernels.find(kernelVer) != mKernels.end();
     }
 
-    std::istream& addKernelConfigInputStream(const Version& kernelVer, const std::string& name,
-                                             Istream&& in) override {
+    std::istream& addKernelConfigInputStream(const KernelVersion& kernelVer,
+                                             const std::string& name, Istream&& in) override {
         auto&& kernel = mKernels[kernelVer];
         auto it = kernel.emplace(kernel.end(), name, std::move(in));
         return it->stream();
@@ -621,7 +620,7 @@ class AssembleVintfImpl : public AssembleVintf {
     Istream mCheckFile;
     bool mOutputMatrix = false;
     SerializeFlags mSerializeFlags = SerializeFlag::EVERYTHING;
-    std::map<Version, std::vector<NamedIstream>> mKernels;
+    std::map<KernelVersion, std::vector<NamedIstream>> mKernels;
     std::map<std::string, std::string> mFakeEnv;
 };
 
@@ -646,7 +645,7 @@ bool AssembleVintf::addKernel(const std::string& kernelArg) {
         std::cerr << "Unrecognized --kernel option '" << kernelArg << "'" << std::endl;
         return false;
     }
-    Version kernelVer;
+    KernelVersion kernelVer;
     if (!parse(tokens.front(), &kernelVer)) {
         std::cerr << "Unrecognized kernel version '" << tokens.front() << "'" << std::endl;
         return false;
