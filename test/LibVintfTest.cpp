@@ -232,6 +232,33 @@ TEST_F(LibVintfTest, GetTransport) {
             {2, 0}, "ICamera", "default"));
 }
 
+TEST_F(LibVintfTest, FutureManifestCompatible) {
+    HalManifest expectedManifest;
+    expectedManifest.add(ManifestHal{.format = HalFormat::HIDL,
+                                     .name = "android.hardware.foo",
+                                     .versions = {Version(1, 0)},
+                                     .transportArch = {Transport::HWBINDER, Arch::ARCH_EMPTY},
+                                     .interfaces = {
+                                         {"IFoo", {"IFoo", {"default"}}},
+                                     }});
+    std::string manifestXml =
+        "<manifest version=\"1.0\" type=\"device\" might_add=\"true\">\n"
+        "    <hal format=\"hidl\" attribuet_might_be_added=\"value\">\n"
+        "        <name>android.hardware.foo</name>\n"
+        "        <transport>hwbinder</transport>\n"
+        "        <version>1.0</version>\n"
+        "        <interface>\n"
+        "            <name>IFoo</name>\n"
+        "            <instance>default</instance>\n"
+        "        </interface>\n"
+        "    </hal>\n"
+        "    <tag_might_be_added/>\n"
+        "</manifest>\n";
+    HalManifest manifest;
+    EXPECT_TRUE(gHalManifestConverter(&manifest, manifestXml));
+    EXPECT_EQ(expectedManifest, manifest);
+}
+
 TEST_F(LibVintfTest, HalManifestConverter) {
     HalManifest vm = testDeviceManifest();
     std::string xml = gHalManifestConverter(vm);
