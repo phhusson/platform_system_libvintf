@@ -374,7 +374,7 @@ TEST_F(AssembleVintfTest, MatrixSystemSdk) {
 
 TEST_F(AssembleVintfTest, ManifestSystemSdk) {
     addInput("manifest.xml", "<manifest version=\"1.0\" type=\"framework\"/>\n");
-    getInstance()->setFakeEnv("PRODUCT_SYSTEMSDK_VERSIONS", "P 1 2 ");
+    getInstance()->setFakeEnv("PLATFORM_SYSTEMSDK_VERSIONS", "P 1 2 ");
     EXPECT_TRUE(getInstance()->assemble());
     EXPECT_IN(
         "<manifest version=\"1.0\" type=\"framework\">\n"
