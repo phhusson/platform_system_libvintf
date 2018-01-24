@@ -954,10 +954,14 @@ struct CompatibilityMatrixConverter : public XmlNodeConverter<CompatibilityMatri
                 appendChildren(root, matrixKernelConverter, m.framework.mKernels, d);
             }
             if (!(flags & SerializeFlag::NO_SEPOLICY)) {
-                appendChild(root, sepolicyConverter(m.framework.mSepolicy, d));
+                if (!(m.framework.mSepolicy == Sepolicy{})) {
+                    appendChild(root, sepolicyConverter(m.framework.mSepolicy, d));
+                }
             }
             if (!(flags & SerializeFlag::NO_AVB)) {
-                appendChild(root, avbConverter(m.framework.mAvbMetaVersion, d));
+                if (!(m.framework.mAvbMetaVersion == Version{})) {
+                    appendChild(root, avbConverter(m.framework.mAvbMetaVersion, d));
+                }
             }
         } else if (m.mType == SchemaType::DEVICE) {
             if (!(flags & SerializeFlag::NO_VNDK)) {
