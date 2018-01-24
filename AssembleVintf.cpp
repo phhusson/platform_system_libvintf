@@ -108,7 +108,7 @@ class AssembleVintfImpl : public AssembleVintf {
      * Set *out to environment variable if *out is not a dummy value (i.e. default constructed).
      */
     template <typename T>
-    bool getFlagIfUnset(const std::string& envKey, T* out) const {
+    bool getFlagIfUnset(const std::string& envKey, T* out, bool log = true) const {
         bool hasExistingValue = !(*out == T{});
 
         bool hasEnvValue = false;
@@ -116,22 +116,26 @@ class AssembleVintfImpl : public AssembleVintf {
         std::string envStrValue = getEnv(envKey);
         if (!envStrValue.empty()) {
             if (!parse(envStrValue, &envValue)) {
-                std::cerr << "Cannot parse " << envValue << "." << std::endl;
+                if (log) {
+                    std::cerr << "Cannot parse " << envValue << "." << std::endl;
+                }
                 return false;
             }
             hasEnvValue = true;
         }
 
         if (hasExistingValue) {
-            if (hasEnvValue) {
+            if (hasEnvValue && log) {
                 std::cerr << "Warning: cannot override existing value " << *out << " with "
                           << envKey << " (which is " << envValue << ")." << std::endl;
             }
             return false;
         }
         if (!hasEnvValue) {
-            std::cerr << "Warning: " << envKey << " is not specified. Default to " << T{} << "."
-                      << std::endl;
+            if (log) {
+                std::cerr << "Warning: " << envKey << " is not specified. Default to " << T{} << "."
+                          << std::endl;
+            }
             return false;
         }
         *out = envValue;
@@ -473,12 +477,15 @@ class AssembleVintfImpl : public AssembleVintf {
                 &matrix->framework.mSepolicy.mSepolicyVersionRanges;
             VersionRange sepolicyVr;
             if (!sepolicyVrs->empty()) sepolicyVr = sepolicyVrs->front();
-            if (getFlagIfUnset("BOARD_SEPOLICY_VERS", &sepolicyVr)) {
+            if (getFlagIfUnset("BOARD_SEPOLICY_VERS", &sepolicyVr,
+                               deviceLevel == Level::UNSPECIFIED /* log */)) {
                 *sepolicyVrs = {{sepolicyVr}};
             }
 
-            getFlagIfUnset("POLICYVERS", &matrix->framework.mSepolicy.mKernelSepolicyVersion);
-            getFlagIfUnset("FRAMEWORK_VBMETA_VERSION", &matrix->framework.mAvbMetaVersion);
+            getFlagIfUnset("POLICYVERS", &matrix->framework.mSepolicy.mKernelSepolicyVersion,
+                           deviceLevel == Level::UNSPECIFIED /* log */);
+            getFlagIfUnset("FRAMEWORK_VBMETA_VERSION", &matrix->framework.mAvbMetaVersion,
+                           deviceLevel == Level::UNSPECIFIED /* log */);
 
             out() << "<!--" << std::endl;
             out() << "    Input:" << std::endl;
