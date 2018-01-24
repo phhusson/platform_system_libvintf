@@ -49,12 +49,12 @@ class AssembleVintf {
     virtual std::ostream& setOutputStream(Ostream&&) = 0;
     virtual std::istream& addInputStream(const std::string& name, Istream&&) = 0;
     virtual std::istream& setCheckInputStream(Istream&&) = 0;
-    virtual std::istream& addKernelConfigInputStream(const Version& kernelVer,
+    virtual std::istream& addKernelConfigInputStream(const KernelVersion& kernelVer,
                                                      const std::string& name, Istream&& in) = 0;
     virtual void setFakeEnv(const std::string& key, const std::string& value) = 0;
 
    protected:
-    virtual bool hasKernelVersion(const Version&) const = 0;
+    virtual bool hasKernelVersion(const KernelVersion&) const = 0;
     virtual std::string getEnv(const std::string& key) const = 0;
 };
 
