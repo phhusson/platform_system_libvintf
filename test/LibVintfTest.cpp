@@ -1355,15 +1355,9 @@ TEST_F(LibVintfTest, HalManifestConverterXmlFile) {
 TEST_F(LibVintfTest, CompatibilityMatrixConverterXmlFile) {
     CompatibilityMatrix cm;
     addXmlFile(cm, "media_profile", {1, 0});
-    std::string xml = gCompatibilityMatrixConverter(cm);
+    std::string xml = gCompatibilityMatrixConverter(cm, SerializeFlag::XMLFILES_ONLY);
     EXPECT_EQ(xml,
               "<compatibility-matrix version=\"1.0\" type=\"framework\">\n"
-              "    <sepolicy>\n"
-              "        <kernel-sepolicy-version>0</kernel-sepolicy-version>\n"
-              "    </sepolicy>\n"
-              "    <avb>\n"
-              "        <vbmeta-version>0.0</vbmeta-version>\n"
-              "    </avb>\n"
               "    <xmlfile format=\"dtd\" optional=\"true\">\n"
               "        <name>media_profile</name>\n"
               "        <version>1.0</version>\n"
