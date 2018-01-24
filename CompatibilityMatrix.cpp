@@ -290,6 +290,22 @@ CompatibilityMatrix* CompatibilityMatrix::combine(Level deviceLevel,
         }
     }
 
+    for (auto& e : *matrices) {
+        if (&e.object != matrix && e.object.level() == deviceLevel &&
+            e.object.type() == SchemaType::FRAMEWORK) {
+            for (MatrixKernel& kernel : e.object.framework.mKernels) {
+                KernelVersion ver = kernel.minLts();
+                if (!matrix->add(std::move(kernel))) {
+                    if (error) {
+                        *error = "Cannot add kernel version " + to_string(ver) +
+                                 " from FCM version " + to_string(deviceLevel);
+                    }
+                    return nullptr;
+                }
+            }
+        }
+    }
+
     return matrix;
 }
 
