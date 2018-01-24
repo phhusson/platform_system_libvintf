@@ -82,6 +82,14 @@ struct KernelVersion {
     inline bool operator!=(const KernelVersion &other) const {
         return !((*this) == other);
     }
+
+    inline bool operator<(const KernelVersion& other) const {
+        if (version < other.version) return true;
+        if (version > other.version) return false;
+        if (majorRev < other.majorRev) return true;
+        if (majorRev > other.majorRev) return false;
+        return minorRev < other.minorRev;
+    }
 };
 
 } // namespace vintf
