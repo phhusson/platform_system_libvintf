@@ -17,6 +17,7 @@
 #include "VintfObject.h"
 
 #include "CompatibilityMatrix.h"
+#include "parse_string.h"
 #include "parse_xml.h"
 #include "utils.h"
 
@@ -567,6 +568,144 @@ int32_t VintfObject::CheckCompatibility(const std::vector<std::string>& xmls, st
                                        disabledChecks);
 }
 
+bool VintfObject::isHalDeprecated(const MatrixHal& oldMatrixHal,
+                                  const CompatibilityMatrix& targetMatrix,
+                                  const IsInstanceInUse& isInstanceInUse, std::string* error) {
+    for (const VersionRange& range : oldMatrixHal.versionRanges) {
+        for (const HalInterface& interface : iterateValues(oldMatrixHal.interfaces)) {
+            for (const std::string& instance : interface.instances) {
+                if (isInstanceDeprecated(oldMatrixHal.name, range.minVer(), interface.name,
+                                         instance, targetMatrix, isInstanceInUse, error)) {
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+
+// If isInstanceInUse(package@x.y::interface/instance), return true iff:
+// 1. package@x.?::interface/instance is not in targetMatrix; OR
+// 2. package@x.z::interface/instance is in targetMatrix but
+// !isInstanceInUse(package@x.z::interface/instance)
+bool VintfObject::isInstanceDeprecated(const std::string& package, Version version,
+                                       const std::string& interface, const std::string& instance,
+                                       const CompatibilityMatrix& targetMatrix,
+                                       const IsInstanceInUse& isInstanceInUse,
+                                       std::string* error) {
+    bool oldVersionIsServed;
+    Version servedVersion;
+    std::tie(oldVersionIsServed, servedVersion) =
+        isInstanceInUse(package, version, interface, instance);
+    if (oldVersionIsServed) {
+        // Find any package@x.? in target matrix, and check if instance is in target matrix.
+        const MatrixHal* targetMatrixHal;
+        const VersionRange* targetMatrixRange;
+        std::tie(targetMatrixHal, targetMatrixRange) =
+            targetMatrix.getHalWithMajorVersion(package, version.majorVer);
+        if (targetMatrixHal == nullptr || targetMatrixRange == nullptr) {
+            if (error) {
+                *error = package + "@" + to_string(servedVersion) +
+                         "is deprecated in compatibility matrix at FCM Version " +
+                         to_string(targetMatrix.level()) + "; it should not be served.";
+            }
+            return true;
+        }
+
+        const auto& targetMatrixInstances = targetMatrixHal->getInstances(interface);
+        if (targetMatrixInstances.find(instance) == targetMatrixInstances.end()) {
+            if (error) {
+                *error += package + "@" + to_string(servedVersion) + "::" + interface + "/" +
+                          instance + " is deprecated at FCM version " +
+                          to_string(targetMatrix.level()) + "; it should be not be served.\n";
+            }
+            return true;
+        }
+
+        // Assuming that targetMatrix requires @x.u-v, require that at least @x.u is served.
+        bool targetVersionServed;
+        std::tie(targetVersionServed, std::ignore) =
+            isInstanceInUse(package, targetMatrixRange->minVer(), interface, instance);
+
+        if (!targetVersionServed) {
+            if (error) {
+                *error += package + "@" + to_string(servedVersion) + " is deprecated; " +
+                          "require at least " + to_string(targetMatrixRange->minVer()) + "\n";
+            }
+            return true;
+        }
+    }
+    return false;
+}
+
+int32_t VintfObject::CheckDeprecation(const IsInstanceInUse& isInstanceInUse,
+                                      std::string* error) {
+    auto matrixFragments = GetAllFrameworkMatrixLevels(error);
+    if (matrixFragments.empty()) {
+        if (error && error->empty())
+            *error = "Cannot get framework matrix for each FCM version for unknown error.";
+        return NAME_NOT_FOUND;
+    }
+    auto deviceManifest = GetDeviceHalManifest();
+    if (deviceManifest == nullptr) {
+        if (error) *error = "No device manifest.";
+        return NAME_NOT_FOUND;
+    }
+    Level deviceLevel = deviceManifest->level();
+    if (deviceLevel == Level::UNSPECIFIED) {
+        if (error) *error = "Device manifest does not specify Shipping FCM Version.";
+        return BAD_VALUE;
+    }
+
+    const CompatibilityMatrix* targetMatrix = nullptr;
+    for (const auto& namedMatrix : matrixFragments) {
+        if (namedMatrix.object.level() == deviceLevel) {
+            targetMatrix = &namedMatrix.object;
+        }
+    }
+    if (targetMatrix == nullptr) {
+        if (error)
+            *error = "Cannot find framework matrix at FCM version " + to_string(deviceLevel) + ".";
+        return NAME_NOT_FOUND;
+    }
+
+    bool hasDeprecatedHals = false;
+    for (const auto& namedMatrix : matrixFragments) {
+        if (namedMatrix.object.level() == Level::UNSPECIFIED) continue;
+        if (namedMatrix.object.level() >= deviceLevel) continue;
+
+        const auto& oldMatrix = namedMatrix.object;
+        for (const MatrixHal& hal : oldMatrix.getHals()) {
+            hasDeprecatedHals |= isHalDeprecated(hal, *targetMatrix, isInstanceInUse, error);
+        }
+    }
+
+    return hasDeprecatedHals ? DEPRECATED : NO_DEPRECATED_HALS;
+}
+
+int32_t VintfObject::CheckDeprecation(std::string* error) {
+    auto deviceManifest = GetDeviceHalManifest();
+    IsInstanceInUse inManifest = [&deviceManifest](const std::string& package, Version version,
+                                                    const std::string& interface,
+                                                    const std::string& instance) {
+        const ManifestHal* hal = deviceManifest->getHal(package, version);
+        if (hal == nullptr) {
+            return std::make_pair(false, Version{});
+        }
+        const auto& instances = hal->getInstances(interface);
+        if (instances.find(instance) == instances.end()) {
+            return std::make_pair(false, Version{});
+        }
+
+        for (Version v : hal->versions) {
+            if (v.minorAtLeast(version)) {
+                return std::make_pair(true, v);
+            }
+        }
+        return std::make_pair(false, Version{});
+    };
+    return CheckDeprecation(inManifest, error);
+}
 
 } // namespace vintf
 } // namespace android
