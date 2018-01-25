@@ -96,6 +96,10 @@ std::pair<MatrixHal*, VersionRange*> CompatibilityMatrix::getHalWithMajorVersion
     }
     return {nullptr, nullptr};
 }
+std::pair<const MatrixHal*, const VersionRange*> CompatibilityMatrix::getHalWithMajorVersion(
+    const std::string& name, size_t majorVer) const {
+    return const_cast<CompatibilityMatrix*>(this)->getHalWithMajorVersion(name, majorVer);
+}
 
 bool CompatibilityMatrix::addAllHalsAsOptional(CompatibilityMatrix* other, std::string* error) {
     if (other == nullptr || other->level() <= level()) {
@@ -286,6 +290,22 @@ CompatibilityMatrix* CompatibilityMatrix::combine(Level deviceLevel,
                              " has a conflict.";
                 }
                 return nullptr;
+            }
+        }
+    }
+
+    for (auto& e : *matrices) {
+        if (&e.object != matrix && e.object.level() == deviceLevel &&
+            e.object.type() == SchemaType::FRAMEWORK) {
+            for (MatrixKernel& kernel : e.object.framework.mKernels) {
+                KernelVersion ver = kernel.minLts();
+                if (!matrix->add(std::move(kernel))) {
+                    if (error) {
+                        *error = "Cannot add kernel version " + to_string(ver) +
+                                 " from FCM version " + to_string(deviceLevel);
+                    }
+                    return nullptr;
+                }
             }
         }
     }

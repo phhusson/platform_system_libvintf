@@ -112,6 +112,34 @@ public:
                                       std::string* error = nullptr,
                                       DisabledChecks disabledChecks = ENABLE_ALL_CHECKS);
 
+    using IsInstanceInUse = std::function<std::pair<bool, Version>(
+        const std::string& package, Version version, const std::string& interface,
+        const std::string& instance)>;
+    /**
+     * Check deprecation on framework matrices with a provided predicate.
+     *
+     * @param isInstanceInUse predicate that takes parameter in this format:
+     *        android.hardware.foo@1.0::IFoo/instance
+     *        and returns {true, version} if HAL is in use, where version =
+     *        first version in interfaceChain where package + major version matches.
+     *
+     * @return = 0 if success (no deprecated HALs)
+     *         > 0 if there is at least one deprecated HAL
+     *         < 0 if any error (mount partition fails, illformed XML, etc.)
+     */
+    static int32_t CheckDeprecation(const IsInstanceInUse& isInstanceInUse,
+                                    std::string* error = nullptr);
+
+    /**
+     * Check deprecation on existing VINTF metadata. Use Device Manifest as the
+     * predicate to check if a HAL is in use.
+     *
+     * @return = 0 if success (no deprecated HALs)
+     *         > 0 if there is at least one deprecated HAL
+     *         < 0 if any error (mount partition fails, illformed XML, etc.)
+     */
+    static int32_t CheckDeprecation(std::string* error = nullptr);
+
    private:
     static status_t GetCombinedFrameworkMatrix(
         const std::shared_ptr<const HalManifest>& deviceManifest, CompatibilityMatrix* out,
@@ -123,11 +151,22 @@ public:
     static status_t FetchOdmHalManifest(HalManifest* out, std::string* error = nullptr);
     static status_t FetchOneHalManifest(const std::string& path, HalManifest* out,
                                         std::string* error = nullptr);
+
+    static bool isHalDeprecated(const MatrixHal& oldMatrixHal,
+                                const CompatibilityMatrix& targetMatrix,
+                                const IsInstanceInUse& isInstanceInUse, std::string* error);
+    static bool isInstanceDeprecated(const std::string& package, Version version,
+                                     const std::string& interface, const std::string& instance,
+                                     const CompatibilityMatrix& targetMatrix,
+                                     const IsInstanceInUse& isInstanceInUse, std::string* error);
 };
 
 enum : int32_t {
     COMPATIBLE = 0,
     INCOMPATIBLE = 1,
+
+    NO_DEPRECATED_HALS = 0,
+    DEPRECATED = 1,
 };
 
 // exposed for testing and VintfObjectRecovery.
