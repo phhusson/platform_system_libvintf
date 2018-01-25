@@ -25,12 +25,18 @@
 #include <android-base/properties.h>
 #endif
 
+#include <android-base/strings.h>
+#include <vintf/VintfObject.h>
+#include <vintf/parse_string.h>
 #include "utils-fake.h"
-#include "vintf/VintfObject.h"
+
+#include <hidl-util/FQName.h>
 
 using namespace ::testing;
 using namespace ::android::vintf;
 using namespace ::android::vintf::details;
+
+using android::FQName;
 
 //
 // Set of Xml1 metadata compatible with each other.
@@ -166,6 +172,59 @@ const std::string vendorManifestXml2 =
     "        <version>25.5</version>\n"
     "    </sepolicy>\n"
     "</manifest>";
+
+//
+// Set of framework matrices of different FCM version.
+//
+
+const std::string systemMatrixLevel1 =
+    "<compatibility-matrix version=\"1.0\" type=\"framework\" level=\"1\">\n"
+    "    <hal format=\"hidl\" optional=\"true\">\n"
+    "        <name>android.hardware.major</name>\n"
+    "        <version>1.0</version>\n"
+    "        <interface>\n"
+    "            <name>IMajor</name>\n"
+    "            <instance>default</instance>\n"
+    "        </interface>\n"
+    "    </hal>\n"
+    "    <hal format=\"hidl\" optional=\"true\">\n"
+    "        <name>android.hardware.removed</name>\n"
+    "        <version>1.0</version>\n"
+    "        <interface>\n"
+    "            <name>IRemoved</name>\n"
+    "            <instance>default</instance>\n"
+    "        </interface>\n"
+    "    </hal>\n"
+    "    <hal format=\"hidl\" optional=\"true\">\n"
+    "        <name>android.hardware.minor</name>\n"
+    "        <version>1.0</version>\n"
+    "        <interface>\n"
+    "            <name>IMinor</name>\n"
+    "            <instance>default</instance>\n"
+    "            <instance>legacy</instance>\n"
+    "        </interface>\n"
+    "    </hal>\n"
+    "</compatibility-matrix>\n";
+
+const std::string systemMatrixLevel2 =
+    "<compatibility-matrix version=\"1.0\" type=\"framework\" level=\"2\">\n"
+    "    <hal format=\"hidl\" optional=\"true\">\n"
+    "        <name>android.hardware.major</name>\n"
+    "        <version>2.0</version>\n"
+    "        <interface>\n"
+    "            <name>IMajor</name>\n"
+    "            <instance>default</instance>\n"
+    "        </interface>\n"
+    "    </hal>\n"
+    "    <hal format=\"hidl\" optional=\"true\">\n"
+    "        <name>android.hardware.minor</name>\n"
+    "        <version>1.1</version>\n"
+    "        <interface>\n"
+    "            <name>IMinor</name>\n"
+    "            <instance>default</instance>\n"
+    "        </interface>\n"
+    "    </hal>\n"
+    "</compatibility-matrix>\n";
 
 // Setup the MockFileFetcher used by the fetchAllInformation template
 // so it returns the given metadata info instead of fetching from device.
@@ -774,6 +833,137 @@ TEST_F(OdmManifestTest, OdmLegacyManifest) {
     auto p = get();
     ASSERT_NE(nullptr, p);
     EXPECT_TRUE(containsOdmManifest(p));
+}
+
+struct FQInstance {
+    FQName fqName;
+    std::string instance;
+
+    FQInstance(const char* s) : FQInstance(std::string(s)) {}
+    FQInstance(const std::string& s) {
+        auto tokens = android::base::Split(s, "/");
+        CHECK(2u == tokens.size());
+        fqName = FQName(tokens[0]);
+        CHECK(fqName.isValid());
+        instance = tokens[1];
+    }
+
+    Version getVersion() const {
+        return Version{fqName.getPackageMajorVersion(), fqName.getPackageMinorVersion()};
+    }
+};
+
+class DeprecateTest : public VintfObjectTestBase {
+   protected:
+    virtual void SetUp() override {
+        EXPECT_CALL(fetcher(), listFiles(StrEq(kSystemVintfDir), _, _))
+            .WillRepeatedly(Invoke([](const auto&, auto* out, auto*) {
+                *out = {
+                    "compatibility_matrix.1.xml",
+                    "compatibility_matrix.2.xml",
+                };
+                return ::android::OK;
+            }));
+        expectFetch(kSystemVintfDir + "compatibility_matrix.1.xml", systemMatrixLevel1);
+        expectFetch(kSystemVintfDir + "compatibility_matrix.2.xml", systemMatrixLevel2);
+        expectSystemMatrix(0);
+
+        expectFetch(kVendorManifest,
+                    "<manifest version=\"1.0\" type=\"device\" target-level=\"2\"/>");
+        expectFileNotExist(StartsWith("/odm/"));
+
+        // Update the device manifest cache because CheckDeprecate does not fetch
+        // device manifest again if cache exist.
+        VintfObject::GetDeviceHalManifest(true /* skipCache */);
+    }
+
+    VintfObject::IsInstanceInUse getPredicate(const std::vector<FQInstance>& instances) {
+        return [instances](const std::string& package, Version version,
+                           const std::string& interface, const std::string& instance) {
+            for (auto&& existing : instances) {
+                if (existing.fqName.package() == package &&
+                    existing.getVersion().minorAtLeast(version) &&
+                    existing.fqName.name() == interface && existing.instance == instance) {
+                    return std::make_pair(true, existing.getVersion());
+                }
+            }
+
+            return std::make_pair(false, Version{});
+        };
+    }
+};
+
+TEST_F(DeprecateTest, CheckNoDeprecate) {
+    auto pred = getPredicate({
+        "android.hardware.minor@1.1::IMinor/default",
+        "android.hardware.major@2.0::IMajor/default",
+    });
+    std::string error;
+    EXPECT_EQ(NO_DEPRECATED_HALS, VintfObject::CheckDeprecation(pred, &error)) << error;
+}
+
+TEST_F(DeprecateTest, CheckRemoved) {
+    auto pred = getPredicate({
+        "android.hardware.removed@1.0::IRemoved/default",
+        "android.hardware.minor@1.1::IMinor/default",
+        "android.hardware.major@2.0::IMajor/default",
+    });
+    std::string error;
+    EXPECT_EQ(DEPRECATED, VintfObject::CheckDeprecation(pred, &error))
+        << "removed@1.0 should be deprecated. " << error;
+}
+
+TEST_F(DeprecateTest, CheckMinor) {
+    auto pred = getPredicate({
+        "android.hardware.minor@1.0::IMinor/default",
+        "android.hardware.major@2.0::IMajor/default",
+    });
+    std::string error;
+    EXPECT_EQ(DEPRECATED, VintfObject::CheckDeprecation(pred, &error))
+        << "minor@1.0 should be deprecated. " << error;
+}
+
+TEST_F(DeprecateTest, CheckMinorDeprecatedInstance1) {
+    auto pred = getPredicate({
+        "android.hardware.minor@1.0::IMinor/legacy",
+        "android.hardware.minor@1.1::IMinor/default",
+        "android.hardware.major@2.0::IMajor/default",
+    });
+    std::string error;
+    EXPECT_EQ(DEPRECATED, VintfObject::CheckDeprecation(pred, &error))
+        << "minor@1.0::IMinor/legacy should be deprecated. " << error;
+}
+
+TEST_F(DeprecateTest, CheckMinorDeprecatedInstance2) {
+    auto pred = getPredicate({
+        "android.hardware.minor@1.1::IMinor/default",
+        "android.hardware.minor@1.1::IMinor/legacy",
+        "android.hardware.major@2.0::IMajor/default",
+    });
+    std::string error;
+    EXPECT_EQ(DEPRECATED, VintfObject::CheckDeprecation(pred, &error))
+        << "minor@1.1::IMinor/legacy should be deprecated. " << error;
+}
+
+TEST_F(DeprecateTest, CheckMajor1) {
+    auto pred = getPredicate({
+        "android.hardware.minor@1.1::IMinor/default",
+        "android.hardware.major@1.0::IMajor/default",
+        "android.hardware.major@2.0::IMajor/default",
+    });
+    std::string error;
+    EXPECT_EQ(DEPRECATED, VintfObject::CheckDeprecation(pred, &error))
+        << "major@1.0 should be deprecated. " << error;
+}
+
+TEST_F(DeprecateTest, CheckMajor2) {
+    auto pred = getPredicate({
+        "android.hardware.minor@1.1::IMinor/default",
+        "android.hardware.major@1.0::IMajor/default",
+    });
+    std::string error;
+    EXPECT_EQ(DEPRECATED, VintfObject::CheckDeprecation(pred, &error))
+        << "major@1.0 should be deprecated. " << error;
 }
 
 int main(int argc, char** argv) {

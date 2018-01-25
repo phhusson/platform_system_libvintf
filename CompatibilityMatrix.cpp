@@ -96,6 +96,10 @@ std::pair<MatrixHal*, VersionRange*> CompatibilityMatrix::getHalWithMajorVersion
     }
     return {nullptr, nullptr};
 }
+std::pair<const MatrixHal*, const VersionRange*> CompatibilityMatrix::getHalWithMajorVersion(
+    const std::string& name, size_t majorVer) const {
+    return const_cast<CompatibilityMatrix*>(this)->getHalWithMajorVersion(name, majorVer);
+}
 
 bool CompatibilityMatrix::addAllHalsAsOptional(CompatibilityMatrix* other, std::string* error) {
     if (other == nullptr || other->level() <= level()) {
