@@ -58,6 +58,10 @@ struct CompatibilityMatrix : public HalGroup<MatrixHal>, public XmlFileGroup<Mat
     // (Normally, version ranges do not overlap, and the only match is returned.)
     std::string getXmlSchemaPath(const std::string& xmlFileName, const Version& version) const;
 
+    void forEachInstance(
+        const std::function<void(const std::string&, const VersionRange&, const std::string&,
+                                 const std::string&, bool, bool*)>& f) const;
+
    private:
     bool add(MatrixHal &&hal);
     bool add(MatrixKernel &&kernel);
