@@ -19,9 +19,40 @@
 #include <vintf/parse_string.h>
 #include <vintf/VintfObject.h>
 
+using namespace ::android::vintf;
+
+std::string existString(bool value) {
+    return value ? "GOOD" : "DOES NOT EXIST";
+}
+
+std::string compatibleString(int32_t value) {
+    switch (value) {
+        case COMPATIBLE:
+            return "GOOD";
+        case INCOMPATIBLE:
+            return "INCOMPATIBLE";
+        default:
+            return strerror(-value);
+    }
+}
+
+std::string boolCompatString(bool value) {
+    return compatibleString(value ? COMPATIBLE : INCOMPATIBLE);
+}
+
+std::string deprecateString(int32_t value) {
+    switch (value) {
+        case NO_DEPRECATED_HALS:
+            return "GOOD";
+        case DEPRECATED:
+            return "DEPRECATED";
+        default:
+            return strerror(-value);
+    }
+}
+
 // A convenience binary to dump information available through libvintf.
 int main(int, char **) {
-    using namespace ::android::vintf;
 
     std::cout << "======== Device HAL Manifest =========" << std::endl;
 
@@ -54,15 +85,15 @@ int main(int, char **) {
     std::cout << std::endl;
 
     std::cout << "======== Compatibility check =========" << std::endl;
-    std::cout << "Device HAL Manifest? " << (vm != nullptr) << std::endl
-              << "Device Compatibility Matrix? " << (vcm != nullptr) << std::endl
-              << "Framework HAL Manifest? " << (fm != nullptr) << std::endl
-              << "Framework Compatibility Matrix? " << (fcm != nullptr) << std::endl;
+    std::cout << "Device Manifest?    " << existString(vm != nullptr) << std::endl
+              << "Device Matrix?      " << existString(vcm != nullptr) << std::endl
+              << "Framework Manifest? " << existString(fm != nullptr) << std::endl
+              << "Framework Matrix?   " << existString(fcm != nullptr) << std::endl;
     std::string error;
     if (vm && fcm) {
         bool compatible = vm->checkCompatibility(*fcm, &error);
         std::cout << "Device HAL Manifest <==> Framework Compatibility Matrix? "
-                  << compatible;
+                  << boolCompatString(compatible);
         if (!compatible)
             std::cout << ", " << error;
         std::cout << std::endl;
@@ -70,22 +101,32 @@ int main(int, char **) {
     if (fm && vcm) {
         bool compatible = fm->checkCompatibility(*vcm, &error);
         std::cout << "Framework HAL Manifest <==> Device Compatibility Matrix? "
-                  << compatible;
+                  << boolCompatString(compatible);
         if (!compatible)
             std::cout << ", " << error;
         std::cout << std::endl;
     }
     if (ki && fcm) {
         bool compatible = ki->checkCompatibility(*fcm, &error);
-        std::cout << "Runtime info <==> Framework Compatibility Matrix? " << compatible;
+        std::cout << "Runtime info <==> Framework Compatibility Matrix?        "
+                  << boolCompatString(compatible);
         if (!compatible) std::cout << ", " << error;
         std::cout << std::endl;
     }
 
     {
         auto compatible = VintfObject::CheckCompatibility({}, &error);
-        std::cout << "VintfObject::CheckCompatibility (0 == compatible)? " << compatible;
+        std::cout << "VintfObject::CheckCompatibility?                         "
+                  << compatibleString(compatible);
         if (compatible != COMPATIBLE) std::cout << ", " << error;
+        std::cout << std::endl;
+    }
+
+    if (vm && fcm) {
+        auto deprecate = VintfObject::CheckDeprecation(&error);
+        std::cout << "VintfObject::CheckDeprecation (against device manifest)? "
+                  << deprecateString(deprecate);
+        if (deprecate != NO_DEPRECATED_HALS) std::cout << ", " << error;
         std::cout << std::endl;
     }
 }
