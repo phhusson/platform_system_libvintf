@@ -180,6 +180,22 @@ bool HalManifest::hasInstance(const std::string& halName, const Version& version
     return instances.find(instanceName) != instances.end();
 }
 
+void HalManifest::forEachInstance(
+    const std::function<void(const std::string&, const Version&, const std::string&,
+                             const std::string&, bool*)>& f) const {
+    bool stop = false;
+    for (const auto& hal : getHals()) {
+        for (const auto& v : hal.versions) {
+            for (const auto& intf : iterateValues(hal.interfaces)) {
+                for (const auto& instance : intf.instances) {
+                    f(hal.name, v, intf.name, instance, &stop);
+                    if (stop) break;
+                }
+            }
+        }
+    }
+}
+
 using InstancesOfVersion = std::map<std::string /* interface */,
                                     std::set<std::string /* instance */>>;
 using Instances = std::map<Version, InstancesOfVersion>;
