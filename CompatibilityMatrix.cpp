@@ -313,5 +313,21 @@ CompatibilityMatrix* CompatibilityMatrix::combine(Level deviceLevel,
     return matrix;
 }
 
+void CompatibilityMatrix::forEachInstance(
+    const std::function<void(const std::string&, const VersionRange&, const std::string&,
+                             const std::string&, bool, bool*)>& f) const {
+    bool stop = false;
+    for (const auto& hal : getHals()) {
+        for (const auto& v : hal.versionRanges) {
+            for (const auto& intf : iterateValues(hal.interfaces)) {
+                for (const auto& instance : intf.instances) {
+                    f(hal.name, v, intf.name, instance, hal.optional, &stop);
+                    if (stop) break;
+                }
+            }
+        }
+    }
+}
+
 } // namespace vintf
 } // namespace android
