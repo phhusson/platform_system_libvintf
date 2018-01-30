@@ -101,7 +101,7 @@ bool parseKernelConfigTypedValue(const std::string& s, KernelConfigTypedValue* k
 // the XML string.
 std::string dump(const HalManifest &vm);
 
-std::string dump(const RuntimeInfo &ki);
+std::string dump(const RuntimeInfo& ki, bool verbose = true);
 
 } // namespace vintf
 } // namespace android
