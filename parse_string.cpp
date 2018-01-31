@@ -417,23 +417,24 @@ std::string dump(const HalManifest &vm) {
     return oss.str();
 }
 
-std::string dump(const RuntimeInfo &ki) {
+std::string dump(const RuntimeInfo& ki, bool verbose) {
     std::ostringstream oss;
 
-    oss << "kernel = "
-        << ki.osName() << "/"
-        << ki.nodeName() << "/"
-        << ki.osRelease() << "/"
-        << ki.osVersion() << "/"
-        << ki.hardwareId() << ";"
-        << ki.mBootAvbVersion << "/"
+    oss << "kernel = " << ki.osName() << "/" << ki.nodeName() << "/" << ki.osRelease() << "/"
+        << ki.osVersion() << "/" << ki.hardwareId() << ";" << ki.mBootAvbVersion << "/"
         << ki.mBootVbmetaAvbVersion << ";"
-        << "kernelSepolicyVersion = " << ki.kernelSepolicyVersion()
-        << ";\n\ncpu info:\n"
-        << ki.cpuInfo()
-        << "\n#CONFIG's loaded = " << ki.mKernelConfigs.size() << ";\n";
-    for (const auto &pair : ki.mKernelConfigs) {
-        oss << pair.first << "=" << pair.second << "\n";
+        << "kernelSepolicyVersion = " << ki.kernelSepolicyVersion() << ";";
+
+    if (verbose) {
+        oss << "\n\ncpu info:\n" << ki.cpuInfo();
+    }
+
+    oss << "\n#CONFIG's loaded = " << ki.mKernelConfigs.size() << ";\n";
+
+    if (verbose) {
+        for (const auto& pair : ki.mKernelConfigs) {
+            oss << pair.first << "=" << pair.second << "\n";
+        }
     }
 
     return oss.str();

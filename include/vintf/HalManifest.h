@@ -118,6 +118,10 @@ struct HalManifest : public HalGroup<ManifestHal>, public XmlFileGroup<ManifestX
     // Get metaversion of this manifest.
     Version getMetaVersion() const;
 
+    void forEachInstance(
+        const std::function<void(const std::string&, const Version&, const std::string&,
+                                 const std::string&, bool*)>& f) const;
+
    protected:
     // Check before add()
     bool shouldAdd(const ManifestHal& toAdd) const override;
