@@ -415,6 +415,10 @@ SchemaType HalManifest::type() const {
     return mType;
 }
 
+void HalManifest::setType(SchemaType type) {
+    mType = type;
+}
+
 Level HalManifest::level() const {
     return mLevel;
 }
