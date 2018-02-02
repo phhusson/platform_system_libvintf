@@ -39,9 +39,9 @@ cc_test {
         "-Wno-deprecated-declarations",
     ],
     target: {
-        host: {
-            cflags: ["-DLIBVINTF_HOST"],
-        }
+        android: {
+            cflags: ["-DLIBVINTF_TARGET"],
+        },
     }
 }
 

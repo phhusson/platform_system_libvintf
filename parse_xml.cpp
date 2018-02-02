@@ -513,7 +513,7 @@ struct MatrixHalConverter : public XmlNodeConverter<MatrixHal> {
             }
         }
 // Do not check for target-side libvintf to avoid restricting ability for upgrade accidentally.
-#ifdef LIBVINTF_HOST
+#ifndef LIBVINTF_TARGET
         if (!checkAdditionalRestrictionsOnHal(*object)) {
             return false;
         }
@@ -521,7 +521,7 @@ struct MatrixHalConverter : public XmlNodeConverter<MatrixHal> {
         return true;
     }
 
-#ifdef LIBVINTF_HOST
+#ifndef LIBVINTF_TARGET
    private:
     bool checkAdditionalRestrictionsOnHal(const MatrixHal& hal) const {
         if (hal.getName() == "netutils-wrapper") {
@@ -650,7 +650,7 @@ struct ManifestHalConverter : public XmlNodeConverter<ManifestHal> {
             return false;
         }
 // Do not check for target-side libvintf to avoid restricting upgrade accidentally.
-#ifdef LIBVINTF_HOST
+#ifndef LIBVINTF_TARGET
         if (!checkAdditionalRestrictionsOnHal(*object)) {
             return false;
         }
@@ -658,7 +658,7 @@ struct ManifestHalConverter : public XmlNodeConverter<ManifestHal> {
         return true;
     }
 
-#ifdef LIBVINTF_HOST
+#ifndef LIBVINTF_TARGET
    private:
     bool checkAdditionalRestrictionsOnHal(const ManifestHal& hal) const {
         if (hal.getName() == "netutils-wrapper") {
