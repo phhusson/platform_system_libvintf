@@ -105,7 +105,8 @@ class AssembleVintfImpl : public AssembleVintf {
     }
 
     /**
-     * Set *out to environment variable if *out is not a dummy value (i.e. default constructed).
+     * Set *out to environment variable only if *out is a dummy value (i.e. default constructed).
+     * Return true if *out is set to environment variable, otherwise false.
      */
     template <typename T>
     bool getFlagIfUnset(const std::string& envKey, T* out, bool log = true) const {
