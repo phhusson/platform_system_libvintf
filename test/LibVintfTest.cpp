@@ -2410,6 +2410,23 @@ TEST_F(LibVintfTest, MissingVendorNdkInMatrix) {
     }
 }
 
+TEST_F(LibVintfTest, DuplicatedVendorNdkVersion) {
+    std::string error;
+    HalManifest manifest;
+    std::string xml =
+        "<manifest version=\"1.0\" type=\"framework\">\n"
+        "    <vendor-ndk>\n"
+        "        <version>27</version>\n"
+        "    </vendor-ndk>\n"
+        "    <vendor-ndk>\n"
+        "        <version>27</version>\n"
+        "    </vendor-ndk>\n"
+        "</manifest>\n";
+
+    EXPECT_FALSE(gHalManifestConverter(&manifest, xml));
+    EXPECT_EQ("Duplicated manifest.vendor-ndk.version 27", gHalManifestConverter.lastError());
+}
+
 TEST_F(LibVintfTest, ManifestHalOverride) {
     HalManifest manifest;
     std::string xml =
