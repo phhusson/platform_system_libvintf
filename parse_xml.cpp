@@ -866,6 +866,16 @@ struct HalManifestConverter : public XmlNodeConverter<HalManifest> {
                 return false;
             }
 
+            std::set<std::string> vendorNdkVersions;
+            for (const auto& vendorNdk : object->framework.mVendorNdks) {
+                if (vendorNdkVersions.find(vendorNdk.version()) != vendorNdkVersions.end()) {
+                    this->mLastError =
+                        "Duplicated manifest.vendor-ndk.version " + vendorNdk.version();
+                    return false;
+                }
+                vendorNdkVersions.insert(vendorNdk.version());
+            }
+
             if (!parseOptionalChild(root, systemSdkConverter, {}, &object->framework.mSystemSdk)) {
                 return false;
             }
