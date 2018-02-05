@@ -44,7 +44,7 @@ static bool In(const std::string& sub, const std::string& str) {
 }
 #define EXPECT_IN(sub, str) EXPECT_TRUE(In((sub), (str))) << (str);
 
-#ifdef LIBVINTF_HOST
+#ifndef LIBVINTF_TARGET
 #define EXPECT_CONTAINS(str, sub) EXPECT_IN(sub, str);
 #endif
 
@@ -1598,7 +1598,7 @@ TEST_F(LibVintfTest, NetutilsWrapperMatrix) {
         << gCompatibilityMatrixConverter.lastError();
 
 // only host libvintf hardcodes netutils-wrapper version requirements
-#ifdef LIBVINTF_HOST
+#ifndef LIBVINTF_TARGET
 
     matrixXml =
         "<compatibility-matrix version=\"1.0\" type=\"device\">"
@@ -1640,7 +1640,7 @@ TEST_F(LibVintfTest, NetutilsWrapperMatrix) {
         "netutils-wrapper HAL must specify exactly one version x.0, but multiple <version> element "
         "is specified.");
 
-#endif  // LIBVINTF_HOST
+#endif  // LIBVINTF_TARGET
 }
 
 TEST_F(LibVintfTest, NetutilsWrapperManifest) {
@@ -1658,7 +1658,7 @@ TEST_F(LibVintfTest, NetutilsWrapperManifest) {
     EXPECT_TRUE(gHalManifestConverter(&manifest, manifestXml)) << gHalManifestConverter.lastError();
 
 // only host libvintf hardcodes netutils-wrapper version requirements
-#ifdef LIBVINTF_HOST
+#ifndef LIBVINTF_TARGET
 
     manifestXml =
         "<manifest version=\"1.0\" type=\"framework\">"
@@ -1687,7 +1687,7 @@ TEST_F(LibVintfTest, NetutilsWrapperManifest) {
         "netutils-wrapper HAL must specify exactly one version x.0, but multiple <version> element "
         "is specified.");
 
-#endif  // LIBVINTF_HOST
+#endif  // LIBVINTF_TARGET
 }
 
 TEST_F(LibVintfTest, KernelConfigConditionTest) {
@@ -2408,6 +2408,23 @@ TEST_F(LibVintfTest, MissingVendorNdkInMatrix) {
 
         EXPECT_TRUE(manifest.checkCompatibility(cm, &error)) << error;
     }
+}
+
+TEST_F(LibVintfTest, DuplicatedVendorNdkVersion) {
+    std::string error;
+    HalManifest manifest;
+    std::string xml =
+        "<manifest version=\"1.0\" type=\"framework\">\n"
+        "    <vendor-ndk>\n"
+        "        <version>27</version>\n"
+        "    </vendor-ndk>\n"
+        "    <vendor-ndk>\n"
+        "        <version>27</version>\n"
+        "    </vendor-ndk>\n"
+        "</manifest>\n";
+
+    EXPECT_FALSE(gHalManifestConverter(&manifest, xml));
+    EXPECT_EQ("Duplicated manifest.vendor-ndk.version 27", gHalManifestConverter.lastError());
 }
 
 TEST_F(LibVintfTest, ManifestHalOverride) {
