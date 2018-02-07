@@ -472,14 +472,28 @@ class AssembleVintfImpl : public AssembleVintf {
                 return false;
             }
 
-            // set sepolicy.sepolicy-version to BOARD_SEPOLICY_VERS when none is specified.
-            std::vector<VersionRange>* sepolicyVrs =
-                &matrix->framework.mSepolicy.mSepolicyVersionRanges;
-            VersionRange sepolicyVr;
-            if (!sepolicyVrs->empty()) sepolicyVr = sepolicyVrs->front();
-            if (getFlagIfUnset("BOARD_SEPOLICY_VERS", &sepolicyVr,
-                               deviceLevel == Level::UNSPECIFIED /* log */)) {
-                *sepolicyVrs = {{sepolicyVr}};
+            // Add PLATFORM_SEPOLICY_* to sepolicy.sepolicy-version. Remove dupes.
+            std::set<Version> sepolicyVersions;
+            auto sepolicyVersionStrings = getEnvList("PLATFORM_SEPOLICY_COMPAT_VERSIONS");
+            auto currentSepolicyVersionString = getEnv("PLATFORM_SEPOLICY_VERSION");
+            if (!currentSepolicyVersionString.empty()) {
+                sepolicyVersionStrings.push_back(currentSepolicyVersionString);
+            }
+            for (auto&& s : sepolicyVersionStrings) {
+                Version v;
+                if (!parse(s, &v)) {
+                    std::cerr << "Error: unknown sepolicy version '" << s << "' specified by "
+                              << (s == currentSepolicyVersionString
+                                      ? "PLATFORM_SEPOLICY_VERSION"
+                                      : "PLATFORM_SEPOLICY_COMPAT_VERSIONS")
+                              << ".";
+                    return false;
+                }
+                sepolicyVersions.insert(v);
+            }
+            for (auto&& v : sepolicyVersions) {
+                matrix->framework.mSepolicy.mSepolicyVersionRanges.emplace_back(v.majorVer,
+                                                                                v.minorVer);
             }
 
             getFlagIfUnset("POLICYVERS", &matrix->framework.mSepolicy.mKernelSepolicyVersion,
