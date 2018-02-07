@@ -97,6 +97,7 @@ struct HalManifest : public HalGroup<ManifestHal>, public XmlFileGroup<ManifestX
 
     // Type of the manifest. FRAMEWORK or DEVICE.
     SchemaType type() const;
+    void setType(SchemaType type);
 
     // FCM version that it implements.
     Level level() const;
