@@ -74,7 +74,7 @@ TEST_F(AssembleVintfTest, FrameworkMatrixEmpty) {
     addInput("compatibility_matrix.empty.xml", xmlEmpty);
     setFakeEnvs({
         {"POLICYVERS", "30"},
-        {"BOARD_SEPOLICY_VERS", "10000.0"},
+        {"PLATFORM_SEPOLICY_VERSION", "10000.0"},
         {"FRAMEWORK_VBMETA_VERSION", "1.0"},
     });
     getInstance()->addKernelConfigInputStream({3, 18, 0}, "android-base.cfg",
