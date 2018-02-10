@@ -110,10 +110,10 @@ status_t fetchAllInformation(const std::string& path, const XmlConverter<T>& con
         return result;
     }
 
-    bool success = converter(outObject, info);
+    bool success = converter(outObject, info, error);
     if (!success) {
         if (error) {
-            *error = "Illformed file: " + path + ": " + converter.lastError();
+            *error = "Illformed file: " + path + ": " + *error;
         }
         return BAD_VALUE;
     }
