@@ -40,6 +40,12 @@ namespace vintf {
 struct MatrixHal;
 struct CompatibilityMatrix;
 
+namespace details {
+using InstancesOfVersion =
+    std::map<std::string /* interface */, std::set<std::string /* instance */>>;
+using Instances = std::map<Version, InstancesOfVersion>;
+}  // namespace details
+
 // A HalManifest is reported by the hardware and query-able from
 // framework code. This is the API for the framework.
 struct HalManifest : public HalGroup<ManifestHal>, public XmlFileGroup<ManifestXmlFile> {
@@ -66,14 +72,6 @@ struct HalManifest : public HalGroup<ManifestHal>, public XmlFileGroup<ManifestX
     // Convenience method for checking if instanceName is in getInstances(halName, interfaceName)
     bool hasInstance(const std::string& halName, const Version& version,
                      const std::string& interfaceName, const std::string& instanceName) const;
-
-    // Return a list of component names that does NOT conform to
-    // the given compatibility matrix. It contains components that are optional
-    // for the framework if includeOptional = true.
-    // Note: only HAL entries are checked. To check other entries as well, use
-    // checkCompatibility.
-    std::vector<std::string> checkIncompatibility(const CompatibilityMatrix &mat,
-            bool includeOptional = true) const;
 
     // Check compatibility against a compatibility matrix. Considered compatible if
     // - framework manifest vs. device compat-mat
@@ -138,11 +136,13 @@ struct HalManifest : public HalGroup<ManifestHal>, public XmlFileGroup<ManifestX
 
     status_t fetchAllInformation(const std::string& path, std::string* error = nullptr);
 
+    details::Instances expandInstances(const std::string& name) const;
     // Check if all instances in matrixHal is supported in this manifest.
-    bool isCompatible(const MatrixHal& matrixHal) const;
+    bool isCompatible(const details::Instances& instances, const MatrixHal& matrixHal) const;
 
-    std::vector<std::string> checkIncompatibleXmlFiles(const CompatibilityMatrix& mat,
-                                                       bool includeOptional = true) const;
+    // Return a list of instance names that does NOT conform to
+    // the given compatibility matrix. It does not contain components that are optional.
+    std::vector<std::string> checkIncompatibleHals(const CompatibilityMatrix& mat) const;
 
     void removeHals(const std::string& name, size_t majorVer);
 

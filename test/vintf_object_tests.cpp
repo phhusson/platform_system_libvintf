@@ -38,6 +38,11 @@ using namespace ::android::vintf::details;
 
 using android::FQName;
 
+static bool In(const std::string& sub, const std::string& str) {
+    return str.find(sub) != std::string::npos;
+}
+#define EXPECT_IN(sub, str) EXPECT_TRUE(In((sub), (str))) << (str);
+
 //
 // Set of Xml1 metadata compatible with each other.
 //
@@ -443,9 +448,11 @@ TEST_F(VintfObjectCompatibleTest, TestInputVsDeviceFail) {
     int result = VintfObject::CheckCompatibility(packageInfo, &error);
 
     ASSERT_EQ(result, 1) << "Should have failed:" << error.c_str();
-    ASSERT_STREQ(error.c_str(),
-                 "Device manifest and framework compatibility matrix are incompatible: HALs "
-                 "incompatible. android.hardware.foo");
+    EXPECT_IN(
+        "Device manifest and framework compatibility matrix are incompatible: HALs "
+        "incompatible.",
+        error);
+    EXPECT_IN("android.hardware.foo", error);
 }
 
 // Tests that complementary info is checked against itself.

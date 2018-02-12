@@ -34,6 +34,9 @@
 namespace android {
 namespace vintf {
 
+using details::Instances;
+using details::InstancesOfVersion;
+
 // Check <version> tag for all <hal> with the same name.
 bool HalManifest::shouldAdd(const ManifestHal& hal) const {
     if (!hal.isValid()) {
@@ -196,10 +199,6 @@ void HalManifest::forEachInstance(
     }
 }
 
-using InstancesOfVersion = std::map<std::string /* interface */,
-                                    std::set<std::string /* instance */>>;
-using Instances = std::map<Version, InstancesOfVersion>;
-
 static bool satisfyVersion(const MatrixHal& matrixHal, const Version& manifestHalVersion) {
     for (const VersionRange &matrixVersionRange : matrixHal.versionRanges) {
         // If Compatibility Matrix says 2.5-2.7, the "2.7" is purely informational;
@@ -231,12 +230,12 @@ static bool satisfyAllInstances(const MatrixHal& matrixHal,
     return true;
 }
 
-bool HalManifest::isCompatible(const MatrixHal& matrixHal) const {
+Instances HalManifest::expandInstances(const std::string& name) const {
     Instances instances;
     // Do the cross product version x interface x instance and sort them,
     // because interfaces / instances can span in multiple HALs.
     // This is efficient for small <hal> entries.
-    for (const ManifestHal* manifestHal : getHals(matrixHal.name)) {
+    for (const ManifestHal* manifestHal : getHals(name)) {
         for (const Version& manifestHalVersion : manifestHal->versions) {
             instances[manifestHalVersion] = {};
             for (const auto& halInterfacePair : manifestHal->interfaces) {
@@ -246,6 +245,10 @@ bool HalManifest::isCompatible(const MatrixHal& matrixHal) const {
             }
         }
     }
+    return instances;
+}
+
+bool HalManifest::isCompatible(const Instances& instances, const MatrixHal& matrixHal) const {
     for (const auto& instanceMapPair : instances) {
         const Version& manifestHalVersion = instanceMapPair.first;
         const InstancesOfVersion& instancesOfVersion = instanceMapPair.second;
@@ -260,20 +263,53 @@ bool HalManifest::isCompatible(const MatrixHal& matrixHal) const {
     return false;
 }
 
-// For each hal in mat, there must be a hal in manifest that supports this.
-std::vector<std::string> HalManifest::checkIncompatibility(const CompatibilityMatrix &mat,
-        bool includeOptional) const {
-    std::vector<std::string> incompatible;
-    for (const MatrixHal &matrixHal : mat.getHals()) {
-        if (!includeOptional && matrixHal.optional) {
-            continue;
-        }
-        // don't check optional; put it in the incompatibility list as well.
-        if (!isCompatible(matrixHal)) {
-            incompatible.push_back(matrixHal.name);
+static std::vector<std::string> toLines(const Instances& allInstances) {
+    std::vector<std::string> lines;
+    for (const auto& pair : allInstances) {
+        const auto& version = pair.first;
+        for (const auto& ifacePair : pair.second) {
+            const auto& interface = ifacePair.first;
+            for (const auto& instance : ifacePair.second) {
+                lines.push_back("@" + to_string(version) + "::" + interface + "/" + instance);
+            }
         }
     }
-    return incompatible;
+    return lines;
+}
+
+// indent = 2, {"foo"} => "foo"
+// indent = 2, {"foo", "bar"} => "\n  foo\n  bar";
+void multilineIndent(std::ostream& os, size_t indent, const std::vector<std::string>& lines) {
+    if (lines.size() == 1) {
+        os << lines.front();
+        return;
+    }
+    for (const auto& line : lines) {
+        os << "\n";
+        for (size_t i = 0; i < indent; ++i) os << " ";
+        os << line;
+    }
+}
+
+// For each hal in mat, there must be a hal in manifest that supports this.
+std::vector<std::string> HalManifest::checkIncompatibleHals(const CompatibilityMatrix& mat) const {
+    std::vector<std::string> ret;
+    for (const MatrixHal &matrixHal : mat.getHals()) {
+        if (matrixHal.optional) {
+            continue;
+        }
+        auto manifestInstances = expandInstances(matrixHal.name);
+        if (!isCompatible(manifestInstances, matrixHal)) {
+            std::ostringstream oss;
+            oss << matrixHal.name << ":\n    required: ";
+            multilineIndent(oss, 8, android::vintf::expandInstances(matrixHal));
+            oss << "\n    provided: ";
+            multilineIndent(oss, 8, toLines(manifestInstances));
+
+            ret.insert(ret.end(), oss.str());
+        }
+    }
+    return ret;
 }
 
 static bool checkVendorNdkCompatibility(const VendorNdk& matVendorNdk,
@@ -341,13 +377,12 @@ bool HalManifest::checkCompatibility(const CompatibilityMatrix &mat, std::string
         }
         return false;
     }
-    std::vector<std::string> incompatibleHals =
-            checkIncompatibility(mat, false /* includeOptional */);
+    auto incompatibleHals = checkIncompatibleHals(mat);
     if (!incompatibleHals.empty()) {
         if (error != nullptr) {
-            *error = "HALs incompatible.";
-            for (const auto &name : incompatibleHals) {
-                *error += " " + name;
+            *error = "HALs incompatible. The following requirements are not met:\n";
+            for (const auto& e : incompatibleHals) {
+                *error += e + "\n";
             }
         }
         return false;
