@@ -806,9 +806,6 @@ struct HalManifestConverter : public XmlNodeConverter<HalManifest> {
                     SerializeFlags flags) const override {
         appendAttr(root, "version", m.getMetaVersion());
         appendAttr(root, "type", m.mType);
-        if (m.mLevel != Level::UNSPECIFIED) {
-            this->appendAttr(root, "target-level", m.mLevel);
-        }
 
         if (!(flags & SerializeFlag::NO_HALS)) {
             appendChildren(root, manifestHalConverter, m.getHals(), d);
@@ -816,6 +813,9 @@ struct HalManifestConverter : public XmlNodeConverter<HalManifest> {
         if (m.mType == SchemaType::DEVICE) {
             if (!(flags & SerializeFlag::NO_SEPOLICY)) {
                 appendChild(root, halManifestSepolicyConverter(m.device.mSepolicyVersion, d));
+            }
+            if (m.mLevel != Level::UNSPECIFIED) {
+                this->appendAttr(root, "target-level", m.mLevel);
             }
         } else if (m.mType == SchemaType::FRAMEWORK) {
             if (!(flags & SerializeFlag::NO_VNDK)) {
@@ -841,7 +841,6 @@ struct HalManifestConverter : public XmlNodeConverter<HalManifest> {
         std::vector<ManifestHal> hals;
         if (!parseAttr(root, "version", &object->mMetaVersion, error) ||
             !parseAttr(root, "type", &object->mType, error) ||
-            !parseOptionalAttr(root, "target-level", Level::UNSPECIFIED, &object->mLevel, error) ||
             !parseChildren(root, manifestHalConverter, &hals, error)) {
             return false;
         }
@@ -856,6 +855,11 @@ struct HalManifestConverter : public XmlNodeConverter<HalManifest> {
             // in the XML file.
             if (!parseOptionalChild(root, halManifestSepolicyConverter, {},
                                     &object->device.mSepolicyVersion, error)) {
+                return false;
+            }
+
+            if (!parseOptionalAttr(root, "target-level", Level::UNSPECIFIED, &object->mLevel,
+                                   error)) {
                 return false;
             }
         } else if (object->mType == SchemaType::FRAMEWORK) {
@@ -963,9 +967,6 @@ struct CompatibilityMatrixConverter : public XmlNodeConverter<CompatibilityMatri
                     SerializeFlags flags) const override {
         appendAttr(root, "version", m.getMinimumMetaVersion());
         appendAttr(root, "type", m.mType);
-        if (m.mLevel != Level::UNSPECIFIED) {
-            this->appendAttr(root, "level", m.mLevel);
-        }
 
         if (!(flags & SerializeFlag::NO_HALS)) {
             appendChildren(root, matrixHalConverter, iterateValues(m.mHals), d);
@@ -983,6 +984,9 @@ struct CompatibilityMatrixConverter : public XmlNodeConverter<CompatibilityMatri
                 if (!(m.framework.mAvbMetaVersion == Version{})) {
                     appendChild(root, avbConverter(m.framework.mAvbMetaVersion, d));
                 }
+            }
+            if (m.mLevel != Level::UNSPECIFIED) {
+                this->appendAttr(root, "level", m.mLevel);
             }
         } else if (m.mType == SchemaType::DEVICE) {
             if (!(flags & SerializeFlag::NO_VNDK)) {
@@ -1015,7 +1019,6 @@ struct CompatibilityMatrixConverter : public XmlNodeConverter<CompatibilityMatri
         std::vector<MatrixHal> hals;
         if (!parseAttr(root, "version", &version, error) ||
             !parseAttr(root, "type", &object->mType, error) ||
-            !parseOptionalAttr(root, "level", Level::UNSPECIFIED, &object->mLevel, error) ||
             !parseChildren(root, matrixHalConverter, &hals, error)) {
             return false;
         }
@@ -1043,6 +1046,10 @@ struct CompatibilityMatrixConverter : public XmlNodeConverter<CompatibilityMatri
                     return false;
                 }
                 seenKernelVersions.insert(minLts);
+            }
+
+            if (!parseOptionalAttr(root, "level", Level::UNSPECIFIED, &object->mLevel, error)) {
+                return false;
             }
 
         } else if (object->mType == SchemaType::DEVICE) {
