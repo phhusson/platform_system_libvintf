@@ -337,9 +337,9 @@ class AssembleVintfImpl : public AssembleVintf {
 
         if (mCheckFile != nullptr) {
             CompatibilityMatrix checkMatrix;
-            if (!gCompatibilityMatrixConverter(&checkMatrix, read(*mCheckFile))) {
-                std::cerr << "Cannot parse check file as a compatibility matrix: "
-                          << gCompatibilityMatrixConverter.lastError() << std::endl;
+            if (!gCompatibilityMatrixConverter(&checkMatrix, read(*mCheckFile), &error)) {
+                std::cerr << "Cannot parse check file as a compatibility matrix: " << error
+                          << std::endl;
                 return false;
             }
             if (!halManifest->checkCompatibility(checkMatrix, &error)) {
@@ -443,9 +443,9 @@ class AssembleVintfImpl : public AssembleVintf {
             Level deviceLevel = Level::UNSPECIFIED;
             if (mCheckFile != nullptr) {
                 checkManifest = std::make_unique<HalManifest>();
-                if (!gHalManifestConverter(checkManifest.get(), read(*mCheckFile))) {
-                    std::cerr << "Cannot parse check file as a HAL manifest: "
-                              << gHalManifestConverter.lastError() << std::endl;
+                if (!gHalManifestConverter(checkManifest.get(), read(*mCheckFile), &error)) {
+                    std::cerr << "Cannot parse check file as a HAL manifest: " << error
+                              << std::endl;
                     return false;
                 }
                 deviceLevel = checkManifest->level();
@@ -525,10 +525,10 @@ class AssembleVintfImpl : public AssembleVintf {
     enum AssembleStatus { SUCCESS, FAIL_AND_EXIT, TRY_NEXT };
     template <typename Schema, typename AssembleFunc>
     AssembleStatus tryAssemble(const XmlConverter<Schema>& converter, const std::string& schemaName,
-                               AssembleFunc assemble) {
+                               AssembleFunc assemble, std::string* error) {
         Schemas<Schema> schemas;
         Schema schema;
-        if (!converter(&schema, read(mInFiles.front().stream()))) {
+        if (!converter(&schema, read(mInFiles.front().stream()), error)) {
             return TRY_NEXT;
         }
         auto firstType = schema.type();
@@ -537,10 +537,10 @@ class AssembleVintfImpl : public AssembleVintf {
         for (auto it = mInFiles.begin() + 1; it != mInFiles.end(); ++it) {
             Schema additionalSchema;
             const std::string& fileName = it->name();
-            if (!converter(&additionalSchema, read(it->stream()))) {
+            if (!converter(&additionalSchema, read(it->stream()), error)) {
                 std::cerr << "File \"" << fileName << "\" is not a valid " << firstType << " "
                           << schemaName << " (but the first file is a valid " << firstType << " "
-                          << schemaName << "). Error: " << converter.lastError() << std::endl;
+                          << schemaName << "). Error: " << *error << std::endl;
                 return FAIL_AND_EXIT;
             }
             if (additionalSchema.type() != firstType) {
@@ -562,23 +562,26 @@ class AssembleVintfImpl : public AssembleVintf {
             return false;
         }
 
+        std::string manifestError;
         auto status = tryAssemble(gHalManifestConverter, "manifest",
-                                  std::bind(&AssembleVintfImpl::assembleHalManifest, this, _1));
+                                  std::bind(&AssembleVintfImpl::assembleHalManifest, this, _1),
+                                  &manifestError);
         if (status == SUCCESS) return true;
         if (status == FAIL_AND_EXIT) return false;
 
         resetInFiles();
 
+        std::string matrixError;
         status = tryAssemble(gCompatibilityMatrixConverter, "compatibility matrix",
-                             std::bind(&AssembleVintfImpl::assembleCompatibilityMatrix, this, _1));
+                             std::bind(&AssembleVintfImpl::assembleCompatibilityMatrix, this, _1),
+                             &matrixError);
         if (status == SUCCESS) return true;
         if (status == FAIL_AND_EXIT) return false;
 
         std::cerr << "Input file has unknown format." << std::endl
-                  << "Error when attempting to convert to manifest: "
-                  << gHalManifestConverter.lastError() << std::endl
-                  << "Error when attempting to convert to compatibility matrix: "
-                  << gCompatibilityMatrixConverter.lastError() << std::endl;
+                  << "Error when attempting to convert to manifest: " << manifestError << std::endl
+                  << "Error when attempting to convert to compatibility matrix: " << matrixError
+                  << std::endl;
         return false;
     }
 

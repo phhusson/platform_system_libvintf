@@ -32,12 +32,12 @@
 namespace android {
 namespace vintf {
 
-extern const XmlConverter<Version> &gVersionConverter;
-extern const XmlConverter<ManifestHal> &gManifestHalConverter;
-extern const XmlConverter<MatrixHal> &gMatrixHalConverter;
-extern const XmlConverter<KernelConfigTypedValue> &gKernelConfigTypedValueConverter;
-extern const XmlConverter<HalManifest> &gHalManifestConverter;
-extern const XmlConverter<CompatibilityMatrix> &gCompatibilityMatrixConverter;
+extern XmlConverter<Version>& gVersionConverter;
+extern XmlConverter<ManifestHal>& gManifestHalConverter;
+extern XmlConverter<MatrixHal>& gMatrixHalConverter;
+extern XmlConverter<KernelConfigTypedValue>& gKernelConfigTypedValueConverter;
+extern XmlConverter<HalManifest>& gHalManifestConverter;
+extern XmlConverter<CompatibilityMatrix>& gCompatibilityMatrixConverter;
 
 static bool In(const std::string& sub, const std::string& str) {
     return str.find(sub) != std::string::npos;
@@ -2747,6 +2747,33 @@ TEST_F(LibVintfTest, SystemSdk) {
         EXPECT_FALSE(manifest.checkCompatibility(cm, &error));
         EXPECT_TRUE(error.find("System SDK") != std::string::npos) << error;
     }
+}
+
+TEST_F(LibVintfTest, ManifestLastError) {
+    HalManifest e;
+    // Set mLastError to something else before testing.
+    EXPECT_FALSE(gHalManifestConverter(&e, "<manifest/>"));
+    EXPECT_NE("Not a valid XML", gHalManifestConverter.lastError());
+
+    std::string error;
+    std::string prevError = gHalManifestConverter.lastError();
+    EXPECT_FALSE(gHalManifestConverter(&e, "", &error));
+    EXPECT_EQ("Not a valid XML", error);
+    EXPECT_EQ(prevError, gHalManifestConverter.lastError()) << "lastError() should not be modified";
+}
+
+TEST_F(LibVintfTest, MatrixLastError) {
+    CompatibilityMatrix e;
+    // Set mLastError to something else before testing.
+    EXPECT_FALSE(gCompatibilityMatrixConverter(&e, "<compatibility-matrix/>"));
+    EXPECT_NE("Not a valid XML", gCompatibilityMatrixConverter.lastError());
+
+    std::string error;
+    std::string prevError = gCompatibilityMatrixConverter.lastError();
+    EXPECT_FALSE(gCompatibilityMatrixConverter(&e, "", &error));
+    EXPECT_EQ("Not a valid XML", error);
+    EXPECT_EQ(prevError, gCompatibilityMatrixConverter.lastError())
+        << "lastError() should not be modified";
 }
 
 } // namespace vintf
