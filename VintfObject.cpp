@@ -295,11 +295,9 @@ std::vector<Named<CompatibilityMatrix>> VintfObject::GetAllFrameworkMatrixLevels
         }
 
         auto it = results.emplace(results.end());
-        if (!gCompatibilityMatrixConverter(&it->object, content)) {
+        if (!gCompatibilityMatrixConverter(&it->object, content, error)) {
             if (error) {
-                // TODO(b/71874788): do not use lastError() because it is not thread-safe.
-                *error +=
-                    "Ignore file " + path + ": " + gCompatibilityMatrixConverter.lastError() + "\n";
+                *error += "Ignore file " + path + ": " + *error + "\n";
             }
             results.erase(it);
             continue;
@@ -368,7 +366,7 @@ template<typename T>
 static ParseStatus tryParse(const std::string &xml, const XmlConverter<T> &parse,
         std::shared_ptr<T> *fwk, std::shared_ptr<T> *dev) {
     std::shared_ptr<T> ret = std::make_shared<T>();
-    if (!parse(ret.get(), xml)) {
+    if (!parse(ret.get(), xml, nullptr /* error */)) {
         return ParseStatus::PARSE_ERROR;
     }
     if (ret->type() == SchemaType::FRAMEWORK) {

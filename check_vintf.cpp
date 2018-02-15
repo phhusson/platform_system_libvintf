@@ -33,8 +33,8 @@ std::unique_ptr<T> readObject(const std::string& path, const XmlConverter<T>& co
         return nullptr;
     }
     auto ret = std::make_unique<T>();
-    if (!converter(ret.get(), xml)) {
-        std::cerr << "Error: Cannot parse '" << path << "': " << converter.lastError() << std::endl;
+    if (!converter(ret.get(), xml, &error)) {
+        std::cerr << "Error: Cannot parse '" << path << "': " << error << std::endl;
         return nullptr;
     }
     return ret;
