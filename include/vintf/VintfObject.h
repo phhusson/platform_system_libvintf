@@ -34,11 +34,11 @@ namespace vintf {
  *   + GetDeviceHalManfiest
  *   |   + getTransport
  *   |   + getSupportedVersions
- *   |   + checkIncompatibility
+ *   |   + checkCompatibility
  *   + GetFrameworkHalManifest
  *   |   + getTransport
  *   |   + getSupportedVersions
- *   |   + checkIncompatibility
+ *   |   + checkCompatibility
  *   + GetRuntimeInfo
  *       + checkCompatibility
  *

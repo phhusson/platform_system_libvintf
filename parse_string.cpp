@@ -395,6 +395,36 @@ std::ostream &operator<<(std::ostream &os, const MatrixHal &req) {
               << (req.optional ? kOptional : kRequired);
 }
 
+static std::string expandInstances(const MatrixHal& req, const VersionRange& vr) {
+    std::string s;
+    bool first = true;
+    for (const auto& interface : iterateValues(req.interfaces)) {
+        for (const auto& instance : interface.instances) {
+            if (!first) s += " AND ";
+            s += "@" + to_string(vr) + "::" + interface.name + "/" + instance;
+            first = false;
+        }
+    }
+    return s;
+}
+
+std::vector<std::string> expandInstances(const MatrixHal& req) {
+    if (req.versionRanges.empty()) {
+        return {};
+    }
+    if (req.versionRanges.size() == 1 && req.interfaces.size() == 1 &&
+        req.interfaces.begin()->second.instances.size() == 1) {
+        return {expandInstances(req, req.versionRanges.front())};
+    }
+    std::vector<std::string> ss;
+    for (const auto& vr : req.versionRanges) {
+        if (!ss.empty()) {
+            ss.back() += " OR";
+        }
+        ss.push_back("(" + expandInstances(req, vr) + ")");
+    }
+    return ss;
+}
 
 std::ostream &operator<<(std::ostream &os, KernelSepolicyVersion ksv){
     return os << ksv.value;
