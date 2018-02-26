@@ -103,6 +103,8 @@ std::string dump(const HalManifest &vm);
 
 std::string dump(const RuntimeInfo& ki, bool verbose = true);
 
+std::vector<std::string> expandInstances(const MatrixHal& req);
+
 } // namespace vintf
 } // namespace android
 

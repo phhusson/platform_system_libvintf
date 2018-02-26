@@ -2776,6 +2776,102 @@ TEST_F(LibVintfTest, MatrixLastError) {
         << "lastError() should not be modified";
 }
 
+TEST_F(LibVintfTest, MatrixDetailErrorMsg) {
+    std::string error;
+    std::string xml;
+
+    HalManifest manifest;
+    xml =
+        "<manifest version=\"1.0\" type=\"device\">\n"
+        "    <hal format=\"hidl\">\n"
+        "        <name>android.hardware.foo</name>\n"
+        "        <transport>hwbinder</transport>\n"
+        "        <version>1.0</version>\n"
+        "        <interface>\n"
+        "            <name>IFoo</name>\n"
+        "            <instance>default</instance>\n"
+        "        </interface>\n"
+        "    </hal>\n"
+        "</manifest>\n";
+    ASSERT_TRUE(gHalManifestConverter(&manifest, xml, &error)) << error;
+
+    {
+        CompatibilityMatrix cm;
+        xml =
+            "<compatibility-matrix version=\"1.0\" type=\"framework\">\n"
+            "    <hal format=\"hidl\" optional=\"false\">\n"
+            "        <name>android.hardware.foo</name>\n"
+            "        <version>1.2-3</version>\n"
+            "        <version>4.5</version>\n"
+            "        <interface>\n"
+            "            <name>IFoo</name>\n"
+            "            <instance>default</instance>\n"
+            "            <instance>slot1</instance>\n"
+            "        </interface>\n"
+            "        <interface>\n"
+            "            <name>IBar</name>\n"
+            "            <instance>default</instance>\n"
+            "        </interface>\n"
+            "    </hal>\n"
+            "</compatibility-matrix>\n";
+        EXPECT_TRUE(gCompatibilityMatrixConverter(&cm, xml, &error)) << error;
+        EXPECT_FALSE(manifest.checkCompatibility(cm, &error));
+        EXPECT_IN(
+            "android.hardware.foo:\n"
+            "    required: \n"
+            "        (@1.2-3::IBar/default AND @1.2-3::IFoo/default AND @1.2-3::IFoo/slot1) OR\n"
+            "        (@4.5::IBar/default AND @4.5::IFoo/default AND @4.5::IFoo/slot1)\n"
+            "    provided: @1.0::IFoo/default",
+            error);
+    }
+
+    {
+        CompatibilityMatrix cm;
+        xml =
+            "<compatibility-matrix version=\"1.0\" type=\"framework\">\n"
+            "    <hal format=\"hidl\" optional=\"false\">\n"
+            "        <name>android.hardware.foo</name>\n"
+            "        <version>1.2-3</version>\n"
+            "        <interface>\n"
+            "            <name>IFoo</name>\n"
+            "            <instance>default</instance>\n"
+            "            <instance>slot1</instance>\n"
+            "        </interface>\n"
+            "    </hal>\n"
+            "</compatibility-matrix>\n";
+        EXPECT_TRUE(gCompatibilityMatrixConverter(&cm, xml, &error)) << error;
+        EXPECT_FALSE(manifest.checkCompatibility(cm, &error));
+        EXPECT_IN(
+            "android.hardware.foo:\n"
+            "    required: (@1.2-3::IFoo/default AND @1.2-3::IFoo/slot1)\n"
+            "    provided: @1.0::IFoo/default",
+            error);
+    }
+
+    // the most frequent use case.
+    {
+        CompatibilityMatrix cm;
+        xml =
+            "<compatibility-matrix version=\"1.0\" type=\"framework\">\n"
+            "    <hal format=\"hidl\" optional=\"false\">\n"
+            "        <name>android.hardware.foo</name>\n"
+            "        <version>1.2-3</version>\n"
+            "        <interface>\n"
+            "            <name>IFoo</name>\n"
+            "            <instance>default</instance>\n"
+            "        </interface>\n"
+            "    </hal>\n"
+            "</compatibility-matrix>\n";
+        EXPECT_TRUE(gCompatibilityMatrixConverter(&cm, xml, &error)) << error;
+        EXPECT_FALSE(manifest.checkCompatibility(cm, &error));
+        EXPECT_IN(
+            "android.hardware.foo:\n"
+            "    required: @1.2-3::IFoo/default\n"
+            "    provided: @1.0::IFoo/default",
+            error);
+    }
+}
+
 } // namespace vintf
 } // namespace android
 
