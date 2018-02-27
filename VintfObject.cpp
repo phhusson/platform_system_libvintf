@@ -597,7 +597,7 @@ bool VintfObject::isInstanceDeprecated(const std::string& package, Version versi
             targetMatrix.getHalWithMajorVersion(package, version.majorVer);
         if (targetMatrixHal == nullptr || targetMatrixRange == nullptr) {
             if (error) {
-                *error = package + "@" + to_string(servedVersion) +
+                *error = toFQNameString(package, servedVersion) +
                          "is deprecated in compatibility matrix at FCM Version " +
                          to_string(targetMatrix.level()) + "; it should not be served.";
             }
@@ -607,9 +607,9 @@ bool VintfObject::isInstanceDeprecated(const std::string& package, Version versi
         const auto& targetMatrixInstances = targetMatrixHal->getInstances(interface);
         if (targetMatrixInstances.find(instance) == targetMatrixInstances.end()) {
             if (error) {
-                *error += package + "@" + to_string(servedVersion) + "::" + interface + "/" +
-                          instance + " is deprecated at FCM version " +
-                          to_string(targetMatrix.level()) + "; it should be not be served.\n";
+                *error += toFQNameString(package, servedVersion, interface, instance) +
+                          " is deprecated at FCM version " + to_string(targetMatrix.level()) +
+                          "; it should be not be served.\n";
             }
             return true;
         }
@@ -621,7 +621,7 @@ bool VintfObject::isInstanceDeprecated(const std::string& package, Version versi
 
         if (!targetVersionServed) {
             if (error) {
-                *error += package + "@" + to_string(servedVersion) + " is deprecated; " +
+                *error += toFQNameString(package, servedVersion) + " is deprecated; " +
                           "require at least " + to_string(targetMatrixRange->minVer()) + "\n";
             }
             return true;
