@@ -263,6 +263,37 @@ class AssembleVintfImpl : public AssembleVintf {
 
     std::basic_ostream<char>& out() const { return mOutRef == nullptr ? std::cout : *mOutRef; }
 
+    // If -c is provided, check it.
+    bool checkDualFile(const HalManifest& manifest, const CompatibilityMatrix& matrix) {
+        if (getBooleanFlag("PRODUCT_ENFORCE_VINTF_MANIFEST")) {
+            std::string error;
+            if (!manifest.checkCompatibility(matrix, &error)) {
+                std::cerr << "Not compatible: " << error << std::endl;
+                return false;
+            }
+        }
+
+        // Check HALs in device manifest that are not in framework matrix.
+        if (getBooleanFlag("VINTF_ENFORCE_NO_UNUSED_HALS")) {
+            auto unused = manifest.checkUnusedHals(matrix);
+            if (!unused.empty()) {
+                std::cerr << "Error: The following instances are in the device manifest but "
+                          << "not specified in framework compatibility matrix: " << std::endl
+                          << "    " << android::base::Join(unused, "\n    ") << std::endl
+                          << "Suggested fix:" << std::endl
+                          << "1. Check for any typos in device manifest or framework compatibility "
+                          << "matrices with FCM version >= " << matrix.level() << "." << std::endl
+                          << "2. Add them to any framework compatibility matrix with FCM "
+                          << "version >= " << matrix.level() << " where applicable." << std::endl
+                          << "3. Add them to DEVICE_FRAMEWORK_COMPATIBILITY_MATRIX_FILE."
+                          << std::endl;
+
+                return false;
+            }
+        }
+        return true;
+    }
+
     template <typename S>
     using Schemas = std::vector<Named<S>>;
     using HalManifests = Schemas<HalManifest>;
@@ -342,8 +373,7 @@ class AssembleVintfImpl : public AssembleVintf {
                           << std::endl;
                 return false;
             }
-            if (!halManifest->checkCompatibility(checkMatrix, &error)) {
-                std::cerr << "Not compatible: " << error << std::endl;
+            if (!checkDualFile(*halManifest, checkMatrix)) {
                 return false;
             }
         }
@@ -513,9 +543,7 @@ class AssembleVintfImpl : public AssembleVintf {
         out() << gCompatibilityMatrixConverter(*matrix, mSerializeFlags);
         out().flush();
 
-        if (checkManifest != nullptr && getBooleanFlag("PRODUCT_ENFORCE_VINTF_MANIFEST") &&
-            !checkManifest->checkCompatibility(*matrix, &error)) {
-            std::cerr << "Not compatible: " << error << std::endl;
+        if (checkManifest != nullptr && !checkDualFile(*checkManifest, *matrix)) {
             return false;
         }
 
