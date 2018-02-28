@@ -125,7 +125,7 @@ std::set<std::string> HalManifest::getHalNamesAndVersions() const {
     std::set<std::string> names{};
     for (const auto &hal : getHals()) {
         for (const auto &version : hal.versions) {
-            names.insert(hal.name + "@" + to_string(version));
+            names.insert(toFQNameString(hal.name, version));
         }
     }
     return names;
@@ -149,21 +149,22 @@ Transport HalManifest::getTransport(const std::string &package, const Version &v
         }
         auto it = hal->interfaces.find(interfaceName);
         if (it == hal->interfaces.end()) {
-            LOG(DEBUG) << "HalManifest::getTransport(" << to_string(mType) << "): Cannot find interface '"
-                      << interfaceName << "' in " << package << "@" << to_string(v);
+            LOG(DEBUG) << "HalManifest::getTransport(" << to_string(mType)
+                       << "): Cannot find interface '" << interfaceName << "' in "
+                       << toFQNameString(package, v);
             continue;
         }
         const auto &instances = it->second.instances;
         if (instances.find(instanceName) == instances.end()) {
-            LOG(DEBUG) << "HalManifest::getTransport(" << to_string(mType) << "): Cannot find instance '"
-                      << instanceName << "' in "
-                      << package << "@" << to_string(v) << "::" << interfaceName;
+            LOG(DEBUG) << "HalManifest::getTransport(" << to_string(mType)
+                       << "): Cannot find instance '" << instanceName << "' in "
+                       << toFQNameString(package, v, interfaceName);
             continue;
         }
         return hal->transportArch.transport;
     }
     LOG(DEBUG) << "HalManifest::getTransport(" << to_string(mType) << "): Cannot get transport for "
-                 << package << "@" << v << "::" << interfaceName << "/" << instanceName;
+               << toFQNameString(package, v, interfaceName, instanceName);
     return Transport::EMPTY;
 
 }
@@ -270,7 +271,7 @@ static std::vector<std::string> toLines(const Instances& allInstances) {
         for (const auto& ifacePair : pair.second) {
             const auto& interface = ifacePair.first;
             for (const auto& instance : ifacePair.second) {
-                lines.push_back("@" + to_string(version) + "::" + interface + "/" + instance);
+                lines.push_back(toFQNameString(version, interface, instance));
             }
         }
     }
