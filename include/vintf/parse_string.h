@@ -105,6 +105,20 @@ std::string dump(const RuntimeInfo& ki, bool verbose = true);
 
 std::vector<std::string> expandInstances(const MatrixHal& req);
 
+std::string toFQNameString(const std::string& package, const Version& version,
+                           const std::string& intf = "", const std::string& instance = "");
+
+std::string toFQNameString(const Version& version, const std::string& intf,
+                           const std::string& instance);
+
+// android.hardware.foo@1.0-1::IFoo/default.
+// Note that the format is extended to support a range of versions.
+std::string toFQNameString(const std::string& package, const VersionRange& range,
+                           const std::string& interface, const std::string& instance);
+
+std::string toFQNameString(const VersionRange& range, const std::string& interface,
+                           const std::string& instance);
+
 } // namespace vintf
 } // namespace android
 
