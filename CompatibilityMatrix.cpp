@@ -16,13 +16,12 @@
 
 #include "CompatibilityMatrix.h"
 
+#include <iostream>
 #include <utility>
 
 #include "parse_string.h"
-#include "utils.h"
-
-#include <iostream>
 #include "parse_xml.h"
+#include "utils.h"
 
 namespace android {
 namespace vintf {
@@ -129,7 +128,7 @@ bool CompatibilityMatrix::addAllHalsAsOptional(CompatibilityMatrix* other, std::
 
             if (!existingHal->optional && !existingHal->containsInstances(halToAdd)) {
                 if (error != nullptr) {
-                    *error = "HAL " + name + "@" + to_string(vr.minVer()) + " is a required " +
+                    *error = "HAL " + toFQNameString(name, vr.minVer()) + " is a required " +
                              "HAL, but fully qualified instance names don't match (at FCM "
                              "Version " +
                              std::to_string(level()) + " and " + std::to_string(other->level()) +

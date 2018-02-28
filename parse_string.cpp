@@ -401,7 +401,7 @@ static std::string expandInstances(const MatrixHal& req, const VersionRange& vr)
     for (const auto& interface : iterateValues(req.interfaces)) {
         for (const auto& instance : interface.instances) {
             if (!first) s += " AND ";
-            s += "@" + to_string(vr) + "::" + interface.name + "/" + instance;
+            s += toFQNameString(vr, interface.name, instance);
             first = false;
         }
     }
@@ -468,6 +468,41 @@ std::string dump(const RuntimeInfo& ki, bool verbose) {
     }
 
     return oss.str();
+}
+
+std::string toFQNameString(const std::string& package, const std::string& version,
+                           const std::string& interface, const std::string& instance) {
+    std::stringstream ss;
+    ss << package << "@" << version;
+    if (!interface.empty()) {
+        ss << "::" << interface;
+        if (!instance.empty()) {
+            ss << "/" << instance;
+        }
+    }
+    return ss.str();
+}
+
+std::string toFQNameString(const std::string& package, const Version& version,
+                           const std::string& interface, const std::string& instance) {
+    return toFQNameString(package, to_string(version), interface, instance);
+}
+
+std::string toFQNameString(const Version& version, const std::string& interface,
+                           const std::string& instance) {
+    return toFQNameString("", version, interface, instance);
+}
+
+// android.hardware.foo@1.0-1::IFoo/default.
+// Note that the format is extended to support a range of versions.
+std::string toFQNameString(const std::string& package, const VersionRange& range,
+                           const std::string& interface, const std::string& instance) {
+    return toFQNameString(package, to_string(range), interface, instance);
+}
+
+std::string toFQNameString(const VersionRange& range, const std::string& interface,
+                           const std::string& instance) {
+    return toFQNameString("", range, interface, instance);
 }
 
 } // namespace vintf
