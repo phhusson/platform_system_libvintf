@@ -151,15 +151,6 @@ void usage(char* me, const std::vector<Option>& options) {
     }
 }
 
-// android.hardware.foo@1.0-1::IFoo/default.
-// Note that the format is extended to support a range of versions.
-std::string fqInstanceName(const std::string& package, const VersionRange& range,
-                           const std::string& interface, const std::string& instance) {
-    std::stringstream ss;
-    ss << package << "@" << range << "::" << interface << "/" << instance;
-    return ss.str();
-}
-
 struct TableRow {
     // Whether the HAL version is in device manifest, framework manifest, device compatibility
     // matrix, framework compatibility matrix, respectively.
@@ -199,7 +190,7 @@ void insert(const HalManifest* manifest, Table* table, const RowMutator& mutate)
     if (manifest == nullptr) return;
     manifest->forEachInstance([&](const auto& package, const auto& version, const auto& interface,
                                   const auto& instance, bool* /* stop */) {
-        std::string key = fqInstanceName(package, VersionRange{version.majorVer, version.minorVer},
+        std::string key = toFQNameString(package, VersionRange{version.majorVer, version.minorVer},
                                          interface, instance);
         mutate(&(*table)[key]);
     });
@@ -211,7 +202,7 @@ void insert(const CompatibilityMatrix* matrix, Table* table, const RowMutator& m
                                 const auto& instance, bool optional, bool* /* stop */) {
         bool missed = false;
         for (auto minorVer = range.minMinor; minorVer <= range.maxMinor; ++minorVer) {
-            std::string key = fqInstanceName(package, VersionRange{range.majorVer, minorVer},
+            std::string key = toFQNameString(package, VersionRange{range.majorVer, minorVer},
                                              interface, instance);
             auto it = table->find(key);
             if (it == table->end()) {
@@ -222,7 +213,7 @@ void insert(const CompatibilityMatrix* matrix, Table* table, const RowMutator& m
             }
         }
         if (missed) {
-            std::string key = fqInstanceName(package, range, interface, instance);
+            std::string key = toFQNameString(package, range, interface, instance);
             mutate(&(*table)[key]);
         }
     });
