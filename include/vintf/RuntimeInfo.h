@@ -91,7 +91,6 @@ struct RuntimeInfo {
    protected:
     virtual status_t fetchAllInformation(FetchFlags flags);
 
-   private:
     friend struct RuntimeInfoFetcher;
     friend class VintfObject;
     friend struct LibVintfTest;
