@@ -96,13 +96,7 @@ class MockRuntimeInfo : public RuntimeInfo {
             .WillByDefault(Invoke(this, &MockRuntimeInfo::doFetch));
     }
     MOCK_METHOD1(fetchAllInformation, status_t(RuntimeInfo::FetchFlags));
-    status_t doFetch(RuntimeInfo::FetchFlags flags) {
-        if (failNextFetch_) {
-            failNextFetch_ = false;
-            return android::UNKNOWN_ERROR;
-        }
-        return RuntimeInfo::fetchAllInformation(flags);
-    }
+    status_t doFetch(RuntimeInfo::FetchFlags flags);
     void failNextFetch() { failNextFetch_ = true; }
 
    private:
@@ -117,6 +111,16 @@ class MockRuntimeInfoFactory : public ObjectFactory<RuntimeInfo> {
    private:
     std::shared_ptr<MockRuntimeInfo> object_;
 };
+
+class MockPropertyFetcher : public PropertyFetcher {
+   public:
+    MockPropertyFetcher();
+    MOCK_CONST_METHOD2(getProperty, std::string(const std::string&, const std::string&));
+
+   private:
+    PropertyFetcher real_;
+};
+extern MockPropertyFetcher* gPropertyFetcher;
 
 }  // namespace details
 }  // namespace vintf
