@@ -27,10 +27,6 @@
 #include <memory>
 #include <mutex>
 
-#ifdef LIBVINTF_TARGET
-#include <android-base/properties.h>
-#endif
-
 #include <android-base/logging.h>
 
 using std::placeholders::_1;
@@ -128,15 +124,12 @@ status_t VintfObject::GetCombinedFrameworkMatrix(
     }
 
     // TODO(b/70628538): Do not infer from Shipping API level.
-#ifdef LIBVINTF_TARGET
     if (deviceLevel == Level::UNSPECIFIED) {
-        auto shippingApi =
-            android::base::GetUintProperty<uint64_t>("ro.product.first_api_level", 0u);
+        auto shippingApi = getPropertyFetcher().getUintProperty("ro.product.first_api_level", 0u);
         if (shippingApi != 0u) {
             deviceLevel = details::convertFromApiLevel(shippingApi);
         }
     }
-#endif
 
     if (deviceLevel == Level::UNSPECIFIED) {
         // Cannot infer FCM version. Combine all matrices by assuming
@@ -215,9 +208,8 @@ status_t VintfObject::FetchDeviceHalManifest(HalManifest* out, std::string* erro
 status_t VintfObject::FetchOdmHalManifest(HalManifest* out, std::string* error) {
     status_t status;
 
-#ifdef LIBVINTF_TARGET
     std::string productModel;
-    productModel = android::base::GetProperty("ro.boot.product.hardware.sku", "");
+    productModel = getPropertyFetcher().getProperty("ro.boot.product.hardware.sku", "");
 
     if (!productModel.empty()) {
         status =
@@ -226,14 +218,12 @@ status_t VintfObject::FetchOdmHalManifest(HalManifest* out, std::string* error) 
             return status;
         }
     }
-#endif
 
     status = FetchOneHalManifest(kOdmManifest, out, error);
     if (status == OK || status != NAME_NOT_FOUND) {
         return status;
     }
 
-#ifdef LIBVINTF_TARGET
     if (!productModel.empty()) {
         status = FetchOneHalManifest(kOdmLegacyVintfDir + "manifest_" + productModel + ".xml", out,
                                      error);
@@ -241,7 +231,6 @@ status_t VintfObject::FetchOdmHalManifest(HalManifest* out, std::string* error) 
             return status;
         }
     }
-#endif
 
     status = FetchOneHalManifest(kOdmLegacyManifest, out, error);
     if (status == OK || status != NAME_NOT_FOUND) {

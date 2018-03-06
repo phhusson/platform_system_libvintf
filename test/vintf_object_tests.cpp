@@ -21,10 +21,6 @@
 #include <stdio.h>
 #include <unistd.h>
 
-#ifdef LIBVINTF_TARGET
-#include <android-base/properties.h>
-#endif
-
 #include <android-base/strings.h>
 #include <vintf/VintfObject.h>
 #include <vintf/parse_string.h>
@@ -290,9 +286,9 @@ static MockFileFetcher &fetcher() {
 class VintfObjectTestBase : public testing::Test {
    protected:
     virtual void SetUp() {
-#ifdef LIBVINTF_TARGET
-        productModel = android::base::GetProperty("ro.boot.product.hardware.sku", "");
-#endif
+        productModel = "fake_sku";
+        ON_CALL(*gPropertyFetcher, getProperty("ro.boot.product.hardware.sku", _))
+            .WillByDefault(Return(productModel));
     }
     virtual void TearDown() {
         Mock::VerifyAndClear(&mounter());
@@ -724,7 +720,6 @@ bool containsOdmProductManifest(const std::shared_ptr<const HalManifest>& p) {
 
 class DeviceManifestTest : public VintfObjectTestBase {
    protected:
-    virtual void SetUp() override {}
 
     // Expect that /vendor/etc/vintf/manifest.xml is fetched.
     void expectVendorManifest() { expectFetch(kVendorManifest, vendorEtcManifest); }
@@ -985,6 +980,9 @@ int main(int argc, char** argv) {
     NiceMock<MockRuntimeInfoFactory> runtimeInfoFactory(
         std::make_shared<NiceMock<MockRuntimeInfo>>());
     gRuntimeInfoFactory = &runtimeInfoFactory;
+
+    NiceMock<MockPropertyFetcher> properties;
+    gPropertyFetcher = &properties;
 
     return RUN_ALL_TESTS();
 }
