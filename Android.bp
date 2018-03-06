@@ -109,7 +109,8 @@ cc_binary_host {
     name: "checkvintf",
     defaults: ["libvintf-defaults"],
     static_libs: [
-        "libvintf",
+        "libvintf_common",
+        "libutils",
         "libtinyxml2",
     ],
     shared_libs: [
