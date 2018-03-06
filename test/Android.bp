@@ -51,6 +51,8 @@ cc_test {
     host_supported: true,
     native_coverage: true,
     srcs: [
+        "RuntimeInfo-fake.cpp",
+        "utils-fake.cpp",
         "vintf_object_tests.cpp",
     ],
     shared_libs: [
@@ -64,7 +66,8 @@ cc_test {
         "libgtest",
         "libgmock",
         "libhidl-gen-utils",
-        "libvintftest",
+        "libvintf_common",
+        "libz",
     ],
     cflags: [
         "-O0",
