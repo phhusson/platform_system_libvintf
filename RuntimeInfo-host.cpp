@@ -18,7 +18,7 @@
 #define LOG_TAG "libvintf"
 #include <android-base/logging.h>
 
-#include "RuntimeInfo.h"
+#include <vintf/RuntimeInfo.h>
 
 namespace android {
 namespace vintf {

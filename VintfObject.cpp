@@ -286,7 +286,7 @@ std::vector<Named<CompatibilityMatrix>> VintfObject::GetAllFrameworkMatrixLevels
         status_t status = details::gFetcher->fetch(path, content, &fetchError);
         if (status != OK) {
             if (error) {
-                *error += "Ignore file " + path + ": " + fetchError + "\n";
+                *error += "Framework Matrix: Ignore file " + path + ": " + fetchError + "\n";
             }
             continue;
         }
@@ -294,7 +294,7 @@ std::vector<Named<CompatibilityMatrix>> VintfObject::GetAllFrameworkMatrixLevels
         auto it = results.emplace(results.end());
         if (!gCompatibilityMatrixConverter(&it->object, content, error)) {
             if (error) {
-                *error += "Ignore file " + path + ": " + *error + "\n";
+                *error += "Framework Matrix: Ignore file " + path + ": " + *error + "\n";
             }
             results.erase(it);
             continue;
@@ -484,7 +484,9 @@ int32_t checkCompatibility(const std::vector<std::string>& xmls, bool mount,
         (void)mounter.umountVendor(); // ignore errors
     }
 
-    updated.runtimeInfo = VintfObject::GetRuntimeInfo(true /* skipCache */);
+    if ((disabledChecks & DISABLE_RUNTIME_INFO) == 0) {
+        updated.runtimeInfo = VintfObject::GetRuntimeInfo(true /* skipCache */);
+    }
 
     // null checks for files and runtime info after the update
     if (updated.fwk.manifest == nullptr) {
@@ -503,9 +505,12 @@ int32_t checkCompatibility(const std::vector<std::string>& xmls, bool mount,
         ADD_MESSAGE("No device matrix file from device or from update package");
         return NO_INIT;
     }
-    if (updated.runtimeInfo == nullptr) {
-        ADD_MESSAGE("No runtime info from device");
-        return NO_INIT;
+
+    if ((disabledChecks & DISABLE_RUNTIME_INFO) == 0) {
+        if (updated.runtimeInfo == nullptr) {
+            ADD_MESSAGE("No runtime info from device");
+            return NO_INIT;
+        }
     }
 
     // compatiblity check.
@@ -523,11 +528,15 @@ int32_t checkCompatibility(const std::vector<std::string>& xmls, bool mount,
         }
         return INCOMPATIBLE;
     }
-    if (!updated.runtimeInfo->checkCompatibility(*updated.fwk.matrix, error, disabledChecks)) {
-        if (error) {
-            error->insert(0, "Runtime info and framework compatibility matrix are incompatible: ");
+
+    if ((disabledChecks & DISABLE_RUNTIME_INFO) == 0) {
+        if (!updated.runtimeInfo->checkCompatibility(*updated.fwk.matrix, error, disabledChecks)) {
+            if (error) {
+                error->insert(0,
+                              "Runtime info and framework compatibility matrix are incompatible: ");
+            }
+            return INCOMPATIBLE;
         }
-        return INCOMPATIBLE;
     }
 
     return COMPATIBLE;
@@ -548,6 +557,14 @@ const std::string kSystemLegacyManifest = "/system/manifest.xml";
 const std::string kSystemLegacyMatrix = "/system/compatibility_matrix.xml";
 const std::string kOdmLegacyVintfDir = "/odm/etc/";
 const std::string kOdmLegacyManifest = kOdmLegacyVintfDir + "manifest.xml";
+
+std::vector<std::string> dumpFileList() {
+    return {
+        kSystemVintfDir,       kVendorVintfDir,     kOdmVintfDir,          kOdmLegacyVintfDir,
+
+        kVendorLegacyManifest, kVendorLegacyMatrix, kSystemLegacyManifest, kSystemLegacyMatrix,
+    };
+}
 
 } // namespace details
 
