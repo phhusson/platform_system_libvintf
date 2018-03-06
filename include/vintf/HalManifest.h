@@ -18,14 +18,16 @@
 #ifndef ANDROID_VINTF_HAL_MANIFEST_H
 #define ANDROID_VINTF_HAL_MANIFEST_H
 
+#include <hidl-util/FqInstance.h>
+#include <utils/Errors.h>
 #include <map>
 #include <string>
-#include <utils/Errors.h>
 #include <vector>
 
 #include "HalGroup.h"
 #include "Level.h"
 #include "ManifestHal.h"
+#include "ManifestInstance.h"
 #include "MapValueIterator.h"
 #include "SchemaType.h"
 #include "SystemSdk.h"
@@ -117,9 +119,9 @@ struct HalManifest : public HalGroup<ManifestHal>, public XmlFileGroup<ManifestX
     // Get metaversion of this manifest.
     Version getMetaVersion() const;
 
-    void forEachInstance(
-        const std::function<void(const std::string&, const Version&, const std::string&,
-                                 const std::string&, bool*)>& f) const;
+    bool forEachInstanceOfVersion(
+        const std::string& package, const Version& expectVersion,
+        const std::function<bool(const ManifestInstance&)>& func) const override;
 
    protected:
     // Check before add()
