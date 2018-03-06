@@ -112,6 +112,16 @@ class MockRuntimeInfoFactory : public ObjectFactory<RuntimeInfo> {
     std::shared_ptr<MockRuntimeInfo> object_;
 };
 
+class MockPropertyFetcher : public PropertyFetcher {
+   public:
+    MockPropertyFetcher();
+    MOCK_CONST_METHOD2(getProperty, std::string(const std::string&, const std::string&));
+
+   private:
+    PropertyFetcher real_;
+};
+extern MockPropertyFetcher* gPropertyFetcher;
+
 }  // namespace details
 }  // namespace vintf
 }  // namespace android

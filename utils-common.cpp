@@ -1,3 +1,4 @@
+
 /*
  * Copyright (C) 2017 The Android Open Source Project
  *
@@ -14,30 +15,26 @@
  * limitations under the License.
  */
 
-#include "utils-fake.h"
+#include "utils.h"
+
+// Default implementations for classes defined in utils.h
 
 namespace android {
 namespace vintf {
 namespace details {
 
-// Do not create the mock objects here as InitGoogleMock must be called
-// first.
-FileFetcher* gFetcher = nullptr;
-
-PartitionMounter* gPartitionMounter = nullptr;
-
-ObjectFactory<RuntimeInfo>* gRuntimeInfoFactory = nullptr;
-
-MockPropertyFetcher::MockPropertyFetcher() {
-    using namespace ::testing;
-    using namespace std::placeholders;
-    ON_CALL(*this, getProperty(_, _))
-        .WillByDefault(Invoke(std::bind(&PropertyFetcher::getProperty, real_, _1, _2)));
+std::string PropertyFetcher::getProperty(const std::string&,
+                                         const std::string& defaultValue) const {
+    return defaultValue;
 }
 
-MockPropertyFetcher* gPropertyFetcher = nullptr;
-const PropertyFetcher& getPropertyFetcher() {
-    return *gPropertyFetcher;
+uint64_t PropertyFetcher::getUintProperty(const std::string&, uint64_t,
+                                          uint64_t defaultValue) const {
+    return defaultValue;
+}
+
+bool PropertyFetcher::getBoolProperty(const std::string&, bool defaultValue) const {
+    return defaultValue;
 }
 
 }  // namespace details

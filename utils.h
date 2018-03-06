@@ -141,6 +141,18 @@ inline Level convertFromApiLevel(size_t apiLevel) {
     }
 }
 
+class PropertyFetcher {
+   public:
+    virtual ~PropertyFetcher() = default;
+    virtual std::string getProperty(const std::string& key,
+                                    const std::string& defaultValue = "") const;
+    virtual uint64_t getUintProperty(const std::string& key, uint64_t defaultValue,
+                                     uint64_t max = UINT64_MAX) const;
+    virtual bool getBoolProperty(const std::string& key, bool defaultValue) const;
+};
+
+const PropertyFetcher& getPropertyFetcher();
+
 }  // namespace details
 }  // namespace vintf
 }  // namespace android
