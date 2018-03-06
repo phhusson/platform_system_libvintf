@@ -25,6 +25,7 @@
 
 #include "HalFormat.h"
 #include "HalInterface.h"
+#include "ManifestInstance.h"
 #include "TransportArch.h"
 #include "Version.h"
 
@@ -33,6 +34,7 @@ namespace vintf {
 
 // A component of HalManifest.
 struct ManifestHal {
+    using InstanceType = ManifestInstance;
 
     bool operator==(const ManifestHal &other) const;
     // Check whether the ManifestHal contains the given version.
@@ -57,6 +59,7 @@ struct ManifestHal {
     }
 
     inline const std::string& getName() const { return name; }
+    bool forEachInstance(const std::function<bool(const ManifestInstance&)>& func) const;
 
    private:
     friend struct LibVintfTest;

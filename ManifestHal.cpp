@@ -17,6 +17,8 @@
 #include "ManifestHal.h"
 #include <unordered_set>
 
+#include "MapValueIterator.h"
+
 namespace android {
 namespace vintf {
 
@@ -42,13 +44,6 @@ bool ManifestHal::operator==(const ManifestHal &other) const {
     return true;
 }
 
-bool ManifestHal::containsVersion(const Version& version) const {
-    for (Version v : versions) {
-        if (v.minorAtLeast(version)) return true;
-    }
-    return false;
-}
-
 std::set<std::string> ManifestHal::getInstances(const std::string& interfaceName) const {
     std::set<std::string> ret;
     auto it = interfaces.find(interfaceName);
@@ -56,6 +51,25 @@ std::set<std::string> ManifestHal::getInstances(const std::string& interfaceName
         ret.insert(it->second.instances.begin(), it->second.instances.end());
     }
     return ret;
+}
+
+bool ManifestHal::forEachInstance(const std::function<bool(const ManifestInstance&)>& func) const {
+    // TODO(b/73556059): support <fqname> as well.
+    for (const auto& v : versions) {
+        for (const auto& intf : iterateValues(interfaces)) {
+            for (const auto& instance : intf.instances) {
+                // TODO(b/73556059): Store ManifestInstance as well to avoid creating temps
+                FqInstance fqInstance;
+                if (fqInstance.setTo(getName(), v.majorVer, v.minorVer, intf.name, instance)) {
+                    if (!func(ManifestInstance(std::move(fqInstance),
+                                               TransportArch{transportArch}))) {
+                        return false;
+                    }
+                }
+            }
+        }
+    }
+    return true;
 }
 
 } // namespace vintf
