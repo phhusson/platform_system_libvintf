@@ -33,7 +33,7 @@
 #include <iostream>
 #include <sstream>
 
-#include <cutils/properties.h>
+#include <android-base/properties.h>
 #include <selinux/selinux.h>
 #include <zlib.h>
 
@@ -148,12 +148,11 @@ status_t RuntimeInfoFetcher::parseKernelVersion() {
 }
 
 status_t RuntimeInfoFetcher::fetchAvb() {
-    char prop[PROPERTY_VALUE_MAX];
-    property_get("ro.boot.vbmeta.avb_version", prop, "0.0");
+    std::string prop = android::base::GetProperty("ro.boot.vbmeta.avb_version", "0.0");
     if (!parse(prop, &mRuntimeInfo->mBootVbmetaAvbVersion)) {
         return UNKNOWN_ERROR;
     }
-    property_get("ro.boot.avb_version", prop, "0.0");
+    prop = android::base::GetProperty("ro.boot.avb_version", "0.0");
     if (!parse(prop, &mRuntimeInfo->mBootAvbVersion)) {
         return UNKNOWN_ERROR;
     }
