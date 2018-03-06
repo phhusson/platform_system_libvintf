@@ -81,8 +81,7 @@ std::shared_ptr<const HalManifest> VintfObject::GetDeviceHalManifest(bool skipCa
 // static
 std::shared_ptr<const HalManifest> VintfObject::GetFrameworkHalManifest(bool skipCache) {
     static LockedSharedPtr<HalManifest> gFrameworkManifest;
-    return Get(&gFrameworkManifest, skipCache,
-               std::bind(&HalManifest::fetchAllInformation, _1, kSystemManifest, _2));
+    return Get(&gFrameworkManifest, skipCache, &VintfObject::FetchFrameworkHalManifest);
 }
 
 
@@ -271,6 +270,15 @@ status_t VintfObject::FetchDeviceMatrix(CompatibilityMatrix* out, std::string* e
         return OK;
     }
     return out->fetchAllInformation(kVendorLegacyMatrix, error);
+}
+
+status_t VintfObject::FetchFrameworkHalManifest(HalManifest* out, std::string* error) {
+    HalManifest etcManifest;
+    if (etcManifest.fetchAllInformation(kSystemManifest, error) == OK) {
+        *out = std::move(etcManifest);
+        return OK;
+    }
+    return out->fetchAllInformation(kSystemLegacyManifest, error);
 }
 
 std::vector<Named<CompatibilityMatrix>> VintfObject::GetAllFrameworkMatrixLevels(
@@ -547,6 +555,7 @@ const std::string kOdmManifest = kOdmVintfDir + "manifest.xml";
 
 const std::string kVendorLegacyManifest = "/vendor/manifest.xml";
 const std::string kVendorLegacyMatrix = "/vendor/compatibility_matrix.xml";
+const std::string kSystemLegacyManifest = "/system/manifest.xml";
 const std::string kSystemLegacyMatrix = "/system/compatibility_matrix.xml";
 const std::string kOdmLegacyVintfDir = "/odm/etc/";
 const std::string kOdmLegacyManifest = kOdmLegacyVintfDir + "manifest.xml";

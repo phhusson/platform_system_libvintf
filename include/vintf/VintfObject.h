@@ -151,6 +151,7 @@ public:
     static status_t FetchOdmHalManifest(HalManifest* out, std::string* error = nullptr);
     static status_t FetchOneHalManifest(const std::string& path, HalManifest* out,
                                         std::string* error = nullptr);
+    static status_t FetchFrameworkHalManifest(HalManifest* out, std::string* error = nullptr);
 
     static bool isHalDeprecated(const MatrixHal& oldMatrixHal,
                                 const CompatibilityMatrix& targetMatrix,
@@ -187,6 +188,7 @@ extern const std::string kVendorMatrix;
 extern const std::string kOdmManifest;
 extern const std::string kVendorLegacyManifest;
 extern const std::string kVendorLegacyMatrix;
+extern const std::string kSystemLegacyManifest;
 extern const std::string kSystemLegacyMatrix;
 
 } // namespace details
