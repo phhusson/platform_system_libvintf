@@ -845,8 +845,7 @@ struct FQInstance {
     FQInstance(const std::string& s) {
         auto tokens = android::base::Split(s, "/");
         CHECK(2u == tokens.size());
-        fqName = FQName(tokens[0]);
-        CHECK(fqName.isValid());
+        CHECK(FQName::parse(tokens[0], &fqName));
         instance = tokens[1];
     }
 
