@@ -381,7 +381,12 @@ bool HalManifest::checkCompatibility(const CompatibilityMatrix &mat, std::string
     auto incompatibleHals = checkIncompatibleHals(mat);
     if (!incompatibleHals.empty()) {
         if (error != nullptr) {
-            *error = "HALs incompatible. The following requirements are not met:\n";
+            *error = "HALs incompatible.";
+            if (mat.level() != Level::UNSPECIFIED)
+                *error += " Matrix level = " + to_string(mat.level()) + ".";
+            if (level() != Level::UNSPECIFIED)
+                *error += " Manifest level = " + to_string(level()) + ".";
+            *error += " The following requirements are not met:\n";
             for (const auto& e : incompatibleHals) {
                 *error += e + "\n";
             }
