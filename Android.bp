@@ -24,8 +24,10 @@ cc_defaults {
     ],
 }
 
-cc_defaults {
-    name: "libvintf-common-srcs",
+cc_library_static {
+    name: "libvintf_common",
+    defaults: ["libvintf-defaults"],
+    host_supported: true,
     srcs: [
         "parse_string.cpp",
         "parse_xml.cpp",
@@ -33,6 +35,7 @@ cc_defaults {
         "HalManifest.cpp",
         "HalInterface.cpp",
         "KernelConfigTypedValue.cpp",
+        "KernelConfigParser.cpp",
         "RuntimeInfo.cpp",
         "ManifestHal.cpp",
         "MatrixHal.cpp",
@@ -41,45 +44,53 @@ cc_defaults {
         "TransportArch.cpp",
         "VintfObject.cpp",
         "XmlFile.cpp",
-    ]
-}
-
-cc_library {
-    name: "libvintf",
-    host_supported: true,
-    defaults: ["libvintf-defaults", "libvintf-common-srcs"],
+        "utils-common.cpp",
+    ],
     shared_libs: [
         "libbase",
         "liblog",
         "libselinux",
         "libtinyxml2",
+        "libz",
+    ],
+    export_include_dirs: ["include", "."],
+    local_include_dirs: ["include/vintf"],
+
+    target: {
+        host: {
+            srcs: [
+                "RuntimeInfo-host.cpp",
+            ],
+        },
+        android: {
+            srcs: [
+                "RuntimeInfo-target.cpp",
+            ],
+            cflags: ["-DLIBVINTF_TARGET"],
+        },
+    }
+}
+
+// libvintf_common + utils.cpp
+cc_library {
+    name: "libvintf",
+    host_supported: true,
+    defaults: ["libvintf-defaults"],
+    shared_libs: [
+        "libbase",
+        "liblog",
+        "libselinux",
+        "libtinyxml2",
+        "libz",
     ],
     export_include_dirs: ["include"],
     local_include_dirs: ["include/vintf"],
 
     srcs: [
-        "KernelConfigParser.cpp",
         "utils.cpp",
     ],
 
-    target: {
-        host: {
-            srcs: [
-                "RuntimeInfo-host.cpp"
-            ],
-        },
-        android: {
-            shared_libs: [
-                "libcutils",
-                "libutils",
-                "libz"
-            ],
-            srcs: [
-                "RuntimeInfo-target.cpp"
-            ],
-            cflags: ["-DLIBVINTF_TARGET"],
-        },
-    }
+    whole_static_libs: ["libvintf_common"],
 }
 
 cc_binary {
@@ -98,7 +109,8 @@ cc_binary_host {
     name: "checkvintf",
     defaults: ["libvintf-defaults"],
     static_libs: [
-        "libvintf",
+        "libvintf_common",
+        "libutils",
         "libtinyxml2",
     ],
     shared_libs: [
@@ -106,7 +118,6 @@ cc_binary_host {
     ],
     srcs: [
         "check_vintf.cpp",
-        "utils.cpp"
     ],
 }
 
@@ -137,34 +148,4 @@ cc_binary_host {
     srcs: [
         "assemble_vintf_main.cpp"
     ],
-}
-
-cc_library_static {
-    name: "libvintftest",
-    defaults: ["libvintf-defaults", "libvintf-common-srcs"],
-    host_supported: true,
-    shared_libs: [
-        "libbase",
-        "liblog",
-        "libselinux",
-        "libtinyxml2",
-    ],
-    export_include_dirs: ["include/vintf", "include", "test", "."],
-    local_include_dirs: ["include/vintf", "test", "."],
-
-    srcs: [
-        "test/RuntimeInfo-fake.cpp",
-        "test/utils-fake.cpp",
-    ],
-
-    target: {
-        android: {
-            shared_libs: [
-                "libcutils",
-                "libutils",
-                "libz"
-            ],
-            cflags: ["-DLIBVINTF_TARGET"],
-        },
-    }
 }

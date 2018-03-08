@@ -151,6 +151,7 @@ public:
     static status_t FetchOdmHalManifest(HalManifest* out, std::string* error = nullptr);
     static status_t FetchOneHalManifest(const std::string& path, HalManifest* out,
                                         std::string* error = nullptr);
+    static status_t FetchFrameworkHalManifest(HalManifest* out, std::string* error = nullptr);
 
     static bool isHalDeprecated(const MatrixHal& oldMatrixHal,
                                 const CompatibilityMatrix& targetMatrix,
@@ -187,7 +188,16 @@ extern const std::string kVendorMatrix;
 extern const std::string kOdmManifest;
 extern const std::string kVendorLegacyManifest;
 extern const std::string kVendorLegacyMatrix;
+extern const std::string kSystemLegacyManifest;
 extern const std::string kSystemLegacyMatrix;
+
+// Convenience function to dump all files and directories that could be read
+// by calling Get(Framework|Device)(HalManifest|CompatibilityMatrix). The list
+// include files that may not actually be read when the four functions are called
+// because some files have a higher priority than others. The list does NOT
+// include "files" (including kernel interfaces) that are read when GetRuntimeInfo
+// is called.
+std::vector<std::string> dumpFileList();
 
 } // namespace details
 

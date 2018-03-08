@@ -27,10 +27,6 @@
 #include <memory>
 #include <mutex>
 
-#ifdef LIBVINTF_TARGET
-#include <android-base/properties.h>
-#endif
-
 #include <android-base/logging.h>
 
 using std::placeholders::_1;
@@ -81,8 +77,7 @@ std::shared_ptr<const HalManifest> VintfObject::GetDeviceHalManifest(bool skipCa
 // static
 std::shared_ptr<const HalManifest> VintfObject::GetFrameworkHalManifest(bool skipCache) {
     static LockedSharedPtr<HalManifest> gFrameworkManifest;
-    return Get(&gFrameworkManifest, skipCache,
-               std::bind(&HalManifest::fetchAllInformation, _1, kSystemManifest, _2));
+    return Get(&gFrameworkManifest, skipCache, &VintfObject::FetchFrameworkHalManifest);
 }
 
 
@@ -129,15 +124,12 @@ status_t VintfObject::GetCombinedFrameworkMatrix(
     }
 
     // TODO(b/70628538): Do not infer from Shipping API level.
-#ifdef LIBVINTF_TARGET
     if (deviceLevel == Level::UNSPECIFIED) {
-        auto shippingApi =
-            android::base::GetUintProperty<uint64_t>("ro.product.first_api_level", 0u);
+        auto shippingApi = getPropertyFetcher().getUintProperty("ro.product.first_api_level", 0u);
         if (shippingApi != 0u) {
             deviceLevel = details::convertFromApiLevel(shippingApi);
         }
     }
-#endif
 
     if (deviceLevel == Level::UNSPECIFIED) {
         // Cannot infer FCM version. Combine all matrices by assuming
@@ -216,9 +208,8 @@ status_t VintfObject::FetchDeviceHalManifest(HalManifest* out, std::string* erro
 status_t VintfObject::FetchOdmHalManifest(HalManifest* out, std::string* error) {
     status_t status;
 
-#ifdef LIBVINTF_TARGET
     std::string productModel;
-    productModel = android::base::GetProperty("ro.boot.product.hardware.sku", "");
+    productModel = getPropertyFetcher().getProperty("ro.boot.product.hardware.sku", "");
 
     if (!productModel.empty()) {
         status =
@@ -227,14 +218,12 @@ status_t VintfObject::FetchOdmHalManifest(HalManifest* out, std::string* error) 
             return status;
         }
     }
-#endif
 
     status = FetchOneHalManifest(kOdmManifest, out, error);
     if (status == OK || status != NAME_NOT_FOUND) {
         return status;
     }
 
-#ifdef LIBVINTF_TARGET
     if (!productModel.empty()) {
         status = FetchOneHalManifest(kOdmLegacyVintfDir + "manifest_" + productModel + ".xml", out,
                                      error);
@@ -242,7 +231,6 @@ status_t VintfObject::FetchOdmHalManifest(HalManifest* out, std::string* error) 
             return status;
         }
     }
-#endif
 
     status = FetchOneHalManifest(kOdmLegacyManifest, out, error);
     if (status == OK || status != NAME_NOT_FOUND) {
@@ -273,6 +261,15 @@ status_t VintfObject::FetchDeviceMatrix(CompatibilityMatrix* out, std::string* e
     return out->fetchAllInformation(kVendorLegacyMatrix, error);
 }
 
+status_t VintfObject::FetchFrameworkHalManifest(HalManifest* out, std::string* error) {
+    HalManifest etcManifest;
+    if (etcManifest.fetchAllInformation(kSystemManifest, error) == OK) {
+        *out = std::move(etcManifest);
+        return OK;
+    }
+    return out->fetchAllInformation(kSystemLegacyManifest, error);
+}
+
 std::vector<Named<CompatibilityMatrix>> VintfObject::GetAllFrameworkMatrixLevels(
     std::string* error) {
     std::vector<std::string> fileNames;
@@ -289,7 +286,7 @@ std::vector<Named<CompatibilityMatrix>> VintfObject::GetAllFrameworkMatrixLevels
         status_t status = details::gFetcher->fetch(path, content, &fetchError);
         if (status != OK) {
             if (error) {
-                *error += "Ignore file " + path + ": " + fetchError + "\n";
+                *error += "Framework Matrix: Ignore file " + path + ": " + fetchError + "\n";
             }
             continue;
         }
@@ -297,7 +294,7 @@ std::vector<Named<CompatibilityMatrix>> VintfObject::GetAllFrameworkMatrixLevels
         auto it = results.emplace(results.end());
         if (!gCompatibilityMatrixConverter(&it->object, content, error)) {
             if (error) {
-                *error += "Ignore file " + path + ": " + *error + "\n";
+                *error += "Framework Matrix: Ignore file " + path + ": " + *error + "\n";
             }
             results.erase(it);
             continue;
@@ -487,7 +484,9 @@ int32_t checkCompatibility(const std::vector<std::string>& xmls, bool mount,
         (void)mounter.umountVendor(); // ignore errors
     }
 
-    updated.runtimeInfo = VintfObject::GetRuntimeInfo(true /* skipCache */);
+    if ((disabledChecks & DISABLE_RUNTIME_INFO) == 0) {
+        updated.runtimeInfo = VintfObject::GetRuntimeInfo(true /* skipCache */);
+    }
 
     // null checks for files and runtime info after the update
     if (updated.fwk.manifest == nullptr) {
@@ -506,9 +505,12 @@ int32_t checkCompatibility(const std::vector<std::string>& xmls, bool mount,
         ADD_MESSAGE("No device matrix file from device or from update package");
         return NO_INIT;
     }
-    if (updated.runtimeInfo == nullptr) {
-        ADD_MESSAGE("No runtime info from device");
-        return NO_INIT;
+
+    if ((disabledChecks & DISABLE_RUNTIME_INFO) == 0) {
+        if (updated.runtimeInfo == nullptr) {
+            ADD_MESSAGE("No runtime info from device");
+            return NO_INIT;
+        }
     }
 
     // compatiblity check.
@@ -526,11 +528,15 @@ int32_t checkCompatibility(const std::vector<std::string>& xmls, bool mount,
         }
         return INCOMPATIBLE;
     }
-    if (!updated.runtimeInfo->checkCompatibility(*updated.fwk.matrix, error, disabledChecks)) {
-        if (error) {
-            error->insert(0, "Runtime info and framework compatibility matrix are incompatible: ");
+
+    if ((disabledChecks & DISABLE_RUNTIME_INFO) == 0) {
+        if (!updated.runtimeInfo->checkCompatibility(*updated.fwk.matrix, error, disabledChecks)) {
+            if (error) {
+                error->insert(0,
+                              "Runtime info and framework compatibility matrix are incompatible: ");
+            }
+            return INCOMPATIBLE;
         }
-        return INCOMPATIBLE;
     }
 
     return COMPATIBLE;
@@ -547,9 +553,18 @@ const std::string kOdmManifest = kOdmVintfDir + "manifest.xml";
 
 const std::string kVendorLegacyManifest = "/vendor/manifest.xml";
 const std::string kVendorLegacyMatrix = "/vendor/compatibility_matrix.xml";
+const std::string kSystemLegacyManifest = "/system/manifest.xml";
 const std::string kSystemLegacyMatrix = "/system/compatibility_matrix.xml";
 const std::string kOdmLegacyVintfDir = "/odm/etc/";
 const std::string kOdmLegacyManifest = kOdmLegacyVintfDir + "manifest.xml";
+
+std::vector<std::string> dumpFileList() {
+    return {
+        kSystemVintfDir,       kVendorVintfDir,     kOdmVintfDir,          kOdmLegacyVintfDir,
+
+        kVendorLegacyManifest, kVendorLegacyMatrix, kSystemLegacyManifest, kSystemLegacyMatrix,
+    };
+}
 
 } // namespace details
 
