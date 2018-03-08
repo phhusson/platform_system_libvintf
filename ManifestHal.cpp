@@ -44,15 +44,6 @@ bool ManifestHal::operator==(const ManifestHal &other) const {
     return true;
 }
 
-std::set<std::string> ManifestHal::getInstances(const std::string& interfaceName) const {
-    std::set<std::string> ret;
-    auto it = interfaces.find(interfaceName);
-    if (it != interfaces.end()) {
-        ret.insert(it->second.instances.begin(), it->second.instances.end());
-    }
-    return ret;
-}
-
 bool ManifestHal::forEachInstance(const std::function<bool(const ManifestInstance&)>& func) const {
     // TODO(b/73556059): support <fqname> as well.
     for (const auto& v : versions) {
