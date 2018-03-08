@@ -52,9 +52,6 @@ struct ManifestHal {
     inline bool hasInterface(const std::string& interface_name) const {
         return interfaces.find(interface_name) != interfaces.end();
     }
-    inline bool hasVersion(Version v) const {
-        return std::find(versions.begin(), versions.end(), v) != versions.end();
-    }
     inline Transport transport() const {
         return transportArch.transport;
     }
