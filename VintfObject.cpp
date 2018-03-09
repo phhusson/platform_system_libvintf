@@ -613,7 +613,7 @@ bool VintfObject::isInstanceDeprecated(const std::string& package, Version versi
         if (targetMatrixHal == nullptr || targetMatrixRange == nullptr) {
             if (error) {
                 *error = toFQNameString(package, servedVersion) +
-                         "is deprecated in compatibility matrix at FCM Version " +
+                         " is deprecated in compatibility matrix at FCM Version " +
                          to_string(targetMatrix.level()) + "; it should not be served.";
             }
             return true;
