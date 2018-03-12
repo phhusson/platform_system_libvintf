@@ -41,8 +41,6 @@ struct ManifestHal {
     // E.g. if hal has version "1.0" and "2.1", it contains version
     // "1.0", "2.0", "2.1".
     bool containsVersion(const Version& version) const;
-    // Get all instances of the ManifestHal with given interface name.
-    std::set<std::string> getInstances(const std::string& interfaceName) const;
 
     HalFormat format = HalFormat::HIDL;
     std::string name;
