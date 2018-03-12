@@ -26,6 +26,7 @@
 #include "Level.h"
 #include "MapValueIterator.h"
 #include "MatrixHal.h"
+#include "MatrixInstance.h"
 #include "MatrixKernel.h"
 #include "Named.h"
 #include "SchemaType.h"
@@ -58,9 +59,9 @@ struct CompatibilityMatrix : public HalGroup<MatrixHal>, public XmlFileGroup<Mat
     // (Normally, version ranges do not overlap, and the only match is returned.)
     std::string getXmlSchemaPath(const std::string& xmlFileName, const Version& version) const;
 
-    void forEachInstance(
-        const std::function<void(const std::string&, const VersionRange&, const std::string&,
-                                 const std::string&, bool, bool*)>& f) const;
+    bool forEachInstanceOfVersion(
+        const std::string& package, const Version& expectVersion,
+        const std::function<bool(const MatrixInstance&)>& func) const override;
 
    private:
     bool add(MatrixHal &&hal);
