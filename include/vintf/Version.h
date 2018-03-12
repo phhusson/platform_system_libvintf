@@ -29,6 +29,8 @@ struct Version {
 
     constexpr Version() : Version(0u, 0u) {}
     constexpr Version(size_t mj, size_t mi) : majorVer(mj), minorVer(mi) {}
+    constexpr Version(const std::pair<size_t, size_t>& pair)
+        : majorVer(pair.first), minorVer(pair.second) {}
 
     size_t majorVer;
     size_t minorVer;
