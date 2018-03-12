@@ -758,18 +758,6 @@ TEST_F(LibVintfTest, HalManifestGetHals) {
     auto nfcHals = vm.getHals("android.hardware.nfc");
     EXPECT_EQ((int)nfcHals.size(), 1);
     EXPECT_EQ(*nfcHals[0], expectedNfcHal);
-
-    EXPECT_EQ(*vm.getHal("android.hardware.camera", {1, 1}), expectedCameraHalV1_2);
-    EXPECT_EQ(*vm.getHal("android.hardware.camera", {2, 0}), expectedCameraHalV2_0);
-    EXPECT_EQ(*vm.getHal("android.hardware.nfc", {1, 0}), expectedNfcHal);
-    EXPECT_EQ(*vm.getHal("android.hardware.nfc", {2, 0}), expectedNfcHal);
-    EXPECT_EQ(*vm.getHal("android.hardware.nfc", {2, 1}), expectedNfcHal);
-
-    EXPECT_EQ(vm.getHal("non-existent", {1, 0}), nullptr);
-    EXPECT_EQ(vm.getHal("android.hardware.camera", {2, 1}), nullptr);
-    EXPECT_EQ(vm.getHal("android.hardware.camera", {1, 3}), nullptr);
-    EXPECT_EQ(vm.getHal("android.hardware.nfc", {1, 1}), nullptr);
-    EXPECT_EQ(vm.getHal("android.hardware.nfc", {3, 0}), nullptr);
 }
 
 TEST_F(LibVintfTest, CompatibilityMatrixGetHals) {
@@ -803,18 +791,6 @@ TEST_F(LibVintfTest, CompatibilityMatrixGetHals) {
     auto nfcHals = cm.getHals("android.hardware.nfc");
     EXPECT_EQ((int)nfcHals.size(), 1);
     EXPECT_EQ(*nfcHals[0], expectedNfcHal);
-
-    EXPECT_EQ(*cm.getHal("android.hardware.camera", {1, 2}), expectedCameraHal);
-    EXPECT_EQ(*cm.getHal("android.hardware.camera", {1, 3}), expectedCameraHal);
-    EXPECT_EQ(*cm.getHal("android.hardware.camera", {4, 5}), expectedCameraHal);
-    EXPECT_EQ(*cm.getHal("android.hardware.nfc", {4, 5}), expectedNfcHal);
-    EXPECT_EQ(*cm.getHal("android.hardware.nfc", {10, 12}), expectedNfcHal);
-
-    EXPECT_EQ(cm.getHal("non-existent", {1, 0}), nullptr);
-    EXPECT_EQ(cm.getHal("android.hardware.camera", {2, 1}), nullptr);
-    EXPECT_EQ(cm.getHal("android.hardware.camera", {1, 0}), nullptr);
-    EXPECT_EQ(cm.getHal("android.hardware.nfc", {3, 0}), nullptr);
-    EXPECT_EQ(cm.getHal("android.hardware.nfc", {4, 7}), nullptr);
 }
 
 TEST_F(LibVintfTest, RuntimeInfo) {
@@ -2443,12 +2419,12 @@ TEST_F(LibVintfTest, ManifestHalOverride) {
         "    </hal>\n"
         "</manifest>\n";
     EXPECT_TRUE(gHalManifestConverter(&manifest, xml)) << gHalManifestConverter.lastError();
-    const ManifestHal* foo = manifest.getHal("android.hardware.foo", {1, 0});
-    ASSERT_NE(nullptr, foo);
-    EXPECT_TRUE(foo->isOverride);
-    const ManifestHal* bar = manifest.getHal("android.hardware.bar", {1, 0});
-    ASSERT_NE(nullptr, bar);
-    EXPECT_FALSE(bar->isOverride);
+    const auto& foo = manifest.getHals("android.hardware.foo");
+    ASSERT_FALSE(foo.empty());
+    EXPECT_TRUE(foo.front()->isOverride);
+    const auto& bar = manifest.getHals("android.hardware.bar");
+    ASSERT_FALSE(bar.empty());
+    EXPECT_FALSE(bar.front()->isOverride);
 }
 
 // Test functionality of override="true" tag

@@ -24,6 +24,7 @@
 
 #include "HalFormat.h"
 #include "HalInterface.h"
+#include "MatrixInstance.h"
 #include "VersionRange.h"
 
 namespace android {
@@ -31,6 +32,7 @@ namespace vintf {
 
 // A HAL entry to a compatibility matrix
 struct MatrixHal {
+    using InstanceType = MatrixInstance;
 
     bool operator==(const MatrixHal &other) const;
     // Check whether the MatrixHal contains the given version.
@@ -51,6 +53,8 @@ struct MatrixHal {
 
     // Return true if "this" contains all interface/instance instances in "other".
     bool containsInstances(const MatrixHal& other) const;
+
+    bool forEachInstance(const std::function<bool(const MatrixInstance&)>& func) const;
 };
 
 } // namespace vintf
