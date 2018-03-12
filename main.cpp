@@ -199,7 +199,6 @@ void insert(const HalManifest* manifest, Table* table, const RowMutator& mutate)
 void insert(const CompatibilityMatrix* matrix, Table* table, const RowMutator& mutate) {
     if (matrix == nullptr) return;
     matrix->forEachInstance([&](const auto& matrixInstance) {
-        bool missed = false;
         for (auto minorVer = matrixInstance.versionRange().minMinor;
              minorVer <= matrixInstance.versionRange().maxMinor; ++minorVer) {
             std::string key = toFQNameString(
@@ -207,17 +206,13 @@ void insert(const CompatibilityMatrix* matrix, Table* table, const RowMutator& m
                 matrixInstance.interface(), matrixInstance.instance());
             auto it = table->find(key);
             if (it == table->end()) {
-                missed = true;
+                mutate(&(*table)[key]);
             } else {
                 mutate(&it->second);
-                it->second.required = !matrixInstance.optional();
+                if (minorVer == matrixInstance.versionRange().minMinor) {
+                    it->second.required = !matrixInstance.optional();
+                }
             }
-        }
-        if (missed) {
-            std::string key =
-                toFQNameString(matrixInstance.package(), matrixInstance.versionRange(),
-                               matrixInstance.interface(), matrixInstance.instance());
-            mutate(&(*table)[key]);
         }
         return true;
     });
