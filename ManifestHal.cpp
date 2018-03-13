@@ -40,7 +40,9 @@ bool ManifestHal::operator==(const ManifestHal &other) const {
         return false;
     if (versions != other.versions)
         return false;
-    // do not compare impl
+    if (!(transportArch == other.transportArch)) return false;
+    if (interfaces != other.interfaces) return false;
+    if (isOverride() != other.isOverride()) return false;
     return true;
 }
 
