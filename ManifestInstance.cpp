@@ -14,6 +14,11 @@
  * limitations under the License.
  */
 
+#ifndef LIBVINTF_TARGET
+#define LOG_TAG "libvintf"
+#include <android-base/logging.h>
+#endif
+
 #include "ManifestInstance.h"
 
 #include <utility>
@@ -62,6 +67,26 @@ Arch ManifestInstance::arch() const {
 
 const FqInstance& ManifestInstance::getFqInstance() const {
     return mFqInstance;
+}
+
+bool ManifestInstance::operator==(const ManifestInstance& other) const {
+    return mFqInstance == other.mFqInstance && mTransportArch == other.mTransportArch;
+}
+bool ManifestInstance::operator<(const ManifestInstance& other) const {
+    if (mFqInstance < other.mFqInstance) return true;
+    if (other.mFqInstance < mFqInstance) return false;
+    return mTransportArch < other.mTransportArch;
+}
+
+FqInstance ManifestInstance::getFqInstanceNoPackage() const {
+    FqInstance e;
+    bool success = e.setTo(version().majorVer, version().minorVer, interface(), instance());
+#ifndef LIBVINTF_TARGET
+    CHECK(success) << "Cannot remove package from '" << mFqInstance.string() << "'";
+#else
+    (void)success;
+#endif
+    return e;
 }
 
 }  // namespace vintf

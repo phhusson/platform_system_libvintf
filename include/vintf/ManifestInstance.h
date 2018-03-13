@@ -45,9 +45,14 @@ class ManifestInstance {
     Transport transport() const;
     Arch arch() const;
 
+    bool operator==(const ManifestInstance& other) const;
+    bool operator<(const ManifestInstance& other) const;
+
     // Convenience methods.
     // return package@version::interface/instance
     const FqInstance& getFqInstance() const;
+    // return @version::interface/instance
+    FqInstance getFqInstanceNoPackage() const;
 
    private:
     FqInstance mFqInstance;
