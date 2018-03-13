@@ -21,6 +21,16 @@
 namespace android {
 namespace vintf {
 
+MatrixInstance::MatrixInstance() = default;
+
+MatrixInstance::MatrixInstance(const MatrixInstance&) = default;
+
+MatrixInstance::MatrixInstance(MatrixInstance&&) = default;
+
+MatrixInstance& MatrixInstance::operator=(const MatrixInstance&) = default;
+
+MatrixInstance& MatrixInstance::operator=(MatrixInstance&&) = default;
+
 MatrixInstance::MatrixInstance(FqInstance&& fqInstance, VersionRange&& range, bool optional)
     : mFqInstance(std::move(fqInstance)), mRange(std::move(range)), mOptional(optional) {}
 
