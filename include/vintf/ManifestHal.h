@@ -23,6 +23,8 @@
 #include <string>
 #include <vector>
 
+#include <hidl-util/FqInstance.h>
+
 #include "HalFormat.h"
 #include "HalInterface.h"
 #include "ManifestInstance.h"
@@ -82,6 +84,14 @@ struct ManifestHal {
     void appendAllVersions(std::set<Version>* ret) const;
 
     bool mIsOverride = false;
+    // Additional instances to <version> x <interface> x <instance>.
+    std::set<ManifestInstance> mAdditionalInstances;
+
+    // insert instances to mAdditionalInstances.
+    // Existing instances will be ignored.
+    // Pre: all instances to be inserted must satisfy
+    // !hasPackage() && hasVersion() && hasInterface() && hasInstance()
+    bool insertInstances(const std::set<FqInstance>& fqInstances, std::string* error = nullptr);
 };
 
 } // namespace vintf
