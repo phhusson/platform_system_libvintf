@@ -29,6 +29,12 @@ namespace vintf {
 
 class ManifestInstance {
    public:
+    ManifestInstance();
+    ManifestInstance(const ManifestInstance&);
+    ManifestInstance(ManifestInstance&&);
+    ManifestInstance& operator=(const ManifestInstance&);
+    ManifestInstance& operator=(ManifestInstance&&);
+
     using VersionType = Version;
     ManifestInstance(FqInstance&& fqInstance, TransportArch&& ta);
     ManifestInstance(const FqInstance& fqInstance, const TransportArch& ta);
