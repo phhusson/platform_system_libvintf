@@ -613,7 +613,7 @@ bool VintfObject::isInstanceDeprecated(const std::string& package, Version versi
         if (targetMatrixHal == nullptr || targetMatrixRange == nullptr) {
             if (error) {
                 *error = toFQNameString(package, servedVersion) +
-                         "is deprecated in compatibility matrix at FCM Version " +
+                         " is deprecated in compatibility matrix at FCM Version " +
                          to_string(targetMatrix.level()) + "; it should not be served.";
             }
             return true;
@@ -691,25 +691,23 @@ int32_t VintfObject::CheckDeprecation(const IsInstanceInUse& isInstanceInUse,
 }
 
 int32_t VintfObject::CheckDeprecation(std::string* error) {
+    using namespace std::placeholders;
     auto deviceManifest = GetDeviceHalManifest();
     IsInstanceInUse inManifest = [&deviceManifest](const std::string& package, Version version,
-                                                    const std::string& interface,
-                                                    const std::string& instance) {
-        const ManifestHal* hal = deviceManifest->getHal(package, version);
-        if (hal == nullptr) {
-            return std::make_pair(false, Version{});
-        }
-        const auto& instances = hal->getInstances(interface);
-        if (instances.find(instance) == instances.end()) {
-            return std::make_pair(false, Version{});
-        }
-
-        for (Version v : hal->versions) {
-            if (v.minorAtLeast(version)) {
-                return std::make_pair(true, v);
-            }
-        }
-        return std::make_pair(false, Version{});
+                                                   const std::string& interface,
+                                                   const std::string& instance) {
+        std::pair<bool, Version> ret(false, Version{});
+        deviceManifest->forEachInstanceOfInterface(
+            package, version, interface,
+            [&instance, &ret](const ManifestInstance& manifestInstance) {
+                if (manifestInstance.instance() == instance) {
+                    ret.first = true;
+                    ret.second = manifestInstance.version();
+                    return false;
+                }
+                return true;
+            });
+        return ret;
     };
     return CheckDeprecation(inManifest, error);
 }
