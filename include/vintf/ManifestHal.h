@@ -70,6 +70,11 @@ struct ManifestHal {
 
     bool isOverride() const { return mIsOverride; }
 
+    // When true, the existence of this <hal> tag means the component does NOT
+    // exist on the device. This is useful for ODM manifests to specify that
+    // a HAL is disabled on certain products.
+    bool isDisabledHal() const;
+
    private:
     friend struct LibVintfTest;
     friend struct ManifestHalConverter;
