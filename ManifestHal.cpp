@@ -63,5 +63,15 @@ bool ManifestHal::forEachInstance(const std::function<bool(const ManifestInstanc
     return true;
 }
 
+bool ManifestHal::isDisabledHal() const {
+    if (!isOverride()) return false;
+    bool hasInstance = false;
+    forEachInstance([&hasInstance](const auto&) {
+        hasInstance = true;
+        return false;  // has at least one instance, stop here.
+    });
+    return !hasInstance;
+}
+
 } // namespace vintf
 } // namespace android
