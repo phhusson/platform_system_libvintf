@@ -42,7 +42,7 @@ bool HalManifest::shouldAdd(const ManifestHal& hal) const {
     if (!hal.isValid()) {
         return false;
     }
-    if (hal.isOverride) {
+    if (hal.isOverride()) {
         return true;
     }
     auto existingHals = mHals.equal_range(hal.name);
@@ -88,7 +88,7 @@ void HalManifest::removeHals(const std::string& name, size_t majorVer) {
 }
 
 bool HalManifest::add(ManifestHal&& halToAdd) {
-    if (halToAdd.isOverride) {
+    if (halToAdd.isOverride()) {
         if (halToAdd.versions.empty()) {
             // Special syntax when there are no <version> tags at all. Remove all existing HALs
             // with the given name.
