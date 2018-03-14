@@ -57,7 +57,6 @@ struct ManifestHal {
     std::vector<Version> versions;
     TransportArch transportArch;
     std::map<std::string, HalInterface> interfaces;
-    bool isOverride = false;
 
     inline bool hasInterface(const std::string& interface_name) const {
         return interfaces.find(interface_name) != interfaces.end();
@@ -69,6 +68,8 @@ struct ManifestHal {
     inline const std::string& getName() const { return name; }
     bool forEachInstance(const std::function<bool(const ManifestInstance&)>& func) const;
 
+    bool isOverride() const { return mIsOverride; }
+
    private:
     friend struct LibVintfTest;
     friend struct ManifestHalConverter;
@@ -78,6 +79,8 @@ struct ManifestHal {
     // Whether this hal is a valid one. Note that an empty ManifestHal
     // (constructed via ManifestHal()) is valid.
     bool isValid() const;
+
+    bool mIsOverride = false;
 };
 
 } // namespace vintf

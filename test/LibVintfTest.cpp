@@ -2407,10 +2407,10 @@ TEST_F(LibVintfTest, ManifestHalOverride) {
     EXPECT_TRUE(gHalManifestConverter(&manifest, xml)) << gHalManifestConverter.lastError();
     const auto& foo = manifest.getHals("android.hardware.foo");
     ASSERT_FALSE(foo.empty());
-    EXPECT_TRUE(foo.front()->isOverride);
+    EXPECT_TRUE(foo.front()->isOverride());
     const auto& bar = manifest.getHals("android.hardware.bar");
     ASSERT_FALSE(bar.empty());
-    EXPECT_FALSE(bar.front()->isOverride);
+    EXPECT_FALSE(bar.front()->isOverride());
 }
 
 // Test functionality of override="true" tag
