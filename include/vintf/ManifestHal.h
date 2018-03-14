@@ -36,6 +36,16 @@ namespace vintf {
 struct ManifestHal {
     using InstanceType = ManifestInstance;
 
+    ManifestHal() = default;
+
+    ManifestHal(HalFormat fmt, std::string&& n, std::vector<Version>&& vs, TransportArch ta,
+                std::map<std::string, HalInterface>&& intf)
+        : format(fmt),
+          name(std::move(n)),
+          versions(std::move(vs)),
+          transportArch(ta),
+          interfaces(std::move(intf)) {}
+
     bool operator==(const ManifestHal &other) const;
     // Check whether the ManifestHal contains the given version.
     // E.g. if hal has version "1.0" and "2.1", it contains version
