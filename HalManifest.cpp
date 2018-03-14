@@ -184,20 +184,19 @@ bool HalManifest::hasInstance(const std::string& halName, const Version& version
     return instances.find(instanceName) != instances.end();
 }
 
-void HalManifest::forEachInstance(
-    const std::function<void(const std::string&, const Version&, const std::string&,
-                             const std::string&, bool*)>& f) const {
-    bool stop = false;
-    for (const auto& hal : getHals()) {
-        for (const auto& v : hal.versions) {
-            for (const auto& intf : iterateValues(hal.interfaces)) {
-                for (const auto& instance : intf.instances) {
-                    f(hal.name, v, intf.name, instance, &stop);
-                    if (stop) break;
-                }
+bool HalManifest::forEachInstanceOfVersion(
+    const std::string& package, const Version& expectVersion,
+    const std::function<bool(const ManifestInstance&)>& func) const {
+    for (const ManifestHal* hal : getHals(package)) {
+        bool cont = hal->forEachInstance([&](const ManifestInstance& manifestInstance) {
+            if (manifestInstance.version().minorAtLeast(expectVersion)) {
+                return func(manifestInstance);
             }
-        }
+            return true;
+        });
+        if (!cont) return false;
     }
+    return true;
 }
 
 static bool satisfyVersion(const MatrixHal& matrixHal, const Version& manifestHalVersion) {
@@ -381,7 +380,12 @@ bool HalManifest::checkCompatibility(const CompatibilityMatrix &mat, std::string
     auto incompatibleHals = checkIncompatibleHals(mat);
     if (!incompatibleHals.empty()) {
         if (error != nullptr) {
-            *error = "HALs incompatible. The following requirements are not met:\n";
+            *error = "HALs incompatible.";
+            if (mat.level() != Level::UNSPECIFIED)
+                *error += " Matrix level = " + to_string(mat.level()) + ".";
+            if (level() != Level::UNSPECIFIED)
+                *error += " Manifest level = " + to_string(level()) + ".";
+            *error += " The following requirements are not met:\n";
             for (const auto& e : incompatibleHals) {
                 *error += e + "\n";
             }

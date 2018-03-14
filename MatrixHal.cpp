@@ -16,6 +16,8 @@
 
 #include "MatrixHal.h"
 
+#include "MapValueIterator.h"
+
 namespace android {
 namespace vintf {
 
@@ -61,6 +63,23 @@ bool MatrixHal::containsInstances(const MatrixHal& other) const {
         if (!std::includes(thisInstances.begin(), thisInstances.end(), otherInstances.begin(),
                            otherInstances.end())) {
             return false;
+        }
+    }
+    return true;
+}
+
+bool MatrixHal::forEachInstance(const std::function<bool(const MatrixInstance&)>& func) const {
+    for (const auto& vr : versionRanges) {
+        for (const auto& intf : iterateValues(interfaces)) {
+            for (const auto& instance : intf.instances) {
+                // TODO(b/73556059): Store MatrixInstance as well to avoid creating temps
+                FqInstance fqInstance;
+                if (fqInstance.setTo(getName(), vr.majorVer, vr.minMinor, intf.name, instance)) {
+                    if (!func(MatrixInstance(std::move(fqInstance), VersionRange(vr), optional))) {
+                        return false;
+                    }
+                }
+            }
         }
     }
     return true;

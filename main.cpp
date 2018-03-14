@@ -188,34 +188,33 @@ using Table = std::map<std::string, TableRow>;
 // if it does not exist and setting the corresponding indicator (as specified by "mutate").
 void insert(const HalManifest* manifest, Table* table, const RowMutator& mutate) {
     if (manifest == nullptr) return;
-    manifest->forEachInstance([&](const auto& package, const auto& version, const auto& interface,
-                                  const auto& instance, bool* /* stop */) {
-        std::string key = toFQNameString(package, VersionRange{version.majorVer, version.minorVer},
-                                         interface, instance);
+    manifest->forEachInstance([&](const auto& manifestInstance) {
+        std::string key = toFQNameString(manifestInstance.package(), manifestInstance.version(),
+                                         manifestInstance.interface(), manifestInstance.instance());
         mutate(&(*table)[key]);
+        return true;
     });
 }
 
 void insert(const CompatibilityMatrix* matrix, Table* table, const RowMutator& mutate) {
     if (matrix == nullptr) return;
-    matrix->forEachInstance([&](const auto& package, const auto& range, const auto& interface,
-                                const auto& instance, bool optional, bool* /* stop */) {
-        bool missed = false;
-        for (auto minorVer = range.minMinor; minorVer <= range.maxMinor; ++minorVer) {
-            std::string key = toFQNameString(package, VersionRange{range.majorVer, minorVer},
-                                             interface, instance);
+    matrix->forEachInstance([&](const auto& matrixInstance) {
+        for (auto minorVer = matrixInstance.versionRange().minMinor;
+             minorVer <= matrixInstance.versionRange().maxMinor; ++minorVer) {
+            std::string key = toFQNameString(
+                matrixInstance.package(), Version{matrixInstance.versionRange().majorVer, minorVer},
+                matrixInstance.interface(), matrixInstance.instance());
             auto it = table->find(key);
             if (it == table->end()) {
-                missed = true;
+                mutate(&(*table)[key]);
             } else {
                 mutate(&it->second);
-                it->second.required = !optional;
+                if (minorVer == matrixInstance.versionRange().minMinor) {
+                    it->second.required = !matrixInstance.optional();
+                }
             }
         }
-        if (missed) {
-            std::string key = toFQNameString(package, range, interface, instance);
-            mutate(&(*table)[key]);
-        }
+        return true;
     });
 }
 

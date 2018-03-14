@@ -38,7 +38,9 @@ cc_library_static {
         "KernelConfigParser.cpp",
         "RuntimeInfo.cpp",
         "ManifestHal.cpp",
+        "ManifestInstance.cpp",
         "MatrixHal.cpp",
+        "MatrixInstance.cpp",
         "MatrixKernel.cpp",
         "SystemSdk.cpp",
         "TransportArch.cpp",
@@ -48,6 +50,7 @@ cc_library_static {
     ],
     shared_libs: [
         "libbase",
+        "libhidl-gen-utils",
         "liblog",
         "libselinux",
         "libtinyxml2",
@@ -55,6 +58,10 @@ cc_library_static {
     ],
     export_include_dirs: ["include", "."],
     local_include_dirs: ["include/vintf"],
+
+    export_shared_lib_headers: [
+        "libhidl-gen-utils",
+    ],
 
     target: {
         host: {
@@ -78,6 +85,7 @@ cc_library {
     defaults: ["libvintf-defaults"],
     shared_libs: [
         "libbase",
+        "libhidl-gen-utils",
         "liblog",
         "libselinux",
         "libtinyxml2",
@@ -90,6 +98,10 @@ cc_library {
         "utils.cpp",
     ],
 
+    export_shared_lib_headers: [
+        "libhidl-gen-utils",
+    ],
+
     whole_static_libs: ["libvintf_common"],
 }
 
@@ -98,6 +110,7 @@ cc_binary {
     defaults: ["libvintf-defaults"],
     shared_libs: [
         "libbase",
+        "libhidl-gen-utils",
         "libvintf",
     ],
     srcs: [
@@ -109,6 +122,7 @@ cc_binary_host {
     name: "checkvintf",
     defaults: ["libvintf-defaults"],
     static_libs: [
+        "libhidl-gen-utils",
         "libvintf_common",
         "libutils",
         "libtinyxml2",
