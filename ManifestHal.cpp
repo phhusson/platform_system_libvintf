@@ -75,5 +75,13 @@ bool ManifestHal::isDisabledHal() const {
     return !hasInstance;
 }
 
+void ManifestHal::appendAllVersions(std::set<Version>* ret) const {
+    ret->insert(versions.begin(), versions.end());
+    forEachInstance([&](const auto& e) {
+        ret->insert(e.version());
+        return true;
+    });
+}
+
 } // namespace vintf
 } // namespace android
