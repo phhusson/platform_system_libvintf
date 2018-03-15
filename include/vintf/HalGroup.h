@@ -20,8 +20,6 @@
 #include <map>
 #include <set>
 
-#include <hidl-util/FqInstance.h>
-
 #include "MapValueIterator.h"
 #include "Version.h"
 

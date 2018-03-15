@@ -18,7 +18,6 @@
 #ifndef ANDROID_VINTF_HAL_MANIFEST_H
 #define ANDROID_VINTF_HAL_MANIFEST_H
 
-#include <hidl-util/FqInstance.h>
 #include <utils/Errors.h>
 #include <map>
 #include <string>
