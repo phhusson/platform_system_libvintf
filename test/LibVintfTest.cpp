@@ -2836,6 +2836,39 @@ TEST_F(LibVintfTest, MatrixDetailErrorMsg) {
     }
 }
 
+TEST_F(LibVintfTest, DisabledHal) {
+    std::string error;
+    std::string xml;
+    HalManifest manifest;
+    xml =
+        "<manifest version=\"1.0\" type=\"framework\">\n"
+        "    <hal format=\"hidl\" override=\"true\">\n"
+        "        <name>android.hardware.foo</name>\n"
+        "        <transport>hwbinder</transport>\n"
+        "    </hal>\n"
+        "    <hal format=\"hidl\" override=\"true\">\n"
+        "        <name>android.hardware.bar</name>\n"
+        "        <transport>hwbinder</transport>\n"
+        "        <fqname>@1.1::IFoo/custom</fqname>\n"
+        "    </hal>\n"
+        "    <hal format=\"hidl\">\n"
+        "        <name>android.hardware.baz</name>\n"
+        "        <transport>hwbinder</transport>\n"
+        "    </hal>\n"
+        "</manifest>\n";
+    ASSERT_TRUE(gHalManifestConverter(&manifest, xml, &error)) << error;
+
+    auto foo = manifest.getHals("android.hardware.foo");
+    ASSERT_EQ(1u, foo.size());
+    EXPECT_TRUE(foo.front()->isDisabledHal());
+    auto bar = manifest.getHals("android.hardware.bar");
+    ASSERT_EQ(1u, bar.size());
+    EXPECT_FALSE(bar.front()->isDisabledHal());
+    auto baz = manifest.getHals("android.hardware.baz");
+    ASSERT_EQ(1u, baz.size());
+    EXPECT_FALSE(baz.front()->isDisabledHal());
+}
+
 } // namespace vintf
 } // namespace android
 
