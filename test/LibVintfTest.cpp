@@ -125,25 +125,17 @@ public:
         HalManifest vm;
         vm.mType = SchemaType::DEVICE;
         vm.device.mSepolicyVersion = {25, 0};
-        vm.add(ManifestHal{
-            .format = HalFormat::HIDL,
-            .name = "android.hardware.camera",
-            .versions = {Version(2, 0)},
-            .transportArch = {Transport::HWBINDER, Arch::ARCH_EMPTY},
-            .interfaces = {
-                {"ICamera", {"ICamera", {"legacy/0", "default"}}},
-                {"IBetterCamera", {"IBetterCamera", {"camera"}}}
-            }
-        });
-        vm.add(ManifestHal{
-            .format = HalFormat::HIDL,
-            .name = "android.hardware.nfc",
-            .versions = {Version(1, 0)},
-            .transportArch = {Transport::PASSTHROUGH, Arch::ARCH_32_64},
-            .interfaces = {
-                {"INfc", {"INfc", {"default"}}}
-            }
-        });
+        vm.add(ManifestHal{HalFormat::HIDL,
+                           "android.hardware.camera",
+                           {Version(2, 0)},
+                           {Transport::HWBINDER, Arch::ARCH_EMPTY},
+                           {{"ICamera", {"ICamera", {"legacy/0", "default"}}},
+                            {"IBetterCamera", {"IBetterCamera", {"camera"}}}}});
+        vm.add(ManifestHal{HalFormat::HIDL,
+                           "android.hardware.nfc",
+                           {Version(1, 0)},
+                           {Transport::PASSTHROUGH, Arch::ARCH_32_64},
+                           {{"INfc", {"INfc", {"default"}}}}});
 
         return vm;
     }
@@ -158,15 +150,13 @@ public:
     HalManifest testFrameworkManfiest() {
         HalManifest vm;
         vm.mType = SchemaType::FRAMEWORK;
-        vm.add(ManifestHal{
-            .format = HalFormat::HIDL,
-            .name = "android.hidl.manager",
-            .versions = {Version(1, 0)},
-            .transportArch = {Transport::HWBINDER, Arch::ARCH_EMPTY},
-            .interfaces = {
-                {"IServiceManager", {"IServiceManager", {"default"}}},
-            }
-        });
+        vm.add(ManifestHal{HalFormat::HIDL,
+                           "android.hidl.manager",
+                           {Version(1, 0)},
+                           {Transport::HWBINDER, Arch::ARCH_EMPTY},
+                           {
+                               {"IServiceManager", {"IServiceManager", {"default"}}},
+                           }});
         Vndk vndk2505;
         vndk2505.mVersionRange = {25, 0, 5};
         vndk2505.mLibraries = { "libjpeg.so", "libbase.so" };
@@ -234,11 +224,11 @@ TEST_F(LibVintfTest, GetTransport) {
 
 TEST_F(LibVintfTest, FutureManifestCompatible) {
     HalManifest expectedManifest;
-    expectedManifest.add(ManifestHal{.format = HalFormat::HIDL,
-                                     .name = "android.hardware.foo",
-                                     .versions = {Version(1, 0)},
-                                     .transportArch = {Transport::HWBINDER, Arch::ARCH_EMPTY},
-                                     .interfaces = {
+    expectedManifest.add(ManifestHal{HalFormat::HIDL,
+                                     "android.hardware.foo",
+                                     {Version(1, 0)},
+                                     {Transport::HWBINDER, Arch::ARCH_EMPTY},
+                                     {
                                          {"IFoo", {"IFoo", {"default"}}},
                                      }});
     std::string manifestXml =
@@ -680,12 +670,11 @@ TEST_F(LibVintfTest, DeviceCompatibilityMatrixCoverter) {
 TEST_F(LibVintfTest, IsValid) {
     EXPECT_TRUE(isValid(ManifestHal()));
 
-    ManifestHal invalidHal{
-        .format = HalFormat::HIDL,
-        .name = "android.hardware.camera",
-        .versions = {{Version(2, 0), Version(2, 1)}},
-        .transportArch = {Transport::PASSTHROUGH, Arch::ARCH_32_64}
-    };
+    ManifestHal invalidHal{HalFormat::HIDL,
+                           "android.hardware.camera",
+                           {{Version(2, 0), Version(2, 1)}},
+                           {Transport::PASSTHROUGH, Arch::ARCH_32_64},
+                           {}};
 
     EXPECT_FALSE(isValid(invalidHal));
     HalManifest vm2;
@@ -712,45 +701,42 @@ TEST_F(LibVintfTest, HalManifestGetAllHals) {
 
 TEST_F(LibVintfTest, HalManifestGetHals) {
     HalManifest vm;
-    EXPECT_TRUE(
-        add(vm, ManifestHal{.format = HalFormat::HIDL,
-                            .name = "android.hardware.camera",
-                            .versions = {Version(1, 2)},
-                            .transportArch = {Transport::HWBINDER, Arch::ARCH_EMPTY},
-                            .interfaces = {{"ICamera", {"ICamera", {"legacy/0", "default"}}},
-                                           {"IBetterCamera", {"IBetterCamera", {"camera"}}}}}));
-    EXPECT_TRUE(
-        add(vm, ManifestHal{.format = HalFormat::HIDL,
-                            .name = "android.hardware.camera",
-                            .versions = {Version(2, 0)},
-                            .transportArch = {Transport::HWBINDER, Arch::ARCH_EMPTY},
-                            .interfaces = {{"ICamera", {"ICamera", {"legacy/0", "default"}}},
-                                           {"IBetterCamera", {"IBetterCamera", {"camera"}}}}}));
-    EXPECT_TRUE(add(vm, ManifestHal{.format = HalFormat::HIDL,
-                                    .name = "android.hardware.nfc",
-                                    .versions = {Version(1, 0), Version(2, 1)},
-                                    .transportArch = {Transport::PASSTHROUGH, Arch::ARCH_32_64},
-                                    .interfaces = {{"INfc", {"INfc", {"default"}}}}}));
+    EXPECT_TRUE(add(vm, ManifestHal{HalFormat::HIDL,
+                                    "android.hardware.camera",
+                                    {Version(1, 2)},
+                                    {Transport::HWBINDER, Arch::ARCH_EMPTY},
+                                    {{"ICamera", {"ICamera", {"legacy/0", "default"}}},
+                                     {"IBetterCamera", {"IBetterCamera", {"camera"}}}}}));
+    EXPECT_TRUE(add(vm, ManifestHal{HalFormat::HIDL,
+                                    "android.hardware.camera",
+                                    {Version(2, 0)},
+                                    {Transport::HWBINDER, Arch::ARCH_EMPTY},
+                                    {{"ICamera", {"ICamera", {"legacy/0", "default"}}},
+                                     {"IBetterCamera", {"IBetterCamera", {"camera"}}}}}));
+    EXPECT_TRUE(add(vm, ManifestHal{HalFormat::HIDL,
+                                    "android.hardware.nfc",
+                                    {Version(1, 0), Version(2, 1)},
+                                    {Transport::PASSTHROUGH, Arch::ARCH_32_64},
+                                    {{"INfc", {"INfc", {"default"}}}}}));
     ManifestHal expectedCameraHalV1_2 =
-        ManifestHal{.format = HalFormat::HIDL,
-                    .name = "android.hardware.camera",
-                    .versions = {Version(1, 2)},
-                    .transportArch = {Transport::HWBINDER, Arch::ARCH_EMPTY},
-                    .interfaces = {{"ICamera", {"ICamera", {"legacy/0", "default"}}},
-                                   {"IBetterCamera", {"IBetterCamera", {"camera"}}}}};
+        ManifestHal{HalFormat::HIDL,
+                    "android.hardware.camera",
+                    {Version(1, 2)},
+                    {Transport::HWBINDER, Arch::ARCH_EMPTY},
+                    {{"ICamera", {"ICamera", {"legacy/0", "default"}}},
+                     {"IBetterCamera", {"IBetterCamera", {"camera"}}}}};
     ManifestHal expectedCameraHalV2_0 =
-        ManifestHal{.format = HalFormat::HIDL,
-                    .name = "android.hardware.camera",
-                    .versions = {Version(2, 0)},
-                    .transportArch = {Transport::HWBINDER, Arch::ARCH_EMPTY},
-                    .interfaces = {{"ICamera", {"ICamera", {"legacy/0", "default"}}},
-                                   {"IBetterCamera", {"IBetterCamera", {"camera"}}}}};
-    ManifestHal expectedNfcHal =
-        ManifestHal{.format = HalFormat::HIDL,
-                    .name = "android.hardware.nfc",
-                    .versions = {Version(1, 0), Version(2, 1)},
-                    .transportArch = {Transport::PASSTHROUGH, Arch::ARCH_32_64},
-                    .interfaces = {{"INfc", {"INfc", {"default"}}}}};
+        ManifestHal{HalFormat::HIDL,
+                    "android.hardware.camera",
+                    {Version(2, 0)},
+                    {Transport::HWBINDER, Arch::ARCH_EMPTY},
+                    {{"ICamera", {"ICamera", {"legacy/0", "default"}}},
+                     {"IBetterCamera", {"IBetterCamera", {"camera"}}}}};
+    ManifestHal expectedNfcHal = ManifestHal{HalFormat::HIDL,
+                                             "android.hardware.nfc",
+                                             {Version(1, 0), Version(2, 1)},
+                                             {Transport::PASSTHROUGH, Arch::ARCH_32_64},
+                                             {{"INfc", {"INfc", {"default"}}}}};
     auto cameraHals = vm.getHals("android.hardware.camera");
     EXPECT_EQ((int)cameraHals.size(), 2);
     EXPECT_EQ(*cameraHals[0], expectedCameraHalV1_2);
@@ -2421,10 +2407,10 @@ TEST_F(LibVintfTest, ManifestHalOverride) {
     EXPECT_TRUE(gHalManifestConverter(&manifest, xml)) << gHalManifestConverter.lastError();
     const auto& foo = manifest.getHals("android.hardware.foo");
     ASSERT_FALSE(foo.empty());
-    EXPECT_TRUE(foo.front()->isOverride);
+    EXPECT_TRUE(foo.front()->isOverride());
     const auto& bar = manifest.getHals("android.hardware.bar");
     ASSERT_FALSE(bar.empty());
-    EXPECT_FALSE(bar.front()->isOverride);
+    EXPECT_FALSE(bar.front()->isOverride());
 }
 
 // Test functionality of override="true" tag

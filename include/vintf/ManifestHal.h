@@ -36,6 +36,16 @@ namespace vintf {
 struct ManifestHal {
     using InstanceType = ManifestInstance;
 
+    ManifestHal() = default;
+
+    ManifestHal(HalFormat fmt, std::string&& n, std::vector<Version>&& vs, TransportArch ta,
+                std::map<std::string, HalInterface>&& intf)
+        : format(fmt),
+          name(std::move(n)),
+          versions(std::move(vs)),
+          transportArch(ta),
+          interfaces(std::move(intf)) {}
+
     bool operator==(const ManifestHal &other) const;
     // Check whether the ManifestHal contains the given version.
     // E.g. if hal has version "1.0" and "2.1", it contains version
@@ -47,7 +57,6 @@ struct ManifestHal {
     std::vector<Version> versions;
     TransportArch transportArch;
     std::map<std::string, HalInterface> interfaces;
-    bool isOverride = false;
 
     inline bool hasInterface(const std::string& interface_name) const {
         return interfaces.find(interface_name) != interfaces.end();
@@ -59,6 +68,13 @@ struct ManifestHal {
     inline const std::string& getName() const { return name; }
     bool forEachInstance(const std::function<bool(const ManifestInstance&)>& func) const;
 
+    bool isOverride() const { return mIsOverride; }
+
+    // When true, the existence of this <hal> tag means the component does NOT
+    // exist on the device. This is useful for ODM manifests to specify that
+    // a HAL is disabled on certain products.
+    bool isDisabledHal() const;
+
    private:
     friend struct LibVintfTest;
     friend struct ManifestHalConverter;
@@ -68,6 +84,8 @@ struct ManifestHal {
     // Whether this hal is a valid one. Note that an empty ManifestHal
     // (constructed via ManifestHal()) is valid.
     bool isValid() const;
+
+    bool mIsOverride = false;
 };
 
 } // namespace vintf
