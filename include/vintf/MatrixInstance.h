@@ -28,6 +28,12 @@ namespace vintf {
 
 class MatrixInstance {
    public:
+    MatrixInstance();
+    MatrixInstance(const MatrixInstance&);
+    MatrixInstance(MatrixInstance&&);
+    MatrixInstance& operator=(const MatrixInstance&);
+    MatrixInstance& operator=(MatrixInstance&&);
+
     using VersionType = VersionRange;
     // fqInstance.version is ignored. Version range is provided separately.
     MatrixInstance(FqInstance&& fqInstance, VersionRange&& range, bool optional);
