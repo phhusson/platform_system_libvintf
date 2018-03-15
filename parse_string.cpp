@@ -511,5 +511,13 @@ std::string toFQNameString(const VersionRange& range, const std::string& interfa
     return toFQNameString("", range, interface, instance);
 }
 
+std::ostream& operator<<(std::ostream& os, const FqInstance& fqInstance) {
+    return os << fqInstance.string();
+}
+
+bool parse(const std::string& s, FqInstance* fqInstance) {
+    return fqInstance->setTo(s);
+}
+
 } // namespace vintf
 } // namespace android

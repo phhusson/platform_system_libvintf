@@ -18,6 +18,7 @@
 #include <unordered_set>
 
 #include "MapValueIterator.h"
+#include "parse_string.h"
 
 namespace android {
 namespace vintf {
@@ -43,11 +44,11 @@ bool ManifestHal::operator==(const ManifestHal &other) const {
     if (!(transportArch == other.transportArch)) return false;
     if (interfaces != other.interfaces) return false;
     if (isOverride() != other.isOverride()) return false;
+    if (mAdditionalInstances != other.mAdditionalInstances) return false;
     return true;
 }
 
 bool ManifestHal::forEachInstance(const std::function<bool(const ManifestInstance&)>& func) const {
-    // TODO(b/73556059): support <fqname> as well.
     for (const auto& v : versions) {
         for (const auto& intf : iterateValues(interfaces)) {
             for (const auto& instance : intf.instances) {
@@ -62,6 +63,13 @@ bool ManifestHal::forEachInstance(const std::function<bool(const ManifestInstanc
             }
         }
     }
+
+    for (const auto& manifestInstance : mAdditionalInstances) {
+        if (!func(manifestInstance)) {
+            return false;
+        }
+    }
+
     return true;
 }
 
@@ -81,6 +89,50 @@ void ManifestHal::appendAllVersions(std::set<Version>* ret) const {
         ret->insert(e.version());
         return true;
     });
+}
+
+static bool verifyInstances(const std::set<FqInstance>& fqInstances, std::string* error) {
+    for (const FqInstance& fqInstance : fqInstances) {
+        if (fqInstance.hasPackage()) {
+            if (error) *error = "Should not specify package: \"" + fqInstance.string() + "\"";
+            return false;
+        }
+        if (!fqInstance.hasVersion()) {
+            if (error) *error = "Should specify version: \"" + fqInstance.string() + "\"";
+            return false;
+        }
+        if (!fqInstance.hasInterface()) {
+            if (error) *error = "Should specify interface: \"" + fqInstance.string() + "\"";
+            return false;
+        }
+        if (!fqInstance.hasInstance()) {
+            if (error) *error = "Should specify instance: \"" + fqInstance.string() + "\"";
+            return false;
+        }
+    }
+    return true;
+}
+
+bool ManifestHal::insertInstances(const std::set<FqInstance>& fqInstances, std::string* error) {
+    if (!verifyInstances(fqInstances, error)) {
+        return false;
+    }
+
+    for (const FqInstance& e : fqInstances) {
+        FqInstance withPackage;
+        if (!withPackage.setTo(this->getName(), e.getMajorVersion(), e.getMinorVersion(),
+                               e.getInterface(), e.getInstance())) {
+            if (error) {
+                *error = "Cannot create FqInstance with package='" + this->getName() +
+                         "', version='" + to_string(Version(e.getVersion())) + "', interface='" +
+                         e.getInterface() + "', instance='" + e.getInstance() + "'";
+            }
+            return false;
+        }
+        mAdditionalInstances.emplace(std::move(withPackage), this->transportArch);
+    }
+
+    return true;
 }
 
 } // namespace vintf
