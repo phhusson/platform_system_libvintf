@@ -45,6 +45,10 @@ class ManifestInstance {
     Transport transport() const;
     Arch arch() const;
 
+    // Convenience methods.
+    // return package@version::interface/instance
+    const FqInstance& getFqInstance() const;
+
    private:
     FqInstance mFqInstance;
     TransportArch mTransportArch;

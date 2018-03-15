@@ -58,5 +58,11 @@ bool MatrixInstance::optional() const {
     return mOptional;
 }
 
+bool MatrixInstance::isSatisfiedBy(const FqInstance& provided) const {
+    return package() == provided.getPackage() &&
+           versionRange().supportedBy(provided.getVersion()) &&
+           interface() == provided.getInterface() && instance() == provided.getInstance();
+}
+
 }  // namespace vintf
 }  // namespace android

@@ -52,6 +52,15 @@ struct MatrixHal {
     bool containsInstances(const MatrixHal& other) const;
 
     bool forEachInstance(const std::function<bool(const MatrixInstance&)>& func) const;
+
+   private:
+    friend struct HalManifest;
+    bool forEachInstance(const VersionRange& vr,
+                         const std::function<bool(const MatrixInstance&)>& func) const;
+    bool isCompatible(const std::set<FqInstance>& providedInstances,
+                      const std::set<Version>& providedVersions) const;
+    bool isCompatible(const VersionRange& vr, const std::set<FqInstance>& providedInstances,
+                      const std::set<Version>& providedVersions) const;
 };
 
 } // namespace vintf

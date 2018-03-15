@@ -44,6 +44,8 @@ class MatrixInstance {
     const std::string& instance() const;
     bool optional() const;
 
+    bool isSatisfiedBy(const FqInstance& provided) const;
+
    private:
     FqInstance mFqInstance;
     VersionRange mRange;

@@ -1042,7 +1042,7 @@ TEST_F(LibVintfTest, HalCompat) {
         HalManifest manifest;
         EXPECT_TRUE(gHalManifestConverter(&manifest, manifestXml));
         EXPECT_FALSE(manifest.checkCompatibility(matrix, &error))
-                << "should not be compatible because IFoo/default is missing";
+            << "should not be compatible because IFoo/specific is missing";
     }
 
     {
