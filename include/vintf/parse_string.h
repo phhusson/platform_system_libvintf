@@ -51,6 +51,7 @@ std::ostream &operator<<(std::ostream &os, const TransportArch &ta);
 std::ostream &operator<<(std::ostream &os, const ManifestHal &hal);
 std::ostream &operator<<(std::ostream &os, const MatrixHal &req);
 std::ostream &operator<<(std::ostream &os, const KernelConfigTypedValue &kcv);
+std::ostream& operator<<(std::ostream& os, const FqInstance& fqInstance);
 
 template <typename T>
 std::string to_string(const T &obj) {
@@ -83,6 +84,7 @@ bool parse(const std::string &s, TransportArch *ta);
 // if return true, hal->isValid() must be true.
 bool parse(const std::string &s, ManifestHal *hal);
 bool parse(const std::string &s, MatrixHal *req);
+bool parse(const std::string& s, FqInstance* fqInstance);
 
 bool parseKernelConfigInt(const std::string &s, int64_t *i);
 bool parseKernelConfigInt(const std::string &s, uint64_t *i);
