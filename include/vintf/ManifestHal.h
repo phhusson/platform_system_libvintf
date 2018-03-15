@@ -47,10 +47,6 @@ struct ManifestHal {
           interfaces(std::move(intf)) {}
 
     bool operator==(const ManifestHal &other) const;
-    // Check whether the ManifestHal contains the given version.
-    // E.g. if hal has version "1.0" and "2.1", it contains version
-    // "1.0", "2.0", "2.1".
-    bool containsVersion(const Version& version) const;
 
     HalFormat format = HalFormat::HIDL;
     std::string name;
@@ -58,9 +54,6 @@ struct ManifestHal {
     TransportArch transportArch;
     std::map<std::string, HalInterface> interfaces;
 
-    inline bool hasInterface(const std::string& interface_name) const {
-        return interfaces.find(interface_name) != interfaces.end();
-    }
     inline Transport transport() const {
         return transportArch.transport;
     }
