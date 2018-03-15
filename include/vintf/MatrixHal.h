@@ -47,9 +47,6 @@ struct MatrixHal {
     std::map<std::string, HalInterface> interfaces;
 
     inline const std::string& getName() const { return name; }
-    inline bool hasInterface(const std::string& interface_name) const {
-        return interfaces.find(interface_name) != interfaces.end();
-    }
 
     // Return true if "this" contains all interface/instance instances in "other".
     bool containsInstances(const MatrixHal& other) const;
