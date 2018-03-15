@@ -60,5 +60,9 @@ Arch ManifestInstance::arch() const {
     return mTransportArch.arch;
 }
 
+const FqInstance& ManifestInstance::getFqInstance() const {
+    return mFqInstance;
+}
+
 }  // namespace vintf
 }  // namespace android

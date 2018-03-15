@@ -78,6 +78,9 @@ struct ManifestHal {
     // (constructed via ManifestHal()) is valid.
     bool isValid() const;
 
+    // Return all versions mentioned by <version>s and <fqname>s.
+    void appendAllVersions(std::set<Version>* ret) const;
+
     bool mIsOverride = false;
 };
 
