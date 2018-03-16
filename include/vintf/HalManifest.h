@@ -70,10 +70,6 @@ struct HalManifest : public HalGroup<ManifestHal>, public XmlFileGroup<ManifestX
     // (dupes removed)
     std::set<Version> getSupportedVersions(const std::string &name) const;
 
-    // Convenience method for checking if instanceName is in getInstances(halName, interfaceName)
-    bool hasInstance(const std::string& halName, const Version& version,
-                     const std::string& interfaceName, const std::string& instanceName) const;
-
     // Check compatibility against a compatibility matrix. Considered compatible if
     // - framework manifest vs. device compat-mat
     //     - checkIncompatibility for HALs returns only optional HALs
