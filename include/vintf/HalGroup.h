@@ -59,7 +59,7 @@ struct HalGroup {
 
     // Get all hals with the given name (e.g "android.hardware.camera").
     // There could be multiple hals that matches the same given name.
-    // TODO(b/74247301) Deprecated; use forEachInstance instead.
+    // TODO(b/74247301) Deprecated; use forEachInstanceOfPackage instead.
     std::vector<const Hal*> getHals(const std::string& name) const {
         std::vector<const Hal*> ret;
         auto range = mHals.equal_range(name);
@@ -72,7 +72,7 @@ struct HalGroup {
     // Get all hals with the given name (e.g "android.hardware.camera").
     // There could be multiple hals that matches the same given name.
     // Non-const version of the above getHals() method.
-    // TODO(b/74247301) Deprecated; use forEachInstance instead.
+    // TODO(b/74247301) Deprecated; use forEachInstanceOfPackage instead.
     std::vector<Hal*> getHals(const std::string& name) {
         std::vector<Hal*> ret;
         auto range = mHals.equal_range(name);
@@ -87,6 +87,16 @@ struct HalGroup {
         for (const auto& hal : getHals()) {
             bool cont = hal.forEachInstance(func);
             if (!cont) return false;
+        }
+        return true;
+    }
+
+    bool forEachInstanceOfPackage(const std::string& package,
+                                  const std::function<bool(const InstanceType&)>& func) const {
+        for (const auto* hal : getHals(package)) {
+            if (!hal->forEachInstance(func)) {
+                return false;
+            }
         }
         return true;
     }
