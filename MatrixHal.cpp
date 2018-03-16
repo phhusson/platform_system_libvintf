@@ -144,6 +144,7 @@ void MatrixHal::insertVersionRanges(const MatrixHal& other) {
         if (existingVr == this->versionRanges.end()) {
             this->versionRanges.push_back(otherVr);
         } else {
+            existingVr->minMinor = std::min(existingVr->minMinor, otherVr.minMinor);
             existingVr->maxMinor = std::max(existingVr->maxMinor, otherVr.maxMinor);
         }
     }
