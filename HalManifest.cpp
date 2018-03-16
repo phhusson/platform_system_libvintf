@@ -177,13 +177,6 @@ std::set<Version> HalManifest::getSupportedVersions(const std::string &name) con
     return ret;
 }
 
-bool HalManifest::hasInstance(const std::string& halName, const Version& version,
-                              const std::string& interfaceName,
-                              const std::string& instanceName) const {
-    const auto& instances = getInstances(halName, version, interfaceName);
-    return instances.find(instanceName) != instances.end();
-}
-
 bool HalManifest::forEachInstanceOfVersion(
     const std::string& package, const Version& expectVersion,
     const std::function<bool(const ManifestInstance&)>& func) const {
