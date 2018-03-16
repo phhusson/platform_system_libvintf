@@ -2158,7 +2158,7 @@ TEST_F(LibVintfTest, AddOptionalHalMinorVersion) {
               "<compatibility-matrix version=\"1.0\" type=\"framework\" level=\"1\">\n"
               "    <hal format=\"hidl\" optional=\"false\">\n"
               "        <name>android.hardware.foo</name>\n"
-              "        <version>1.2-4</version>\n"
+              "        <version>1.0-4</version>\n"
               "        <interface>\n"
               "            <name>IFoo</name>\n"
               "            <instance>default</instance>\n"
