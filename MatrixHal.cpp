@@ -70,19 +70,64 @@ bool MatrixHal::containsInstances(const MatrixHal& other) const {
 
 bool MatrixHal::forEachInstance(const std::function<bool(const MatrixInstance&)>& func) const {
     for (const auto& vr : versionRanges) {
-        for (const auto& intf : iterateValues(interfaces)) {
-            for (const auto& instance : intf.instances) {
-                // TODO(b/73556059): Store MatrixInstance as well to avoid creating temps
-                FqInstance fqInstance;
-                if (fqInstance.setTo(getName(), vr.majorVer, vr.minMinor, intf.name, instance)) {
-                    if (!func(MatrixInstance(std::move(fqInstance), VersionRange(vr), optional))) {
-                        return false;
-                    }
+        if (!forEachInstance(vr, func)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool MatrixHal::forEachInstance(const VersionRange& vr,
+                                const std::function<bool(const MatrixInstance&)>& func) const {
+    for (const auto& intf : iterateValues(interfaces)) {
+        for (const auto& instance : intf.instances) {
+            // TODO(b/73556059): Store MatrixInstance as well to avoid creating temps
+            FqInstance fqInstance;
+            if (fqInstance.setTo(getName(), vr.majorVer, vr.minMinor, intf.name, instance)) {
+                if (!func(MatrixInstance(std::move(fqInstance), VersionRange(vr), optional))) {
+                    return false;
                 }
             }
         }
     }
     return true;
+}
+
+bool MatrixHal::isCompatible(const std::set<FqInstance>& providedInstances,
+                             const std::set<Version>& providedVersions) const {
+    // <version>'s are related by OR.
+    return std::any_of(versionRanges.begin(), versionRanges.end(), [&](const VersionRange& vr) {
+        return isCompatible(vr, providedInstances, providedVersions);
+    });
+}
+
+bool MatrixHal::isCompatible(const VersionRange& vr, const std::set<FqInstance>& providedInstances,
+                             const std::set<Version>& providedVersions) const {
+    bool hasAnyInstance = false;
+    bool versionUnsatisfied = false;
+
+    // Look at each interface/instance, and ensure that they are in providedInstances.
+    forEachInstance(vr, [&](const MatrixInstance& matrixInstance) {
+        hasAnyInstance = true;
+
+        versionUnsatisfied |=
+            !std::any_of(providedInstances.begin(), providedInstances.end(),
+                         [&](const FqInstance& providedInstance) {
+                             return matrixInstance.isSatisfiedBy(providedInstance);
+                         });
+
+        return !versionUnsatisfied;  // if any interface/instance is unsatisfied, break
+    });
+
+    if (hasAnyInstance) {
+        return !versionUnsatisfied;
+    }
+
+    // In some cases (e.g. tests and native HALs), compatibility matrix doesn't specify
+    // any instances. Check versions only.
+    return std::any_of(
+        providedVersions.begin(), providedVersions.end(),
+        [&](const auto& providedVersion) { return vr.supportedBy(providedVersion); });
 }
 
 } // namespace vintf

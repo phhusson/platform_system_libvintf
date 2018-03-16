@@ -42,7 +42,7 @@ bool HalManifest::shouldAdd(const ManifestHal& hal) const {
     if (!hal.isValid()) {
         return false;
     }
-    if (hal.isOverride) {
+    if (hal.isOverride()) {
         return true;
     }
     auto existingHals = mHals.equal_range(hal.name);
@@ -88,9 +88,9 @@ void HalManifest::removeHals(const std::string& name, size_t majorVer) {
 }
 
 bool HalManifest::add(ManifestHal&& halToAdd) {
-    if (halToAdd.isOverride) {
-        if (halToAdd.versions.empty()) {
-            // Special syntax when there are no <version> tags at all. Remove all existing HALs
+    if (halToAdd.isOverride()) {
+        if (halToAdd.isDisabledHal()) {
+            // Special syntax when there are no instances at all. Remove all existing HALs
             // with the given name.
             mHals.erase(halToAdd.name);
         }
@@ -199,89 +199,12 @@ bool HalManifest::forEachInstanceOfVersion(
     return true;
 }
 
-static bool satisfyVersion(const MatrixHal& matrixHal, const Version& manifestHalVersion) {
-    for (const VersionRange &matrixVersionRange : matrixHal.versionRanges) {
-        // If Compatibility Matrix says 2.5-2.7, the "2.7" is purely informational;
-        // the framework can work with all 2.5-2.infinity.
-        if (matrixVersionRange.supportedBy(manifestHalVersion)) {
-            return true;
-        }
-    }
-    return false;
-}
-
-// Check if matrixHal.interfaces is a subset of instancesOfVersion
-static bool satisfyAllInstances(const MatrixHal& matrixHal,
-        const InstancesOfVersion &instancesOfVersion) {
-    for (const auto& matrixHalInterfacePair : matrixHal.interfaces) {
-        const std::string& interface = matrixHalInterfacePair.first;
-        auto it = instancesOfVersion.find(interface);
-        if (it == instancesOfVersion.end()) {
-            return false;
-        }
-        const std::set<std::string>& manifestInterfaceInstances = it->second;
-        const std::set<std::string>& matrixInterfaceInstances =
-                matrixHalInterfacePair.second.instances;
-        if (!std::includes(manifestInterfaceInstances.begin(), manifestInterfaceInstances.end(),
-                           matrixInterfaceInstances.begin(), matrixInterfaceInstances.end())) {
-            return false;
-        }
-    }
-    return true;
-}
-
-Instances HalManifest::expandInstances(const std::string& name) const {
-    Instances instances;
-    // Do the cross product version x interface x instance and sort them,
-    // because interfaces / instances can span in multiple HALs.
-    // This is efficient for small <hal> entries.
-    for (const ManifestHal* manifestHal : getHals(name)) {
-        for (const Version& manifestHalVersion : manifestHal->versions) {
-            instances[manifestHalVersion] = {};
-            for (const auto& halInterfacePair : manifestHal->interfaces) {
-                const std::string& interface = halInterfacePair.first;
-                const auto& toAdd = halInterfacePair.second.instances;
-                instances[manifestHalVersion][interface].insert(toAdd.begin(), toAdd.end());
-            }
-        }
-    }
-    return instances;
-}
-
-bool HalManifest::isCompatible(const Instances& instances, const MatrixHal& matrixHal) const {
-    for (const auto& instanceMapPair : instances) {
-        const Version& manifestHalVersion = instanceMapPair.first;
-        const InstancesOfVersion& instancesOfVersion = instanceMapPair.second;
-        if (!satisfyVersion(matrixHal, manifestHalVersion)) {
-            continue;
-        }
-        if (!satisfyAllInstances(matrixHal, instancesOfVersion)) {
-            continue;
-        }
-        return true; // match!
-    }
-    return false;
-}
-
-static std::vector<std::string> toLines(const Instances& allInstances) {
-    std::vector<std::string> lines;
-    for (const auto& pair : allInstances) {
-        const auto& version = pair.first;
-        for (const auto& ifacePair : pair.second) {
-            const auto& interface = ifacePair.first;
-            for (const auto& instance : ifacePair.second) {
-                lines.push_back(toFQNameString(version, interface, instance));
-            }
-        }
-    }
-    return lines;
-}
-
 // indent = 2, {"foo"} => "foo"
 // indent = 2, {"foo", "bar"} => "\n  foo\n  bar";
-void multilineIndent(std::ostream& os, size_t indent, const std::vector<std::string>& lines) {
+template <typename Container>
+void multilineIndent(std::ostream& os, size_t indent, const Container& lines) {
     if (lines.size() == 1) {
-        os << lines.front();
+        os << *lines.begin();
         return;
     }
     for (const auto& line : lines) {
@@ -298,13 +221,29 @@ std::vector<std::string> HalManifest::checkIncompatibleHals(const CompatibilityM
         if (matrixHal.optional) {
             continue;
         }
-        auto manifestInstances = expandInstances(matrixHal.name);
-        if (!isCompatible(manifestInstances, matrixHal)) {
+
+        std::set<FqInstance> manifestInstances;
+        std::set<FqInstance> manifestInstancesNoPackage;
+        std::set<Version> versions;
+        for (const ManifestHal* manifestHal : getHals(matrixHal.name)) {
+            manifestHal->forEachInstance([&](const auto& manifestInstance) {
+                manifestInstances.insert(manifestInstance.getFqInstance());
+                manifestInstancesNoPackage.insert(manifestInstance.getFqInstanceNoPackage());
+                return true;
+            });
+            manifestHal->appendAllVersions(&versions);
+        }
+
+        if (!matrixHal.isCompatible(manifestInstances, versions)) {
             std::ostringstream oss;
             oss << matrixHal.name << ":\n    required: ";
             multilineIndent(oss, 8, android::vintf::expandInstances(matrixHal));
             oss << "\n    provided: ";
-            multilineIndent(oss, 8, toLines(manifestInstances));
+            if (manifestInstances.empty()) {
+                multilineIndent(oss, 8, versions);
+            } else {
+                multilineIndent(oss, 8, manifestInstancesNoPackage);
+            }
 
             ret.insert(ret.end(), oss.str());
         }

@@ -14,12 +14,27 @@
  * limitations under the License.
  */
 
+#ifndef LIBVINTF_TARGET
+#define LOG_TAG "libvintf"
+#include <android-base/logging.h>
+#endif
+
 #include "ManifestInstance.h"
 
 #include <utility>
 
 namespace android {
 namespace vintf {
+
+ManifestInstance::ManifestInstance() = default;
+
+ManifestInstance::ManifestInstance(const ManifestInstance&) = default;
+
+ManifestInstance::ManifestInstance(ManifestInstance&&) = default;
+
+ManifestInstance& ManifestInstance::operator=(const ManifestInstance&) = default;
+
+ManifestInstance& ManifestInstance::operator=(ManifestInstance&&) = default;
 
 ManifestInstance::ManifestInstance(FqInstance&& fqInstance, TransportArch&& ta)
     : mFqInstance(std::move(fqInstance)), mTransportArch(std::move(ta)) {}
@@ -48,6 +63,30 @@ Transport ManifestInstance::transport() const {
 
 Arch ManifestInstance::arch() const {
     return mTransportArch.arch;
+}
+
+const FqInstance& ManifestInstance::getFqInstance() const {
+    return mFqInstance;
+}
+
+bool ManifestInstance::operator==(const ManifestInstance& other) const {
+    return mFqInstance == other.mFqInstance && mTransportArch == other.mTransportArch;
+}
+bool ManifestInstance::operator<(const ManifestInstance& other) const {
+    if (mFqInstance < other.mFqInstance) return true;
+    if (other.mFqInstance < mFqInstance) return false;
+    return mTransportArch < other.mTransportArch;
+}
+
+FqInstance ManifestInstance::getFqInstanceNoPackage() const {
+    FqInstance e;
+    bool success = e.setTo(version().majorVer, version().minorVer, interface(), instance());
+#ifndef LIBVINTF_TARGET
+    CHECK(success) << "Cannot remove package from '" << mFqInstance.string() << "'";
+#else
+    (void)success;
+#endif
+    return e;
 }
 
 }  // namespace vintf

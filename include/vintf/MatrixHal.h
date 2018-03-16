@@ -47,14 +47,20 @@ struct MatrixHal {
     std::map<std::string, HalInterface> interfaces;
 
     inline const std::string& getName() const { return name; }
-    inline bool hasInterface(const std::string& interface_name) const {
-        return interfaces.find(interface_name) != interfaces.end();
-    }
 
     // Return true if "this" contains all interface/instance instances in "other".
     bool containsInstances(const MatrixHal& other) const;
 
     bool forEachInstance(const std::function<bool(const MatrixInstance&)>& func) const;
+
+   private:
+    friend struct HalManifest;
+    bool forEachInstance(const VersionRange& vr,
+                         const std::function<bool(const MatrixInstance&)>& func) const;
+    bool isCompatible(const std::set<FqInstance>& providedInstances,
+                      const std::set<Version>& providedVersions) const;
+    bool isCompatible(const VersionRange& vr, const std::set<FqInstance>& providedInstances,
+                      const std::set<Version>& providedVersions) const;
 };
 
 } // namespace vintf

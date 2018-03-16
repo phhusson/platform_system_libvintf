@@ -230,11 +230,12 @@ struct XmlNodeConverter : public XmlConverter<Object> {
         }
     }
 
-    template<typename T, typename Array>
-    inline void appendChildren(NodeType *parent, const XmlNodeConverter<T> &conv,
-            const Array &array, DocType *d) const {
+    template <typename T, typename Array>
+    inline void appendChildren(NodeType* parent, const XmlNodeConverter<T>& conv,
+                               const Array& array, DocType* d,
+                               SerializeFlags flags = SerializeFlag::EVERYTHING) const {
         for (const T &t : array) {
-            appendChild(parent, conv(t, d));
+            appendChild(parent, conv.serialize(t, d, flags));
         }
     }
 
@@ -600,22 +601,37 @@ struct MatrixKernelConverter : public XmlNodeConverter<MatrixKernel> {
 
 MatrixKernelConverter matrixKernelConverter{};
 
+XmlTextConverter<FqInstance> fqInstanceConverter{"fqname"};
+
 struct ManifestHalConverter : public XmlNodeConverter<ManifestHal> {
     std::string elementName() const override { return "hal"; }
-    void mutateNode(const ManifestHal &hal, NodeType *root, DocType *d) const override {
+    void mutateNode(const ManifestHal& m, NodeType* root, DocType* d) const override {
+        mutateNode(m, root, d, SerializeFlag::EVERYTHING);
+    }
+    void mutateNode(const ManifestHal& hal, NodeType* root, DocType* d,
+                    SerializeFlags flags) const override {
         appendAttr(root, "format", hal.format);
         appendTextElement(root, "name", hal.name, d);
         appendChild(root, transportArchConverter(hal.transportArch, d));
         appendChildren(root, versionConverter, hal.versions, d);
         appendChildren(root, halInterfaceConverter, iterateValues(hal.interfaces), d);
-        if (hal.isOverride) {
-            appendAttr(root, "override", hal.isOverride);
+        if (hal.isOverride()) {
+            appendAttr(root, "override", hal.isOverride());
+        }
+
+        if (!(flags & SerializeFlag::NO_FQNAME)) {
+            std::set<FqInstance> fqInstances;
+            hal.forEachInstance([&fqInstances](const auto& manifestInstance) {
+                fqInstances.emplace(manifestInstance.getFqInstanceNoPackage());
+                return true;
+            });
+            appendChildren(root, fqInstanceConverter, fqInstances, d);
         }
     }
     bool buildObject(ManifestHal* object, NodeType* root, std::string* error) const override {
         std::vector<HalInterface> interfaces;
         if (!parseOptionalAttr(root, "format", HalFormat::HIDL, &object->format, error) ||
-            !parseOptionalAttr(root, "override", false, &object->isOverride, error) ||
+            !parseOptionalAttr(root, "override", false, &object->mIsOverride, error) ||
             !parseTextElement(root, "name", &object->name, error) ||
             !parseOptionalChild(root, transportArchConverter, {}, &object->transportArch, error) ||
             !parseChildren(root, versionConverter, &object->versions, error) ||
@@ -666,6 +682,15 @@ struct ManifestHalConverter : public XmlNodeConverter<ManifestHal> {
             return false;
         }
 #endif
+
+        std::set<FqInstance> fqInstances;
+        if (!parseChildren(root, fqInstanceConverter, &fqInstances, error)) {
+            return false;
+        }
+        if (!object->insertInstances(fqInstances, error)) {
+            return false;
+        }
+
         return true;
     }
 
@@ -808,7 +833,7 @@ struct HalManifestConverter : public XmlNodeConverter<HalManifest> {
         appendAttr(root, "type", m.mType);
 
         if (!(flags & SerializeFlag::NO_HALS)) {
-            appendChildren(root, manifestHalConverter, m.getHals(), d);
+            appendChildren(root, manifestHalConverter, m.getHals(), d, flags);
         }
         if (m.mType == SchemaType::DEVICE) {
             if (!(flags & SerializeFlag::NO_SEPOLICY)) {

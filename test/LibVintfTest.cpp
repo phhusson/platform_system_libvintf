@@ -125,25 +125,17 @@ public:
         HalManifest vm;
         vm.mType = SchemaType::DEVICE;
         vm.device.mSepolicyVersion = {25, 0};
-        vm.add(ManifestHal{
-            .format = HalFormat::HIDL,
-            .name = "android.hardware.camera",
-            .versions = {Version(2, 0)},
-            .transportArch = {Transport::HWBINDER, Arch::ARCH_EMPTY},
-            .interfaces = {
-                {"ICamera", {"ICamera", {"legacy/0", "default"}}},
-                {"IBetterCamera", {"IBetterCamera", {"camera"}}}
-            }
-        });
-        vm.add(ManifestHal{
-            .format = HalFormat::HIDL,
-            .name = "android.hardware.nfc",
-            .versions = {Version(1, 0)},
-            .transportArch = {Transport::PASSTHROUGH, Arch::ARCH_32_64},
-            .interfaces = {
-                {"INfc", {"INfc", {"default"}}}
-            }
-        });
+        vm.add(ManifestHal{HalFormat::HIDL,
+                           "android.hardware.camera",
+                           {Version(2, 0)},
+                           {Transport::HWBINDER, Arch::ARCH_EMPTY},
+                           {{"ICamera", {"ICamera", {"legacy/0", "default"}}},
+                            {"IBetterCamera", {"IBetterCamera", {"camera"}}}}});
+        vm.add(ManifestHal{HalFormat::HIDL,
+                           "android.hardware.nfc",
+                           {Version(1, 0)},
+                           {Transport::PASSTHROUGH, Arch::ARCH_32_64},
+                           {{"INfc", {"INfc", {"default"}}}}});
 
         return vm;
     }
@@ -158,15 +150,13 @@ public:
     HalManifest testFrameworkManfiest() {
         HalManifest vm;
         vm.mType = SchemaType::FRAMEWORK;
-        vm.add(ManifestHal{
-            .format = HalFormat::HIDL,
-            .name = "android.hidl.manager",
-            .versions = {Version(1, 0)},
-            .transportArch = {Transport::HWBINDER, Arch::ARCH_EMPTY},
-            .interfaces = {
-                {"IServiceManager", {"IServiceManager", {"default"}}},
-            }
-        });
+        vm.add(ManifestHal{HalFormat::HIDL,
+                           "android.hidl.manager",
+                           {Version(1, 0)},
+                           {Transport::HWBINDER, Arch::ARCH_EMPTY},
+                           {
+                               {"IServiceManager", {"IServiceManager", {"default"}}},
+                           }});
         Vndk vndk2505;
         vndk2505.mVersionRange = {25, 0, 5};
         vndk2505.mLibraries = { "libjpeg.so", "libbase.so" };
@@ -234,11 +224,11 @@ TEST_F(LibVintfTest, GetTransport) {
 
 TEST_F(LibVintfTest, FutureManifestCompatible) {
     HalManifest expectedManifest;
-    expectedManifest.add(ManifestHal{.format = HalFormat::HIDL,
-                                     .name = "android.hardware.foo",
-                                     .versions = {Version(1, 0)},
-                                     .transportArch = {Transport::HWBINDER, Arch::ARCH_EMPTY},
-                                     .interfaces = {
+    expectedManifest.add(ManifestHal{HalFormat::HIDL,
+                                     "android.hardware.foo",
+                                     {Version(1, 0)},
+                                     {Transport::HWBINDER, Arch::ARCH_EMPTY},
+                                     {
                                          {"IFoo", {"IFoo", {"default"}}},
                                      }});
     std::string manifestXml =
@@ -261,7 +251,8 @@ TEST_F(LibVintfTest, FutureManifestCompatible) {
 
 TEST_F(LibVintfTest, HalManifestConverter) {
     HalManifest vm = testDeviceManifest();
-    std::string xml = gHalManifestConverter(vm);
+    std::string xml =
+        gHalManifestConverter(vm, SerializeFlag::HALS_NO_FQNAME & SerializeFlag::SEPOLICY_ONLY);
     EXPECT_EQ(xml,
         "<manifest version=\"1.0\" type=\"device\">\n"
         "    <hal format=\"hidl\">\n"
@@ -298,7 +289,8 @@ TEST_F(LibVintfTest, HalManifestConverter) {
 
 TEST_F(LibVintfTest, HalManifestConverterFramework) {
     HalManifest vm = testFrameworkManfiest();
-    std::string xml = gHalManifestConverter(vm);
+    std::string xml =
+        gHalManifestConverter(vm, SerializeFlag::HALS_NO_FQNAME & SerializeFlag::VNDK_ONLY);
     EXPECT_EQ(xml,
         "<manifest version=\"1.0\" type=\"framework\">\n"
         "    <hal format=\"hidl\">\n"
@@ -680,12 +672,11 @@ TEST_F(LibVintfTest, DeviceCompatibilityMatrixCoverter) {
 TEST_F(LibVintfTest, IsValid) {
     EXPECT_TRUE(isValid(ManifestHal()));
 
-    ManifestHal invalidHal{
-        .format = HalFormat::HIDL,
-        .name = "android.hardware.camera",
-        .versions = {{Version(2, 0), Version(2, 1)}},
-        .transportArch = {Transport::PASSTHROUGH, Arch::ARCH_32_64}
-    };
+    ManifestHal invalidHal{HalFormat::HIDL,
+                           "android.hardware.camera",
+                           {{Version(2, 0), Version(2, 1)}},
+                           {Transport::PASSTHROUGH, Arch::ARCH_32_64},
+                           {}};
 
     EXPECT_FALSE(isValid(invalidHal));
     HalManifest vm2;
@@ -712,45 +703,42 @@ TEST_F(LibVintfTest, HalManifestGetAllHals) {
 
 TEST_F(LibVintfTest, HalManifestGetHals) {
     HalManifest vm;
-    EXPECT_TRUE(
-        add(vm, ManifestHal{.format = HalFormat::HIDL,
-                            .name = "android.hardware.camera",
-                            .versions = {Version(1, 2)},
-                            .transportArch = {Transport::HWBINDER, Arch::ARCH_EMPTY},
-                            .interfaces = {{"ICamera", {"ICamera", {"legacy/0", "default"}}},
-                                           {"IBetterCamera", {"IBetterCamera", {"camera"}}}}}));
-    EXPECT_TRUE(
-        add(vm, ManifestHal{.format = HalFormat::HIDL,
-                            .name = "android.hardware.camera",
-                            .versions = {Version(2, 0)},
-                            .transportArch = {Transport::HWBINDER, Arch::ARCH_EMPTY},
-                            .interfaces = {{"ICamera", {"ICamera", {"legacy/0", "default"}}},
-                                           {"IBetterCamera", {"IBetterCamera", {"camera"}}}}}));
-    EXPECT_TRUE(add(vm, ManifestHal{.format = HalFormat::HIDL,
-                                    .name = "android.hardware.nfc",
-                                    .versions = {Version(1, 0), Version(2, 1)},
-                                    .transportArch = {Transport::PASSTHROUGH, Arch::ARCH_32_64},
-                                    .interfaces = {{"INfc", {"INfc", {"default"}}}}}));
+    EXPECT_TRUE(add(vm, ManifestHal{HalFormat::HIDL,
+                                    "android.hardware.camera",
+                                    {Version(1, 2)},
+                                    {Transport::HWBINDER, Arch::ARCH_EMPTY},
+                                    {{"ICamera", {"ICamera", {"legacy/0", "default"}}},
+                                     {"IBetterCamera", {"IBetterCamera", {"camera"}}}}}));
+    EXPECT_TRUE(add(vm, ManifestHal{HalFormat::HIDL,
+                                    "android.hardware.camera",
+                                    {Version(2, 0)},
+                                    {Transport::HWBINDER, Arch::ARCH_EMPTY},
+                                    {{"ICamera", {"ICamera", {"legacy/0", "default"}}},
+                                     {"IBetterCamera", {"IBetterCamera", {"camera"}}}}}));
+    EXPECT_TRUE(add(vm, ManifestHal{HalFormat::HIDL,
+                                    "android.hardware.nfc",
+                                    {Version(1, 0), Version(2, 1)},
+                                    {Transport::PASSTHROUGH, Arch::ARCH_32_64},
+                                    {{"INfc", {"INfc", {"default"}}}}}));
     ManifestHal expectedCameraHalV1_2 =
-        ManifestHal{.format = HalFormat::HIDL,
-                    .name = "android.hardware.camera",
-                    .versions = {Version(1, 2)},
-                    .transportArch = {Transport::HWBINDER, Arch::ARCH_EMPTY},
-                    .interfaces = {{"ICamera", {"ICamera", {"legacy/0", "default"}}},
-                                   {"IBetterCamera", {"IBetterCamera", {"camera"}}}}};
+        ManifestHal{HalFormat::HIDL,
+                    "android.hardware.camera",
+                    {Version(1, 2)},
+                    {Transport::HWBINDER, Arch::ARCH_EMPTY},
+                    {{"ICamera", {"ICamera", {"legacy/0", "default"}}},
+                     {"IBetterCamera", {"IBetterCamera", {"camera"}}}}};
     ManifestHal expectedCameraHalV2_0 =
-        ManifestHal{.format = HalFormat::HIDL,
-                    .name = "android.hardware.camera",
-                    .versions = {Version(2, 0)},
-                    .transportArch = {Transport::HWBINDER, Arch::ARCH_EMPTY},
-                    .interfaces = {{"ICamera", {"ICamera", {"legacy/0", "default"}}},
-                                   {"IBetterCamera", {"IBetterCamera", {"camera"}}}}};
-    ManifestHal expectedNfcHal =
-        ManifestHal{.format = HalFormat::HIDL,
-                    .name = "android.hardware.nfc",
-                    .versions = {Version(1, 0), Version(2, 1)},
-                    .transportArch = {Transport::PASSTHROUGH, Arch::ARCH_32_64},
-                    .interfaces = {{"INfc", {"INfc", {"default"}}}}};
+        ManifestHal{HalFormat::HIDL,
+                    "android.hardware.camera",
+                    {Version(2, 0)},
+                    {Transport::HWBINDER, Arch::ARCH_EMPTY},
+                    {{"ICamera", {"ICamera", {"legacy/0", "default"}}},
+                     {"IBetterCamera", {"IBetterCamera", {"camera"}}}}};
+    ManifestHal expectedNfcHal = ManifestHal{HalFormat::HIDL,
+                                             "android.hardware.nfc",
+                                             {Version(1, 0), Version(2, 1)},
+                                             {Transport::PASSTHROUGH, Arch::ARCH_32_64},
+                                             {{"INfc", {"INfc", {"default"}}}}};
     auto cameraHals = vm.getHals("android.hardware.camera");
     EXPECT_EQ((int)cameraHals.size(), 2);
     EXPECT_EQ(*cameraHals[0], expectedCameraHalV1_2);
@@ -1056,7 +1044,7 @@ TEST_F(LibVintfTest, HalCompat) {
         HalManifest manifest;
         EXPECT_TRUE(gHalManifestConverter(&manifest, manifestXml));
         EXPECT_FALSE(manifest.checkCompatibility(matrix, &error))
-                << "should not be compatible because IFoo/default is missing";
+            << "should not be compatible because IFoo/specific is missing";
     }
 
     {
@@ -1289,7 +1277,9 @@ TEST_F(LibVintfTest, Compat) {
 
 TEST_F(LibVintfTest, HalManifestConverterXmlFile) {
     HalManifest vm = testDeviceManifestWithXmlFile();
-    std::string xml = gHalManifestConverter(vm);
+    std::string xml =
+        gHalManifestConverter(vm, SerializeFlag::HALS_NO_FQNAME & SerializeFlag::SEPOLICY_ONLY &
+                                      SerializeFlag::XMLFILES_ONLY);
     EXPECT_EQ(xml,
               "<manifest version=\"1.0\" type=\"device\">\n"
               "    <hal format=\"hidl\">\n"
@@ -2421,10 +2411,10 @@ TEST_F(LibVintfTest, ManifestHalOverride) {
     EXPECT_TRUE(gHalManifestConverter(&manifest, xml)) << gHalManifestConverter.lastError();
     const auto& foo = manifest.getHals("android.hardware.foo");
     ASSERT_FALSE(foo.empty());
-    EXPECT_TRUE(foo.front()->isOverride);
+    EXPECT_TRUE(foo.front()->isOverride());
     const auto& bar = manifest.getHals("android.hardware.bar");
     ASSERT_FALSE(bar.empty());
-    EXPECT_FALSE(bar.front()->isOverride);
+    EXPECT_FALSE(bar.front()->isOverride());
 }
 
 // Test functionality of override="true" tag
@@ -2449,7 +2439,7 @@ TEST_F(LibVintfTest, ManifestAddOverrideHalSimple) {
     EXPECT_TRUE(gHalManifestConverter(&newManifest, xml)) << gHalManifestConverter.lastError();
 
     manifest.addAllHals(&newManifest);
-    EXPECT_EQ(xml, gHalManifestConverter(manifest, SerializeFlag::HALS_ONLY));
+    EXPECT_EQ(xml, gHalManifestConverter(manifest, SerializeFlag::HALS_NO_FQNAME));
 }
 
 TEST_F(LibVintfTest, ManifestAddOverrideHalSimpleOverride) {
@@ -2480,7 +2470,7 @@ TEST_F(LibVintfTest, ManifestAddOverrideHalSimpleOverride) {
     EXPECT_TRUE(gHalManifestConverter(&newManifest, xml)) << gHalManifestConverter.lastError();
 
     manifest.addAllHals(&newManifest);
-    EXPECT_EQ(xml, gHalManifestConverter(manifest, SerializeFlag::HALS_ONLY));
+    EXPECT_EQ(xml, gHalManifestConverter(manifest, SerializeFlag::HALS_NO_FQNAME));
 }
 
 // Existing major versions should be removed.
@@ -2550,7 +2540,7 @@ TEST_F(LibVintfTest, ManifestAddOverrideHalMultiVersion) {
         "        </interface>\n"
         "    </hal>\n"
         "</manifest>\n",
-        gHalManifestConverter(manifest, SerializeFlag::HALS_ONLY));
+        gHalManifestConverter(manifest, SerializeFlag::HALS_NO_FQNAME));
 }
 
 TEST_F(LibVintfTest, ManifestAddOverrideHalMultiVersion2) {
@@ -2587,7 +2577,7 @@ TEST_F(LibVintfTest, ManifestAddOverrideHalMultiVersion2) {
     EXPECT_TRUE(gHalManifestConverter(&newManifest, xml)) << gHalManifestConverter.lastError();
 
     manifest.addAllHals(&newManifest);
-    EXPECT_EQ(xml, gHalManifestConverter(manifest, SerializeFlag::HALS_ONLY));
+    EXPECT_EQ(xml, gHalManifestConverter(manifest, SerializeFlag::HALS_NO_FQNAME));
 }
 
 // if no <versions>, remove all existing <hal> with given <name>.
@@ -2848,6 +2838,203 @@ TEST_F(LibVintfTest, MatrixDetailErrorMsg) {
             "    provided: @1.0::IFoo/default",
             error);
     }
+}
+
+TEST_F(LibVintfTest, DisabledHal) {
+    std::string error;
+    std::string xml;
+    HalManifest manifest;
+    xml =
+        "<manifest version=\"1.0\" type=\"framework\">\n"
+        "    <hal format=\"hidl\" override=\"true\">\n"
+        "        <transport>hwbinder</transport>\n"
+        "        <name>android.hardware.foo</name>\n"
+        "        <transport>hwbinder</transport>\n"
+        "    </hal>\n"
+        "    <hal format=\"hidl\" override=\"true\">\n"
+        "        <name>android.hardware.bar</name>\n"
+        "        <transport>hwbinder</transport>\n"
+        "        <fqname>@1.1::IFoo/custom</fqname>\n"
+        "    </hal>\n"
+        "    <hal format=\"hidl\">\n"
+        "        <name>android.hardware.baz</name>\n"
+        "        <transport>hwbinder</transport>\n"
+        "    </hal>\n"
+        "</manifest>\n";
+    ASSERT_TRUE(gHalManifestConverter(&manifest, xml, &error)) << error;
+
+    auto foo = manifest.getHals("android.hardware.foo");
+    ASSERT_EQ(1u, foo.size());
+    EXPECT_TRUE(foo.front()->isDisabledHal());
+    auto bar = manifest.getHals("android.hardware.bar");
+    ASSERT_EQ(1u, bar.size());
+    EXPECT_FALSE(bar.front()->isDisabledHal());
+    auto baz = manifest.getHals("android.hardware.baz");
+    ASSERT_EQ(1u, baz.size());
+    EXPECT_FALSE(baz.front()->isDisabledHal());
+}
+
+TEST_F(LibVintfTest, FqNameValid) {
+    std::string error;
+    std::string xml;
+
+    CompatibilityMatrix cm;
+    xml =
+        "<compatibility-matrix version=\"1.0\" type=\"device\">\n"
+        "    <hal format=\"hidl\" optional=\"false\">\n"
+        "        <name>android.hardware.foo</name>\n"
+        "        <version>1.0</version>\n"
+        "        <interface>\n"
+        "            <name>IFoo</name>\n"
+        "            <instance>default</instance>\n"
+        "        </interface>\n"
+        "    </hal>\n"
+        "    <hal format=\"hidl\" optional=\"false\">\n"
+        "        <name>android.hardware.foo</name>\n"
+        "        <version>1.1</version>\n"
+        "        <interface>\n"
+        "            <name>IFoo</name>\n"
+        "            <instance>custom</instance>\n"
+        "        </interface>\n"
+        "    </hal>\n"
+        "</compatibility-matrix>\n";
+    EXPECT_TRUE(gCompatibilityMatrixConverter(&cm, xml, &error)) << error;
+
+    {
+        HalManifest manifest;
+        xml =
+            "<manifest version=\"1.0\" type=\"framework\">\n"
+            "    <hal format=\"hidl\">\n"
+            "        <name>android.hardware.foo</name>\n"
+            "        <transport>hwbinder</transport>\n"
+            "        <version>1.0</version>\n"
+            "        <interface>\n"
+            "            <name>IFoo</name>\n"
+            "            <instance>default</instance>\n"
+            "            <instance>custom</instance>\n"
+            "        </interface>\n"
+            "        <fqname>@1.1::IFoo/custom</fqname>\n"
+            "    </hal>\n"
+            "</manifest>\n";
+        ASSERT_TRUE(gHalManifestConverter(&manifest, xml, &error)) << error;
+        EXPECT_TRUE(manifest.checkCompatibility(cm, &error)) << error;
+    }
+
+    {
+        HalManifest manifest;
+        xml =
+            "<manifest version=\"1.0\" type=\"framework\">\n"
+            "    <hal format=\"hidl\">\n"
+            "        <name>android.hardware.foo</name>\n"
+            "        <transport>hwbinder</transport>\n"
+            "        <fqname>@1.0::IFoo/default</fqname>\n"
+            "        <fqname>@1.1::IFoo/custom</fqname>\n"
+            "    </hal>\n"
+            "</manifest>\n";
+        ASSERT_TRUE(gHalManifestConverter(&manifest, xml, &error)) << error;
+        EXPECT_TRUE(manifest.checkCompatibility(cm, &error)) << error;
+    }
+
+    {
+        HalManifest manifest;
+        xml =
+            "<manifest version=\"1.0\" type=\"framework\">\n"
+            "    <hal format=\"hidl\">\n"
+            "        <name>android.hardware.foo</name>\n"
+            "        <transport>hwbinder</transport>\n"
+            "        <version>1.0</version>\n"
+            "        <interface>\n"
+            "            <name>IFoo</name>\n"
+            "            <instance>default</instance>\n"
+            "            <instance>custom</instance>\n"
+            "        </interface>\n"
+            "    </hal>\n"
+            "</manifest>\n";
+        ASSERT_TRUE(gHalManifestConverter(&manifest, xml, &error)) << error;
+        EXPECT_FALSE(manifest.checkCompatibility(cm, &error));
+        EXPECT_IN(
+            "android.hardware.foo:\n"
+            "    required: @1.1::IFoo/custom\n"
+            "    provided: \n"
+            "        @1.0::IFoo/custom\n"
+            "        @1.0::IFoo/default",
+            error);
+    }
+
+    {
+        HalManifest manifest;
+        xml =
+            "<manifest version=\"1.0\" type=\"framework\">\n"
+            "    <hal format=\"hidl\">\n"
+            "        <name>android.hardware.foo</name>\n"
+            "        <transport>hwbinder</transport>\n"
+            "        <fqname>@1.0::IFoo/default</fqname>\n"
+            "        <fqname>@1.0::IFoo/custom</fqname>\n"
+            "    </hal>\n"
+            "</manifest>\n";
+        ASSERT_TRUE(gHalManifestConverter(&manifest, xml, &error)) << error;
+        EXPECT_IN(
+            "android.hardware.foo:\n"
+            "    required: @1.1::IFoo/custom\n"
+            "    provided: \n"
+            "        @1.0::IFoo/custom\n"
+            "        @1.0::IFoo/default",
+            error);
+    }
+}
+
+TEST_F(LibVintfTest, FqNameInvalid) {
+    std::string error;
+    std::string xml;
+    ManifestHal hal;
+    xml =
+        "<hal format=\"hidl\">\n"
+        "    <name>android.hardware.foo</name>\n"
+        "    <transport>hwbinder</transport>\n"
+        "    <fqname>@1.1::IFoo/custom</fqname>\n"
+        "</hal>\n";
+    EXPECT_TRUE(gManifestHalConverter(&hal, xml, &error)) << error;
+    xml =
+        "<hal format=\"hidl\">\n"
+        "    <name>android.hardware.foo</name>\n"
+        "    <transport>hwbinder</transport>\n"
+        "    <fqname>1.1::IFoo/custom</fqname>\n"
+        "</hal>\n";
+    ASSERT_FALSE(gManifestHalConverter(&hal, xml, &error));
+    EXPECT_IN("Could not parse text \"1.1::IFoo/custom\" in element <fqname>", error);
+    xml =
+        "<hal format=\"hidl\">\n"
+        "    <name>android.hardware.foo</name>\n"
+        "    <transport>hwbinder</transport>\n"
+        "    <fqname>android.hardware.foo@1.1::IFoo/custom</fqname>\n"
+        "</hal>\n";
+    ASSERT_FALSE(gManifestHalConverter(&hal, xml, &error));
+    EXPECT_IN("Should not specify package", error);
+    xml =
+        "<hal format=\"hidl\">\n"
+        "    <name>android.hardware.foo</name>\n"
+        "    <transport>hwbinder</transport>\n"
+        "    <fqname>IFoo/custom</fqname>\n"
+        "</hal>\n";
+    ASSERT_FALSE(gManifestHalConverter(&hal, xml, &error));
+    EXPECT_IN("Should specify version", error);
+    xml =
+        "<hal format=\"hidl\">\n"
+        "    <name>android.hardware.foo</name>\n"
+        "    <transport>hwbinder</transport>\n"
+        "    <fqname>@1.0::IFoo</fqname>\n"
+        "</hal>\n";
+    ASSERT_FALSE(gManifestHalConverter(&hal, xml, &error));
+    EXPECT_IN("Should specify instance", error);
+    xml =
+        "<hal format=\"hidl\">\n"
+        "    <name>n07 4 v4l1d 1n73rf4c3</name>\n"
+        "    <transport>hwbinder</transport>\n"
+        "    <fqname>@1.0::IFoo/custom</fqname>\n"
+        "</hal>\n";
+    ASSERT_FALSE(gManifestHalConverter(&hal, xml, &error));
+    EXPECT_IN("Cannot create FqInstance", error);
+    EXPECT_IN("n07 4 v4l1d 1n73rf4c3", error);
 }
 
 } // namespace vintf
