@@ -71,13 +71,7 @@ struct CompatibilityMatrix : public HalGroup<MatrixHal>, public XmlFileGroup<Mat
     // from "other".
     // Require other->level() > this->level(), otherwise do nothing.
     bool addAllHalsAsOptional(CompatibilityMatrix* other, std::string* error);
-    // Return the MatrixHal object with the given name and major version. Since all major
-    // version are guaranteed distinct when add()-ed, there should be at most 1 match.
-    // Return nullptr if none is found.
-    std::pair<MatrixHal*, VersionRange*> getHalWithMajorVersion(const std::string& name,
-                                                                size_t majorVer);
-    std::pair<const MatrixHal*, const VersionRange*> getHalWithMajorVersion(const std::string& name,
-                                                                            size_t majorVer) const;
+
     // Similar to addAllHalsAsOptional but on <xmlfile> entries.
     bool addAllXmlFilesAsOptional(CompatibilityMatrix* other, std::string* error);
 

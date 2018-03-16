@@ -75,31 +75,11 @@ std::string CompatibilityMatrix::getXmlSchemaPath(const std::string& xmlFileName
     return "";
 }
 
-static VersionRange* findRangeWithMajorVersion(std::vector<VersionRange>& versionRanges,
-                                               size_t majorVer) {
-    for (VersionRange& vr : versionRanges) {
-        if (vr.majorVer == majorVer) {
-            return &vr;
-        }
-    }
-    return nullptr;
-}
-
-std::pair<MatrixHal*, VersionRange*> CompatibilityMatrix::getHalWithMajorVersion(
-    const std::string& name, size_t majorVer) {
-    for (MatrixHal* hal : getHals(name)) {
-        VersionRange* vr = findRangeWithMajorVersion(hal->versionRanges, majorVer);
-        if (vr != nullptr) {
-            return {hal, vr};
-        }
-    }
-    return {nullptr, nullptr};
-}
-std::pair<const MatrixHal*, const VersionRange*> CompatibilityMatrix::getHalWithMajorVersion(
-    const std::string& name, size_t majorVer) const {
-    return const_cast<CompatibilityMatrix*>(this)->getHalWithMajorVersion(name, majorVer);
-}
-
+// Add all package@other_version::interface/instance as an optional instance.
+// If package@this_version::interface/instance is in this (that is, some instance
+// with the same package and interface and instance exists), then other_version is
+// considered a possible replacement to this_version.
+// See LibVintfTest.AddOptionalHal* tests for details.
 bool CompatibilityMatrix::addAllHalsAsOptional(CompatibilityMatrix* other, std::string* error) {
     if (other == nullptr || other->level() <= level()) {
         return true;
@@ -108,36 +88,24 @@ bool CompatibilityMatrix::addAllHalsAsOptional(CompatibilityMatrix* other, std::
     for (auto& pair : other->mHals) {
         const std::string& name = pair.first;
         MatrixHal& halToAdd = pair.second;
-        for (const VersionRange& vr : halToAdd.versionRanges) {
-            MatrixHal* existingHal;
-            VersionRange* existingVr;
-            std::tie(existingHal, existingVr) = getHalWithMajorVersion(name, vr.majorVer);
 
-            if (existingHal == nullptr) {
-                MatrixHal optionalHalToAdd(halToAdd);
-                optionalHalToAdd.optional = true;
-                optionalHalToAdd.versionRanges = {vr};
-                if (!add(std::move(optionalHalToAdd))) {
-                    if (error) {
-                        *error = "Cannot add HAL " + name + " for unknown reason.";
-                    }
-                    return false;
-                }
-                continue;
+        bool added = false;
+        for (auto* existingHal : getHals(name)) {
+            if (existingHal->containsInstances(halToAdd)) {
+                existingHal->insertVersionRanges(halToAdd);
+                added = true;
+                // Do not break here; try other <hal> with the same name as well.
             }
+        }
 
-            if (!existingHal->optional && !existingHal->containsInstances(halToAdd)) {
-                if (error != nullptr) {
-                    *error = "HAL " + toFQNameString(name, vr.minVer()) + " is a required " +
-                             "HAL, but fully qualified instance names don't match (at FCM "
-                             "Version " +
-                             std::to_string(level()) + " and " + std::to_string(other->level()) +
-                             ")";
+        if (!added) {
+            halToAdd.setOptional(true);
+            if (!add(std::move(halToAdd))) {
+                if (error) {
+                    *error = "Cannot add HAL " + name + " for unknown reason.";
                 }
                 return false;
             }
-
-            existingVr->maxMinor = std::max(existingVr->maxMinor, vr.maxMinor);
         }
     }
     return true;
