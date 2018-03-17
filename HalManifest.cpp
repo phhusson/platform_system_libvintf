@@ -244,6 +244,21 @@ std::vector<std::string> HalManifest::checkIncompatibleHals(const CompatibilityM
     return ret;
 }
 
+std::set<std::string> HalManifest::checkUnusedHals(const CompatibilityMatrix& mat) const {
+    std::set<std::string> ret;
+
+    forEachInstance([&ret, &mat](const auto& manifestInstance) {
+        const auto& fqInstance = manifestInstance.getFqInstance();
+        if (!mat.hasInstance(fqInstance.getPackage(), fqInstance.getVersion(),
+                             fqInstance.getInterface(), fqInstance.getInstance())) {
+            ret.insert(fqInstance.string());
+        }
+        return true;
+    });
+
+    return ret;
+}
+
 static bool checkVendorNdkCompatibility(const VendorNdk& matVendorNdk,
                                         const std::vector<VendorNdk>& manifestVendorNdk,
                                         std::string* error) {
