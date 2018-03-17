@@ -48,23 +48,35 @@ struct MatrixHal {
 
     inline const std::string& getName() const { return name; }
 
-    // Return true if "this" contains all interface/instance instances in "other".
-    bool containsInstances(const MatrixHal& other) const;
-
     bool forEachInstance(const std::function<bool(const MatrixInstance&)>& func) const;
 
    private:
     friend struct HalManifest;
     friend struct CompatibilityMatrix;
+    // Loop over interface/instance for a specific VersionRange.
     bool forEachInstance(const VersionRange& vr,
                          const std::function<bool(const MatrixInstance&)>& func) const;
+    // Loop over interface/instance. VersionRange is supplied to the function as a vector.
+    bool forEachInstance(
+        const std::function<bool(const std::vector<VersionRange>&, const std::string&,
+                                 const std::string&)>& func) const;
     bool isCompatible(const std::set<FqInstance>& providedInstances,
                       const std::set<Version>& providedVersions) const;
     bool isCompatible(const VersionRange& vr, const std::set<FqInstance>& providedInstances,
                       const std::set<Version>& providedVersions) const;
 
     void setOptional(bool o);
-    void insertVersionRanges(const MatrixHal& other);
+    void insertVersionRanges(const std::vector<VersionRange>& other);
+    void insertInstance(const std::string& interface, const std::string& instance);
+    // Return true if it has any interface/instance tags.
+    bool hasAnyInstance() const;
+    bool hasInstance(const std::string& interface, const std::string& instance) const;
+    // Return true if it contains only interface/instance.
+    bool hasOnlyInstance(const std::string& interface, const std::string& instance) const;
+    // Remove a specific interface/instances. Return true if removed, false otherwise.
+    bool removeInstance(const std::string& interface, const std::string& instance);
+    // Remove all <interface> tags.
+    void clearInstances();
 };
 
 } // namespace vintf
