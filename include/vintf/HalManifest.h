@@ -137,11 +137,20 @@ struct HalManifest : public HalGroup<ManifestHal>, public XmlFileGroup<ManifestX
     // Check if all instances in matrixHal is supported in this manifest.
     bool isCompatible(const details::Instances& instances, const MatrixHal& matrixHal) const;
 
-    // Return a list of instance names that does NOT conform to
+    // Return a list of error messages (for each <hal> name) that does NOT conform to
     // the given compatibility matrix. It does not contain components that are optional.
+    // That is, return empty list iff
+    // (instance in matrix) => (instance in manifest).
     std::vector<std::string> checkIncompatibleHals(const CompatibilityMatrix& mat) const;
 
     void removeHals(const std::string& name, size_t majorVer);
+
+    // Returns a list of instance names that are in this manifest but
+    // are not specified in the given matrix, whether the HAL is specified as an optional or
+    // required HAL.
+    // That is, return empty list iff
+    // (instance in manifest) => (instance in matrix).
+    std::set<std::string> checkUnusedHals(const CompatibilityMatrix& mat) const;
 
     SchemaType mType;
     Level mLevel = Level::UNSPECIFIED;
