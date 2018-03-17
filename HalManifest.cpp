@@ -177,13 +177,6 @@ std::set<Version> HalManifest::getSupportedVersions(const std::string &name) con
     return ret;
 }
 
-bool HalManifest::hasInstance(const std::string& halName, const Version& version,
-                              const std::string& interfaceName,
-                              const std::string& instanceName) const {
-    const auto& instances = getInstances(halName, version, interfaceName);
-    return instances.find(instanceName) != instances.end();
-}
-
 bool HalManifest::forEachInstanceOfVersion(
     const std::string& package, const Version& expectVersion,
     const std::function<bool(const ManifestInstance&)>& func) const {
@@ -248,6 +241,21 @@ std::vector<std::string> HalManifest::checkIncompatibleHals(const CompatibilityM
             ret.insert(ret.end(), oss.str());
         }
     }
+    return ret;
+}
+
+std::set<std::string> HalManifest::checkUnusedHals(const CompatibilityMatrix& mat) const {
+    std::set<std::string> ret;
+
+    forEachInstance([&ret, &mat](const auto& manifestInstance) {
+        const auto& fqInstance = manifestInstance.getFqInstance();
+        if (!mat.hasInstance(fqInstance.getPackage(), fqInstance.getVersion(),
+                             fqInstance.getInterface(), fqInstance.getInstance())) {
+            ret.insert(fqInstance.string());
+        }
+        return true;
+    });
+
     return ret;
 }
 

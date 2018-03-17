@@ -16,6 +16,8 @@
 
 #include "MatrixHal.h"
 
+#include <algorithm>
+
 #include "MapValueIterator.h"
 
 namespace android {
@@ -128,6 +130,24 @@ bool MatrixHal::isCompatible(const VersionRange& vr, const std::set<FqInstance>&
     return std::any_of(
         providedVersions.begin(), providedVersions.end(),
         [&](const auto& providedVersion) { return vr.supportedBy(providedVersion); });
+}
+
+void MatrixHal::setOptional(bool o) {
+    this->optional = o;
+}
+
+void MatrixHal::insertVersionRanges(const MatrixHal& other) {
+    for (const VersionRange& otherVr : other.versionRanges) {
+        auto existingVr = std::find_if(this->versionRanges.begin(), this->versionRanges.end(),
+                                       [&](const auto& e) { return e.overlaps(otherVr); });
+
+        if (existingVr == this->versionRanges.end()) {
+            this->versionRanges.push_back(otherVr);
+        } else {
+            existingVr->minMinor = std::min(existingVr->minMinor, otherVr.minMinor);
+            existingVr->maxMinor = std::max(existingVr->maxMinor, otherVr.maxMinor);
+        }
+    }
 }
 
 } // namespace vintf

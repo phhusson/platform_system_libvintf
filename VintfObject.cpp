@@ -606,25 +606,22 @@ bool VintfObject::isInstanceDeprecated(const std::string& package, Version versi
         isInstanceInUse(package, version, interface, instance);
     if (oldVersionIsServed) {
         // Find any package@x.? in target matrix, and check if instance is in target matrix.
-        const MatrixHal* targetMatrixHal;
-        const VersionRange* targetMatrixRange;
-        std::tie(targetMatrixHal, targetMatrixRange) =
-            targetMatrix.getHalWithMajorVersion(package, version.majorVer);
-        if (targetMatrixHal == nullptr || targetMatrixRange == nullptr) {
+        bool foundInstance = false;
+        Version targetMatrixMinVer;
+        targetMatrix.forEachInstanceOfPackage(package, [&](const auto& targetMatrixInstance) {
+            if (targetMatrixInstance.versionRange().majorVer == version.majorVer &&
+                targetMatrixInstance.interface() == interface &&
+                targetMatrixInstance.instance() == instance) {
+                targetMatrixMinVer = targetMatrixInstance.versionRange().minVer();
+                foundInstance = true;
+            }
+            return !foundInstance;  // continue if not found
+        });
+        if (!foundInstance) {
             if (error) {
-                *error = toFQNameString(package, servedVersion) +
+                *error = toFQNameString(package, servedVersion, interface, instance) +
                          " is deprecated in compatibility matrix at FCM Version " +
                          to_string(targetMatrix.level()) + "; it should not be served.";
-            }
-            return true;
-        }
-
-        const auto& targetMatrixInstances = targetMatrixHal->getInstances(interface);
-        if (targetMatrixInstances.find(instance) == targetMatrixInstances.end()) {
-            if (error) {
-                *error += toFQNameString(package, servedVersion, interface, instance) +
-                          " is deprecated at FCM version " + to_string(targetMatrix.level()) +
-                          "; it should be not be served.\n";
             }
             return true;
         }
@@ -632,12 +629,12 @@ bool VintfObject::isInstanceDeprecated(const std::string& package, Version versi
         // Assuming that targetMatrix requires @x.u-v, require that at least @x.u is served.
         bool targetVersionServed;
         std::tie(targetVersionServed, std::ignore) =
-            isInstanceInUse(package, targetMatrixRange->minVer(), interface, instance);
+            isInstanceInUse(package, targetMatrixMinVer, interface, instance);
 
         if (!targetVersionServed) {
             if (error) {
                 *error += toFQNameString(package, servedVersion) + " is deprecated; " +
-                          "require at least " + to_string(targetMatrixRange->minVer()) + "\n";
+                          "require at least " + to_string(targetMatrixMinVer) + "\n";
             }
             return true;
         }
