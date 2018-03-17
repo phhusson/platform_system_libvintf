@@ -48,14 +48,7 @@ struct HalGroup {
     }
 
     // Add an hal to this HalGroup so that it can be constructed programatically.
-    virtual bool add(Hal&& hal) {
-        if (!shouldAdd(hal)) {
-            return false;
-        }
-        std::string name = hal.getName();
-        mHals.emplace(std::move(name), std::move(hal));  // always succeed
-        return true;
-    }
+    virtual bool add(Hal&& hal) { return addInternal(std::move(hal)) != nullptr; }
 
     // Get all hals with the given name (e.g "android.hardware.camera").
     // There could be multiple hals that matches the same given name.
@@ -190,6 +183,15 @@ struct HalGroup {
             return nullptr;
         }
         return &(it->second);
+    }
+
+    Hal* addInternal(Hal&& hal) {
+        if (!shouldAdd(hal)) {
+            return nullptr;
+        }
+        std::string name = hal.getName();
+        auto it = mHals.emplace(std::move(name), std::move(hal));  // always succeeds
+        return &it->second;
     }
 };
 

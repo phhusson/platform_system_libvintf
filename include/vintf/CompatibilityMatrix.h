@@ -91,6 +91,9 @@ struct CompatibilityMatrix : public HalGroup<MatrixHal>, public XmlFileGroup<Mat
     static CompatibilityMatrix* findOrInsertBaseMatrix(
         std::vector<Named<CompatibilityMatrix>>* matrices, std::string* error);
 
+    MatrixHal* splitInstance(MatrixHal* existingHal, const std::string& interface,
+                             const std::string& instance);
+
     friend struct HalManifest;
     friend struct RuntimeInfo;
     friend struct CompatibilityMatrixConverter;
