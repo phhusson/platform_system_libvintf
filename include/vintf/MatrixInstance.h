@@ -28,6 +28,12 @@ namespace vintf {
 
 class MatrixInstance {
    public:
+    MatrixInstance();
+    MatrixInstance(const MatrixInstance&);
+    MatrixInstance(MatrixInstance&&);
+    MatrixInstance& operator=(const MatrixInstance&);
+    MatrixInstance& operator=(MatrixInstance&&);
+
     using VersionType = VersionRange;
     // fqInstance.version is ignored. Version range is provided separately.
     MatrixInstance(FqInstance&& fqInstance, VersionRange&& range, bool optional);
@@ -37,6 +43,8 @@ class MatrixInstance {
     const std::string& interface() const;
     const std::string& instance() const;
     bool optional() const;
+
+    bool isSatisfiedBy(const FqInstance& provided) const;
 
    private:
     FqInstance mFqInstance;

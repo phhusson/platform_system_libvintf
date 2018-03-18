@@ -395,15 +395,21 @@ std::ostream &operator<<(std::ostream &os, const MatrixHal &req) {
               << (req.optional ? kOptional : kRequired);
 }
 
-static std::string expandInstances(const MatrixHal& req, const VersionRange& vr) {
+static std::string expandInstances(const MatrixHal& req, const VersionRange& vr, bool brace) {
     std::string s;
-    bool first = true;
+    size_t count = 0;
     for (const auto& interface : iterateValues(req.interfaces)) {
         for (const auto& instance : interface.instances) {
-            if (!first) s += " AND ";
+            if (count > 0) s += " AND ";
             s += toFQNameString(vr, interface.name, instance);
-            first = false;
+            count++;
         }
+    }
+    if (count == 0) {
+        s += "@" + to_string(vr);
+    }
+    if (count >= 2 && brace) {
+        s = "(" + s + ")";
     }
     return s;
 }
@@ -414,14 +420,14 @@ std::vector<std::string> expandInstances(const MatrixHal& req) {
     }
     if (req.versionRanges.size() == 1 && req.interfaces.size() == 1 &&
         req.interfaces.begin()->second.instances.size() == 1) {
-        return {expandInstances(req, req.versionRanges.front())};
+        return {expandInstances(req, req.versionRanges.front(), false /* brace */)};
     }
     std::vector<std::string> ss;
     for (const auto& vr : req.versionRanges) {
         if (!ss.empty()) {
             ss.back() += " OR";
         }
-        ss.push_back("(" + expandInstances(req, vr) + ")");
+        ss.push_back(expandInstances(req, vr, true /* brace */));
     }
     return ss;
 }
@@ -503,6 +509,14 @@ std::string toFQNameString(const std::string& package, const VersionRange& range
 std::string toFQNameString(const VersionRange& range, const std::string& interface,
                            const std::string& instance) {
     return toFQNameString("", range, interface, instance);
+}
+
+std::ostream& operator<<(std::ostream& os, const FqInstance& fqInstance) {
+    return os << fqInstance.string();
+}
+
+bool parse(const std::string& s, FqInstance* fqInstance) {
+    return fqInstance->setTo(s);
 }
 
 } // namespace vintf

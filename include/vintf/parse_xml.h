@@ -31,10 +31,14 @@ enum SerializeFlag : uint32_t {
     NO_KERNEL = 1 << 4,
     NO_XMLFILES = 1 << 5,
     NO_SSDK = 1 << 6,
+    NO_FQNAME = 1 << 7,
 
     EVERYTHING = 0,
-    HALS_ONLY = ~NO_HALS,
+    HALS_ONLY = ~(NO_HALS | NO_FQNAME),  // <hal> with <fqname>
     XMLFILES_ONLY = ~NO_XMLFILES,
+    SEPOLICY_ONLY = ~NO_SEPOLICY,
+    VNDK_ONLY = ~NO_VNDK,
+    HALS_NO_FQNAME = ~NO_HALS,  // <hal> without <fqname>
 };
 using SerializeFlags = uint32_t;
 
