@@ -42,8 +42,6 @@ class MatrixInstance {
     const std::string& package() const;
     const VersionRange& versionRange() const;
     const std::string& interface() const;
-    // deprecated; use regexPattern or exactInstance instead.
-    const std::string& instance() const;
     bool optional() const;
 
     bool isSatisfiedBy(const FqInstance& provided) const;
