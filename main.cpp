@@ -203,7 +203,9 @@ void insert(const CompatibilityMatrix* matrix, Table* table, const RowMutator& m
              minorVer <= matrixInstance.versionRange().maxMinor; ++minorVer) {
             std::string key = toFQNameString(
                 matrixInstance.package(), Version{matrixInstance.versionRange().majorVer, minorVer},
-                matrixInstance.interface(), matrixInstance.instance());
+                matrixInstance.interface(),
+                matrixInstance.isRegex() ? matrixInstance.regexPattern()
+                                         : matrixInstance.exactInstance());
             auto it = table->find(key);
             if (it == table->end()) {
                 mutate(&(*table)[key]);
