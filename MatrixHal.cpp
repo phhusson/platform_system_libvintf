@@ -52,24 +52,6 @@ std::set<std::string> MatrixHal::getInstances(const std::string& interfaceName) 
     return ret;
 }
 
-bool MatrixHal::containsInstances(const MatrixHal& other) const {
-    for (const auto& pair : other.interfaces) {
-        const std::string& interfaceName = pair.first;
-        auto thisIt = interfaces.find(interfaceName);
-        if (thisIt == interfaces.end()) {
-            return false;
-        }
-
-        const std::set<std::string>& thisInstances = thisIt->second.instances;
-        const std::set<std::string>& otherInstances = pair.second.instances;
-        if (!std::includes(thisInstances.begin(), thisInstances.end(), otherInstances.begin(),
-                           otherInstances.end())) {
-            return false;
-        }
-    }
-    return true;
-}
-
 bool MatrixHal::forEachInstance(const std::function<bool(const MatrixInstance&)>& func) const {
     for (const auto& vr : versionRanges) {
         if (!forEachInstance(vr, func)) {
@@ -89,6 +71,19 @@ bool MatrixHal::forEachInstance(const VersionRange& vr,
                 if (!func(MatrixInstance(std::move(fqInstance), VersionRange(vr), optional))) {
                     return false;
                 }
+            }
+        }
+    }
+    return true;
+}
+
+bool MatrixHal::forEachInstance(
+    const std::function<bool(const std::vector<VersionRange>&, const std::string&,
+                             const std::string&)>& func) const {
+    for (const auto& intf : iterateValues(interfaces)) {
+        for (const auto& instance : intf.instances) {
+            if (!func(versionRanges, intf.name, instance)) {
+                return false;
             }
         }
     }
@@ -136,8 +131,8 @@ void MatrixHal::setOptional(bool o) {
     this->optional = o;
 }
 
-void MatrixHal::insertVersionRanges(const MatrixHal& other) {
-    for (const VersionRange& otherVr : other.versionRanges) {
+void MatrixHal::insertVersionRanges(const std::vector<VersionRange>& other) {
+    for (const VersionRange& otherVr : other) {
         auto existingVr = std::find_if(this->versionRanges.begin(), this->versionRanges.end(),
                                        [&](const auto& e) { return e.overlaps(otherVr); });
 
@@ -148,6 +143,60 @@ void MatrixHal::insertVersionRanges(const MatrixHal& other) {
             existingVr->maxMinor = std::max(existingVr->maxMinor, otherVr.maxMinor);
         }
     }
+}
+
+void MatrixHal::insertInstance(const std::string& interface, const std::string& instance) {
+    auto it = interfaces.find(interface);
+    if (it == interfaces.end())
+        it = interfaces.emplace(interface, HalInterface{interface, {}}).first;
+    it->second.instances.insert(instance);
+}
+
+bool MatrixHal::hasAnyInstance() const {
+    bool found = false;
+    forEachInstance([&](const auto&) {
+        found = true;
+        return false;  // break if any instance
+    });
+    return found;
+}
+
+bool MatrixHal::hasInstance(const std::string& interface, const std::string& instance) const {
+    bool found = false;
+    forEachInstance([&](const auto& matrixInstance) {
+        found |= matrixInstance.interface() == interface && matrixInstance.instance() == instance;
+        return !found;  // continue if not match
+    });
+    return found;
+}
+
+bool MatrixHal::hasOnlyInstance(const std::string& interface, const std::string& instance) const {
+    bool found = false;
+    bool foundOthers = false;
+
+    forEachInstance([&](const auto& matrixInstance) {
+        bool match =
+            matrixInstance.interface() == interface && matrixInstance.instance() == instance;
+
+        found |= match;
+        foundOthers |= (!match);
+
+        return !foundOthers;
+    });
+
+    return found && !foundOthers;
+}
+
+bool MatrixHal::removeInstance(const std::string& interface, const std::string& instance) {
+    auto it = interfaces.find(interface);
+    if (it == interfaces.end()) return false;
+    it->second.instances.erase(instance);
+    if (it->second.instances.empty()) interfaces.erase(it);
+    return true;
+}
+
+void MatrixHal::clearInstances() {
+    this->interfaces.clear();
 }
 
 } // namespace vintf

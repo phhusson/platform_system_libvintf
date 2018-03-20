@@ -75,6 +75,30 @@ std::string CompatibilityMatrix::getXmlSchemaPath(const std::string& xmlFileName
     return "";
 }
 
+// Split existingHal into a HAL that contains only interface/instance and a HAL
+// that does not contain it. Return the HAL that contains only interface/instance.
+// - Return nullptr if existingHal does not contain interface/instance
+// - Return existingHal if existingHal contains only interface/instance
+// - Remove interface/instance from existingHal, and return a new MatrixHal (that is added
+//   to "this") that contains only interface/instance.
+MatrixHal* CompatibilityMatrix::splitInstance(MatrixHal* existingHal, const std::string& interface,
+                                              const std::string& instance) {
+    if (!existingHal->hasInstance(interface, instance)) {
+        return nullptr;
+    }
+
+    if (existingHal->hasOnlyInstance(interface, instance)) {
+        return existingHal;
+    }
+
+    existingHal->removeInstance(interface, instance);
+    MatrixHal copy = *existingHal;
+    copy.clearInstances();
+    copy.insertInstance(interface, instance);
+
+    return addInternal(std::move(copy));
+}
+
 // Add all package@other_version::interface/instance as an optional instance.
 // If package@this_version::interface/instance is in this (that is, some instance
 // with the same package and interface and instance exists), then other_version is
@@ -89,16 +113,27 @@ bool CompatibilityMatrix::addAllHalsAsOptional(CompatibilityMatrix* other, std::
         const std::string& name = pair.first;
         MatrixHal& halToAdd = pair.second;
 
-        bool added = false;
-        for (auto* existingHal : getHals(name)) {
-            if (existingHal->containsInstances(halToAdd)) {
-                existingHal->insertVersionRanges(halToAdd);
-                added = true;
-                // Do not break here; try other <hal> with the same name as well.
+        std::set<std::pair<std::string, std::string>> insertedInstances;
+        auto existingHals = getHals(name);
+
+        halToAdd.forEachInstance([&](const std::vector<VersionRange>& versionRanges,
+                                     const std::string& interface, const std::string& instance) {
+            for (auto* existingHal : existingHals) {
+                MatrixHal* splitInstance = this->splitInstance(existingHal, interface, instance);
+                if (splitInstance != nullptr) {
+                    splitInstance->insertVersionRanges(versionRanges);
+                    insertedInstances.insert(std::make_pair(interface, instance));
+                }
             }
+            return true;
+        });
+
+        // Add the remaining instances.
+        for (const auto& pair : insertedInstances) {
+            halToAdd.removeInstance(pair.first, pair.second);
         }
 
-        if (!added) {
+        if (halToAdd.hasAnyInstance()) {
             halToAdd.setOptional(true);
             if (!add(std::move(halToAdd))) {
                 if (error) {
