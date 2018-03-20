@@ -123,11 +123,10 @@ std::set<std::string> HalManifest::getHalNames() const {
 
 std::set<std::string> HalManifest::getHalNamesAndVersions() const {
     std::set<std::string> names{};
-    for (const auto &hal : getHals()) {
-        for (const auto &version : hal.versions) {
-            names.insert(toFQNameString(hal.name, version));
-        }
-    }
+    forEachInstance([&names](const ManifestInstance& e) {
+        names.insert(toFQNameString(e.interface(), e.version()));
+        return true;
+    });
     return names;
 }
 
@@ -145,14 +144,6 @@ Transport HalManifest::getTransport(const std::string &package, const Version &v
                    << toFQNameString(package, v, interfaceName, instanceName);
     }
     return transport;
-}
-
-std::set<Version> HalManifest::getSupportedVersions(const std::string &name) const {
-    std::set<Version> ret;
-    for (const ManifestHal *hal : getHals(name)) {
-        ret.insert(hal->versions.begin(), hal->versions.end());
-    }
-    return ret;
 }
 
 bool HalManifest::forEachInstanceOfVersion(
@@ -348,18 +339,15 @@ bool HalManifest::checkCompatibility(const CompatibilityMatrix &mat, std::string
 CompatibilityMatrix HalManifest::generateCompatibleMatrix() const {
     CompatibilityMatrix matrix;
 
-    for (const ManifestHal &manifestHal : getHals()) {
-        MatrixHal matrixHal{
-            .format = manifestHal.format,
-            .name = manifestHal.name,
+    forEachInstance([&matrix](const ManifestInstance& e) {
+        matrix.add(MatrixHal{
+            .format = e.format(),
+            .name = e.package(),
             .optional = true,
-            .interfaces = manifestHal.interfaces
-        };
-        for (const Version &manifestVersion : manifestHal.versions) {
-            matrixHal.versionRanges.push_back({manifestVersion.majorVer, manifestVersion.minorVer});
-        }
-        matrix.add(std::move(matrixHal));
-    }
+            .versionRanges = {VersionRange{e.version().majorVer, e.version().minorVer}},
+            .interfaces = {{e.interface(), HalInterface{e.interface(), {e.instance()}}}}});
+        return true;
+    });
     if (mType == SchemaType::FRAMEWORK) {
         matrix.mType = SchemaType::DEVICE;
         // VNDK does not need to be added for compatibility

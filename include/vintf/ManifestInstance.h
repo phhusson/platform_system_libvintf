@@ -21,6 +21,7 @@
 
 #include <hidl-util/FqInstance.h>
 
+#include "HalFormat.h"
 #include "TransportArch.h"
 #include "Version.h"
 
@@ -36,14 +37,15 @@ class ManifestInstance {
     ManifestInstance& operator=(ManifestInstance&&);
 
     using VersionType = Version;
-    ManifestInstance(FqInstance&& fqInstance, TransportArch&& ta);
-    ManifestInstance(const FqInstance& fqInstance, const TransportArch& ta);
+    ManifestInstance(FqInstance&& fqInstance, TransportArch&& ta, HalFormat fmt);
+    ManifestInstance(const FqInstance& fqInstance, const TransportArch& ta, HalFormat fmt);
     const std::string& package() const;
     Version version() const;
     const std::string& interface() const;
     const std::string& instance() const;
     Transport transport() const;
     Arch arch() const;
+    HalFormat format() const;
 
     bool operator==(const ManifestInstance& other) const;
     bool operator<(const ManifestInstance& other) const;
@@ -57,6 +59,7 @@ class ManifestInstance {
    private:
     FqInstance mFqInstance;
     TransportArch mTransportArch;
+    HalFormat mHalFormat;
 };
 
 }  // namespace vintf
