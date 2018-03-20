@@ -32,7 +32,7 @@ using namespace ::testing;
 using namespace ::android::vintf;
 using namespace ::android::vintf::details;
 
-using android::FQName;
+using android::FqInstance;
 
 static bool In(const std::string& sub, const std::string& str) {
     return str.find(sub) != std::string::npos;
@@ -837,22 +837,28 @@ TEST_F(OdmManifestTest, OdmLegacyManifest) {
     EXPECT_TRUE(containsOdmManifest(p));
 }
 
-struct FQInstance {
-    FQName fqName;
-    std::string instance;
+struct CheckedFqInstance : FqInstance {
+    CheckedFqInstance(const char* s) : CheckedFqInstance(std::string(s)) {}
+    CheckedFqInstance(const std::string& s) { CHECK(setTo(s)) << s; }
 
-    FQInstance(const char* s) : FQInstance(std::string(s)) {}
-    FQInstance(const std::string& s) {
-        auto tokens = android::base::Split(s, "/");
-        CHECK(2u == tokens.size());
-        CHECK(FQName::parse(tokens[0], &fqName));
-        instance = tokens[1];
-    }
-
-    Version getVersion() const {
-        return Version{fqName.getPackageMajorVersion(), fqName.getPackageMinorVersion()};
-    }
+    Version getVersion() const { return FqInstance::getVersion(); }
 };
+
+static VintfObject::ListInstances getInstanceListFunc(
+    const std::vector<CheckedFqInstance>& instances) {
+    return [instances](const std::string& package, Version version, const std::string& interface,
+                       const auto& /* instanceHint */) {
+        std::vector<std::pair<std::string, Version>> ret;
+        for (auto&& existing : instances) {
+            if (existing.getPackage() == package && existing.getVersion().minorAtLeast(version) &&
+                existing.getInterface() == interface) {
+                ret.push_back(std::make_pair(existing.getInstance(), existing.getVersion()));
+            }
+        }
+
+        return ret;
+    };
+}
 
 class DeprecateTest : public VintfObjectTestBase {
    protected:
@@ -878,24 +884,10 @@ class DeprecateTest : public VintfObjectTestBase {
         VintfObject::GetDeviceHalManifest(true /* skipCache */);
     }
 
-    VintfObject::IsInstanceInUse getPredicate(const std::vector<FQInstance>& instances) {
-        return [instances](const std::string& package, Version version,
-                           const std::string& interface, const std::string& instance) {
-            for (auto&& existing : instances) {
-                if (existing.fqName.package() == package &&
-                    existing.getVersion().minorAtLeast(version) &&
-                    existing.fqName.name() == interface && existing.instance == instance) {
-                    return std::make_pair(true, existing.getVersion());
-                }
-            }
-
-            return std::make_pair(false, Version{});
-        };
-    }
 };
 
 TEST_F(DeprecateTest, CheckNoDeprecate) {
-    auto pred = getPredicate({
+    auto pred = getInstanceListFunc({
         "android.hardware.minor@1.1::IMinor/default",
         "android.hardware.major@2.0::IMajor/default",
     });
@@ -904,7 +896,7 @@ TEST_F(DeprecateTest, CheckNoDeprecate) {
 }
 
 TEST_F(DeprecateTest, CheckRemoved) {
-    auto pred = getPredicate({
+    auto pred = getInstanceListFunc({
         "android.hardware.removed@1.0::IRemoved/default",
         "android.hardware.minor@1.1::IMinor/default",
         "android.hardware.major@2.0::IMajor/default",
@@ -915,7 +907,7 @@ TEST_F(DeprecateTest, CheckRemoved) {
 }
 
 TEST_F(DeprecateTest, CheckMinor) {
-    auto pred = getPredicate({
+    auto pred = getInstanceListFunc({
         "android.hardware.minor@1.0::IMinor/default",
         "android.hardware.major@2.0::IMajor/default",
     });
@@ -925,7 +917,7 @@ TEST_F(DeprecateTest, CheckMinor) {
 }
 
 TEST_F(DeprecateTest, CheckMinorDeprecatedInstance1) {
-    auto pred = getPredicate({
+    auto pred = getInstanceListFunc({
         "android.hardware.minor@1.0::IMinor/legacy",
         "android.hardware.minor@1.1::IMinor/default",
         "android.hardware.major@2.0::IMajor/default",
@@ -936,7 +928,7 @@ TEST_F(DeprecateTest, CheckMinorDeprecatedInstance1) {
 }
 
 TEST_F(DeprecateTest, CheckMinorDeprecatedInstance2) {
-    auto pred = getPredicate({
+    auto pred = getInstanceListFunc({
         "android.hardware.minor@1.1::IMinor/default",
         "android.hardware.minor@1.1::IMinor/legacy",
         "android.hardware.major@2.0::IMajor/default",
@@ -947,7 +939,7 @@ TEST_F(DeprecateTest, CheckMinorDeprecatedInstance2) {
 }
 
 TEST_F(DeprecateTest, CheckMajor1) {
-    auto pred = getPredicate({
+    auto pred = getInstanceListFunc({
         "android.hardware.minor@1.1::IMinor/default",
         "android.hardware.major@1.0::IMajor/default",
         "android.hardware.major@2.0::IMajor/default",
@@ -958,7 +950,7 @@ TEST_F(DeprecateTest, CheckMajor1) {
 }
 
 TEST_F(DeprecateTest, CheckMajor2) {
-    auto pred = getPredicate({
+    auto pred = getInstanceListFunc({
         "android.hardware.minor@1.1::IMinor/default",
         "android.hardware.major@1.0::IMajor/default",
     });
