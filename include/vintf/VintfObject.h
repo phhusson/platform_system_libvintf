@@ -154,8 +154,7 @@ public:
     static bool isHalDeprecated(const MatrixHal& oldMatrixHal,
                                 const CompatibilityMatrix& targetMatrix,
                                 const IsInstanceInUse& isInstanceInUse, std::string* error);
-    static bool isInstanceDeprecated(const std::string& package, Version version,
-                                     const std::string& interface, const std::string& instance,
+    static bool isInstanceDeprecated(const MatrixInstance& oldMatrixInstance,
                                      const CompatibilityMatrix& targetMatrix,
                                      const IsInstanceInUse& isInstanceInUse, std::string* error);
 };
