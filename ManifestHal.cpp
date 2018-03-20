@@ -55,8 +55,8 @@ bool ManifestHal::forEachInstance(const std::function<bool(const ManifestInstanc
                 // TODO(b/73556059): Store ManifestInstance as well to avoid creating temps
                 FqInstance fqInstance;
                 if (fqInstance.setTo(getName(), v.majorVer, v.minorVer, intf.name, instance)) {
-                    if (!func(ManifestInstance(std::move(fqInstance),
-                                               TransportArch{transportArch}))) {
+                    if (!func(ManifestInstance(std::move(fqInstance), TransportArch{transportArch},
+                                               format))) {
                         return false;
                     }
                 }
@@ -129,7 +129,7 @@ bool ManifestHal::insertInstances(const std::set<FqInstance>& fqInstances, std::
             }
             return false;
         }
-        mAdditionalInstances.emplace(std::move(withPackage), this->transportArch);
+        mAdditionalInstances.emplace(std::move(withPackage), this->transportArch, this->format);
     }
 
     return true;
