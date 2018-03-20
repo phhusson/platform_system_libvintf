@@ -3165,6 +3165,9 @@ TEST_F(LibVintfTest, FqNameValid) {
             "</manifest>\n";
         ASSERT_TRUE(gHalManifestConverter(&manifest, xml, &error)) << error;
         EXPECT_TRUE(manifest.checkCompatibility(cm, &error)) << error;
+
+        EXPECT_EQ(Transport::HWBINDER,
+                  manifest.getTransport("android.hardware.foo", {1, 1}, "IFoo", "custom"));
     }
 
     {
