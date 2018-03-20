@@ -113,11 +113,9 @@ public:
     }
 
     std::map<std::string, HalInterface> testHalInterfaces() {
-        HalInterface intf;
-        intf.name = "IFoo";
-        intf.instances.insert("default");
+        HalInterface intf("IFoo", {"default"});
         std::map<std::string, HalInterface> map;
-        map[intf.name] = intf;
+        map[intf.name()] = intf;
         return map;
     }
 
@@ -456,7 +454,7 @@ TEST_F(LibVintfTest, VersionConverter) {
 }
 
 static bool insert(std::map<std::string, HalInterface>* map, HalInterface&& intf) {
-    std::string name{intf.name};
+    std::string name{intf.name()};
     return map->emplace(std::move(name), std::move(intf)).second;
 }
 
