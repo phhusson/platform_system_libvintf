@@ -2275,6 +2275,203 @@ TEST_F(LibVintfTest, AddOptionalHalMinorVersionDiffInstance) {
               "</compatibility-matrix>\n");
 }
 
+TEST_F(LibVintfTest, AddRequiredHalOverlapInstance) {
+    CompatibilityMatrix cm1;
+    std::string error;
+    std::string xml;
+
+    xml =
+        "<compatibility-matrix version=\"1.0\" type=\"framework\" level=\"1\">\n"
+        "    <hal format=\"hidl\" optional=\"false\">\n"
+        "        <name>android.hardware.foo</name>\n"
+        "        <version>1.0</version>\n"
+        "        <interface>\n"
+        "            <name>IFoo</name>\n"
+        "            <instance>default</instance>\n"
+        "            <instance>custom</instance>\n"
+        "        </interface>\n"
+        "    </hal>\n"
+        "</compatibility-matrix>\n";
+    EXPECT_TRUE(gCompatibilityMatrixConverter(&cm1, xml))
+        << gCompatibilityMatrixConverter.lastError();
+
+    {
+        // Test that 2.0 should be added to IFoo/default, so 1.0::IFoo/custom
+        // should be in a new <hal> tag
+        CompatibilityMatrix cm2;
+        xml =
+            "<compatibility-matrix version=\"1.0\" type=\"framework\" level=\"2\">\n"
+            "    <hal format=\"hidl\" optional=\"false\">\n"
+            "        <name>android.hardware.foo</name>\n"
+            "        <version>2.0</version>\n"
+            "        <interface>\n"
+            "            <name>IFoo</name>\n"
+            "            <instance>default</instance>\n"
+            "        </interface>\n"
+            "    </hal>\n"
+            "</compatibility-matrix>\n";
+        EXPECT_TRUE(gCompatibilityMatrixConverter(&cm2, xml))
+            << gCompatibilityMatrixConverter.lastError();
+
+        EXPECT_TRUE(addAllHalsAsOptional(&cm1, &cm2, &error)) << error;
+
+        xml = gCompatibilityMatrixConverter(cm1, SerializeFlag::HALS_ONLY);
+        EXPECT_EQ(xml,
+                  "<compatibility-matrix version=\"1.0\" type=\"framework\" level=\"1\">\n"
+                  "    <hal format=\"hidl\" optional=\"false\">\n"
+                  "        <name>android.hardware.foo</name>\n"
+                  "        <version>1.0</version>\n"
+                  "        <interface>\n"
+                  "            <name>IFoo</name>\n"
+                  "            <instance>custom</instance>\n"
+                  "        </interface>\n"
+                  "    </hal>\n"
+                  "    <hal format=\"hidl\" optional=\"false\">\n"
+                  "        <name>android.hardware.foo</name>\n"
+                  "        <version>1.0</version>\n"
+                  "        <version>2.0</version>\n"
+                  "        <interface>\n"
+                  "            <name>IFoo</name>\n"
+                  "            <instance>default</instance>\n"
+                  "        </interface>\n"
+                  "    </hal>\n"
+                  "</compatibility-matrix>\n");
+    }
+
+    {
+        // Test that 2.0::IFoo/strong should be added as an optional <hal> tag.
+        CompatibilityMatrix cm2;
+        xml =
+            "<compatibility-matrix version=\"1.0\" type=\"framework\" level=\"2\">\n"
+            "    <hal format=\"hidl\" optional=\"false\">\n"
+            "        <name>android.hardware.foo</name>\n"
+            "        <version>2.0</version>\n"
+            "        <interface>\n"
+            "            <name>IFoo</name>\n"
+            "            <instance>default</instance>\n"
+            "            <instance>strong</instance>\n"
+            "        </interface>\n"
+            "    </hal>\n"
+            "</compatibility-matrix>\n";
+        EXPECT_TRUE(gCompatibilityMatrixConverter(&cm2, xml))
+            << gCompatibilityMatrixConverter.lastError();
+
+        EXPECT_TRUE(addAllHalsAsOptional(&cm1, &cm2, &error)) << error;
+
+        xml = gCompatibilityMatrixConverter(cm1, SerializeFlag::HALS_ONLY);
+        EXPECT_EQ(xml,
+                  "<compatibility-matrix version=\"1.0\" type=\"framework\" level=\"1\">\n"
+                  "    <hal format=\"hidl\" optional=\"false\">\n"
+                  "        <name>android.hardware.foo</name>\n"
+                  "        <version>1.0</version>\n"
+                  "        <interface>\n"
+                  "            <name>IFoo</name>\n"
+                  "            <instance>custom</instance>\n"
+                  "        </interface>\n"
+                  "    </hal>\n"
+                  "    <hal format=\"hidl\" optional=\"false\">\n"
+                  "        <name>android.hardware.foo</name>\n"
+                  "        <version>1.0</version>\n"
+                  "        <version>2.0</version>\n"
+                  "        <interface>\n"
+                  "            <name>IFoo</name>\n"
+                  "            <instance>default</instance>\n"
+                  "        </interface>\n"
+                  "    </hal>\n"
+                  "    <hal format=\"hidl\" optional=\"true\">\n"
+                  "        <name>android.hardware.foo</name>\n"
+                  "        <version>2.0</version>\n"
+                  "        <interface>\n"
+                  "            <name>IFoo</name>\n"
+                  "            <instance>strong</instance>\n"
+                  "        </interface>\n"
+                  "    </hal>\n"
+                  "</compatibility-matrix>\n");
+    }
+}
+
+TEST_F(LibVintfTest, AddRequiredHalOverlapInstanceSplit) {
+    CompatibilityMatrix cm1;
+    CompatibilityMatrix cm2;
+    std::string error;
+    std::string xml;
+
+    xml =
+        "<compatibility-matrix version=\"1.0\" type=\"framework\" level=\"1\">\n"
+        "    <hal format=\"hidl\" optional=\"false\">\n"
+        "        <name>android.hardware.foo</name>\n"
+        "        <version>1.0</version>\n"
+        "        <interface>\n"
+        "            <name>IFoo</name>\n"
+        "            <instance>default</instance>\n"
+        "        </interface>\n"
+        "    </hal>\n"
+        "    <hal format=\"hidl\" optional=\"false\">\n"
+        "        <name>android.hardware.foo</name>\n"
+        "        <version>1.0</version>\n"
+        "        <interface>\n"
+        "            <name>IFoo</name>\n"
+        "            <instance>custom</instance>\n"
+        "        </interface>\n"
+        "    </hal>\n"
+        "</compatibility-matrix>\n";
+    EXPECT_TRUE(gCompatibilityMatrixConverter(&cm1, xml))
+        << gCompatibilityMatrixConverter.lastError();
+
+    xml =
+        "<compatibility-matrix version=\"1.0\" type=\"framework\" level=\"2\">\n"
+        "    <hal format=\"hidl\" optional=\"false\">\n"
+        "        <name>android.hardware.foo</name>\n"
+        "        <version>2.0</version>\n"
+        "        <interface>\n"
+        "            <name>IFoo</name>\n"
+        "            <instance>default</instance>\n"
+        "        </interface>\n"
+        "    </hal>\n"
+        "    <hal format=\"hidl\" optional=\"false\">\n"
+        "        <name>android.hardware.foo</name>\n"
+        "        <version>2.0</version>\n"
+        "        <interface>\n"
+        "            <name>IFoo</name>\n"
+        "            <instance>strong</instance>\n"
+        "        </interface>\n"
+        "    </hal>\n"
+        "</compatibility-matrix>\n";
+    EXPECT_TRUE(gCompatibilityMatrixConverter(&cm2, xml))
+        << gCompatibilityMatrixConverter.lastError();
+
+    EXPECT_TRUE(addAllHalsAsOptional(&cm1, &cm2, &error)) << error;
+    xml = gCompatibilityMatrixConverter(cm1, SerializeFlag::HALS_ONLY);
+    EXPECT_EQ(
+        "<compatibility-matrix version=\"1.0\" type=\"framework\" level=\"1\">\n"
+        "    <hal format=\"hidl\" optional=\"false\">\n"
+        "        <name>android.hardware.foo</name>\n"
+        "        <version>1.0</version>\n"
+        "        <version>2.0</version>\n"
+        "        <interface>\n"
+        "            <name>IFoo</name>\n"
+        "            <instance>default</instance>\n"
+        "        </interface>\n"
+        "    </hal>\n"
+        "    <hal format=\"hidl\" optional=\"false\">\n"
+        "        <name>android.hardware.foo</name>\n"
+        "        <version>1.0</version>\n"
+        "        <interface>\n"
+        "            <name>IFoo</name>\n"
+        "            <instance>custom</instance>\n"
+        "        </interface>\n"
+        "    </hal>\n"
+        "    <hal format=\"hidl\" optional=\"true\">\n"
+        "        <name>android.hardware.foo</name>\n"
+        "        <version>2.0</version>\n"
+        "        <interface>\n"
+        "            <name>IFoo</name>\n"
+        "            <instance>strong</instance>\n"
+        "        </interface>\n"
+        "    </hal>\n"
+        "</compatibility-matrix>\n",
+        xml);
+}
 TEST_F(LibVintfTest, AddOptionalXmlFile) {
     CompatibilityMatrix cm1;
     CompatibilityMatrix cm2;
@@ -2968,6 +3165,9 @@ TEST_F(LibVintfTest, FqNameValid) {
             "</manifest>\n";
         ASSERT_TRUE(gHalManifestConverter(&manifest, xml, &error)) << error;
         EXPECT_TRUE(manifest.checkCompatibility(cm, &error)) << error;
+
+        EXPECT_EQ(Transport::HWBINDER,
+                  manifest.getTransport("android.hardware.foo", {1, 1}, "IFoo", "custom"));
     }
 
     {

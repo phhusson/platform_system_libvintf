@@ -123,58 +123,27 @@ std::set<std::string> HalManifest::getHalNames() const {
 
 std::set<std::string> HalManifest::getHalNamesAndVersions() const {
     std::set<std::string> names{};
-    for (const auto &hal : getHals()) {
-        for (const auto &version : hal.versions) {
-            names.insert(toFQNameString(hal.name, version));
-        }
-    }
+    forEachInstance([&names](const ManifestInstance& e) {
+        names.insert(toFQNameString(e.interface(), e.version()));
+        return true;
+    });
     return names;
 }
 
 Transport HalManifest::getTransport(const std::string &package, const Version &v,
             const std::string &interfaceName, const std::string &instanceName) const {
-
-    for (const ManifestHal *hal : getHals(package)) {
-        bool found = false;
-        for (auto& ver : hal->versions) {
-            if (ver.majorVer == v.majorVer && ver.minorVer >= v.minorVer) {
-                found = true;
-                break;
-            }
+    Transport transport{Transport::EMPTY};
+    forEachInstanceOfInterface(package, v, interfaceName, [&](const auto& e) {
+        if (e.instance() == instanceName) {
+            transport = e.transport();
         }
-        if (!found) {
-            LOG(DEBUG) << "HalManifest::getTransport(" << to_string(mType) << "): Cannot find "
-                      << to_string(v) << " in supported versions of " << package;
-            continue;
-        }
-        auto it = hal->interfaces.find(interfaceName);
-        if (it == hal->interfaces.end()) {
-            LOG(DEBUG) << "HalManifest::getTransport(" << to_string(mType)
-                       << "): Cannot find interface '" << interfaceName << "' in "
-                       << toFQNameString(package, v);
-            continue;
-        }
-        const auto &instances = it->second.instances;
-        if (instances.find(instanceName) == instances.end()) {
-            LOG(DEBUG) << "HalManifest::getTransport(" << to_string(mType)
-                       << "): Cannot find instance '" << instanceName << "' in "
-                       << toFQNameString(package, v, interfaceName);
-            continue;
-        }
-        return hal->transportArch.transport;
+        return transport == Transport::EMPTY;  // if not found, continue
+    });
+    if (transport == Transport::EMPTY) {
+        LOG(DEBUG) << "HalManifest::getTransport(" << mType << "): Cannot find "
+                   << toFQNameString(package, v, interfaceName, instanceName);
     }
-    LOG(DEBUG) << "HalManifest::getTransport(" << to_string(mType) << "): Cannot get transport for "
-               << toFQNameString(package, v, interfaceName, instanceName);
-    return Transport::EMPTY;
-
-}
-
-std::set<Version> HalManifest::getSupportedVersions(const std::string &name) const {
-    std::set<Version> ret;
-    for (const ManifestHal *hal : getHals(name)) {
-        ret.insert(hal->versions.begin(), hal->versions.end());
-    }
-    return ret;
+    return transport;
 }
 
 bool HalManifest::forEachInstanceOfVersion(
@@ -370,18 +339,15 @@ bool HalManifest::checkCompatibility(const CompatibilityMatrix &mat, std::string
 CompatibilityMatrix HalManifest::generateCompatibleMatrix() const {
     CompatibilityMatrix matrix;
 
-    for (const ManifestHal &manifestHal : getHals()) {
-        MatrixHal matrixHal{
-            .format = manifestHal.format,
-            .name = manifestHal.name,
+    forEachInstance([&matrix](const ManifestInstance& e) {
+        matrix.add(MatrixHal{
+            .format = e.format(),
+            .name = e.package(),
             .optional = true,
-            .interfaces = manifestHal.interfaces
-        };
-        for (const Version &manifestVersion : manifestHal.versions) {
-            matrixHal.versionRanges.push_back({manifestVersion.majorVer, manifestVersion.minorVer});
-        }
-        matrix.add(std::move(matrixHal));
-    }
+            .versionRanges = {VersionRange{e.version().majorVer, e.version().minorVer}},
+            .interfaces = {{e.interface(), HalInterface{e.interface(), {e.instance()}}}}});
+        return true;
+    });
     if (mType == SchemaType::FRAMEWORK) {
         matrix.mType = SchemaType::DEVICE;
         // VNDK does not need to be added for compatibility
