@@ -36,10 +36,11 @@ ManifestInstance& ManifestInstance::operator=(const ManifestInstance&) = default
 
 ManifestInstance& ManifestInstance::operator=(ManifestInstance&&) = default;
 
-ManifestInstance::ManifestInstance(FqInstance&& fqInstance, TransportArch&& ta)
-    : mFqInstance(std::move(fqInstance)), mTransportArch(std::move(ta)) {}
-ManifestInstance::ManifestInstance(const FqInstance& fqInstance, const TransportArch& ta)
-    : mFqInstance(fqInstance), mTransportArch(ta) {}
+ManifestInstance::ManifestInstance(FqInstance&& fqInstance, TransportArch&& ta, HalFormat fmt)
+    : mFqInstance(std::move(fqInstance)), mTransportArch(std::move(ta)), mHalFormat(fmt) {}
+ManifestInstance::ManifestInstance(const FqInstance& fqInstance, const TransportArch& ta,
+                                   HalFormat fmt)
+    : mFqInstance(fqInstance), mTransportArch(ta), mHalFormat(fmt) {}
 
 const std::string& ManifestInstance::package() const {
     return mFqInstance.getPackage();
@@ -65,17 +66,24 @@ Arch ManifestInstance::arch() const {
     return mTransportArch.arch;
 }
 
+HalFormat ManifestInstance::format() const {
+    return mHalFormat;
+}
+
 const FqInstance& ManifestInstance::getFqInstance() const {
     return mFqInstance;
 }
 
 bool ManifestInstance::operator==(const ManifestInstance& other) const {
-    return mFqInstance == other.mFqInstance && mTransportArch == other.mTransportArch;
+    return mFqInstance == other.mFqInstance && mTransportArch == other.mTransportArch &&
+           mHalFormat == other.mHalFormat;
 }
 bool ManifestInstance::operator<(const ManifestInstance& other) const {
     if (mFqInstance < other.mFqInstance) return true;
     if (other.mFqInstance < mFqInstance) return false;
-    return mTransportArch < other.mTransportArch;
+    if (mTransportArch < other.mTransportArch) return true;
+    if (other.mTransportArch < mTransportArch) return false;
+    return mHalFormat < other.mHalFormat;
 }
 
 FqInstance ManifestInstance::getFqInstanceNoPackage() const {
