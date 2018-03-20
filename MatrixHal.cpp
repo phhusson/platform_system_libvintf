@@ -43,15 +43,6 @@ bool MatrixHal::containsVersion(const Version& version) const {
     return false;
 }
 
-std::set<std::string> MatrixHal::getInstances(const std::string& interfaceName) const {
-    std::set<std::string> ret;
-    auto it = interfaces.find(interfaceName);
-    if (it != interfaces.end()) {
-        ret.insert(it->second.instances.begin(), it->second.instances.end());
-    }
-    return ret;
-}
-
 bool MatrixHal::forEachInstance(const std::function<bool(const MatrixInstance&)>& func) const {
     for (const auto& vr : versionRanges) {
         if (!forEachInstance(vr, func)) {
