@@ -63,13 +63,6 @@ struct HalManifest : public HalGroup<ManifestHal>, public XmlFileGroup<ManifestX
     Transport getTransport(const std::string &name, const Version &v,
             const std::string &interfaceName, const std::string &instanceName) const;
 
-    // Given a component name (e.g. "android.hardware.camera"),
-    // return a list of version numbers that are supported by the hardware.
-    // If the component is not found, empty list is returned.
-    // If multiple matches, return a concatenation of version entries
-    // (dupes removed)
-    std::set<Version> getSupportedVersions(const std::string &name) const;
-
     // Check compatibility against a compatibility matrix. Considered compatible if
     // - framework manifest vs. device compat-mat
     //     - checkIncompatibility for HALs returns only optional HALs
