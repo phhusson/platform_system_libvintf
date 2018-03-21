@@ -18,6 +18,8 @@
 
 #include <utility>
 
+#include "Regex.h"
+
 namespace android {
 namespace vintf {
 
@@ -68,16 +70,21 @@ bool MatrixInstance::matchInstance(const std::string& e) const {
     if (!isRegex()) {
         return exactInstance() == e;
     }
-    return false;  // FIXME: do matching.
+    details::Regex regex;
+    if (!regex.compile(regexPattern())) {
+        return false;
+    }
+    return regex.matches(e);
 }
 
 const std::string& MatrixInstance::regexPattern() const {
     static const std::string kEmptyString;
-    return kEmptyString;
+    return isRegex() ? mFqInstance.getInstance() : kEmptyString;
 }
 
 const std::string& MatrixInstance::exactInstance() const {
-    return mFqInstance.getInstance();
+    static const std::string kEmptyString;
+    return isRegex() ? kEmptyString : mFqInstance.getInstance();
 }
 
 bool MatrixInstance::isRegex() const {
