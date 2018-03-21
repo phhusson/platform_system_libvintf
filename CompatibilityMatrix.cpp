@@ -82,19 +82,38 @@ std::string CompatibilityMatrix::getXmlSchemaPath(const std::string& xmlFileName
 // - Remove interface/instance from existingHal, and return a new MatrixHal (that is added
 //   to "this") that contains only interface/instance.
 MatrixHal* CompatibilityMatrix::splitInstance(MatrixHal* existingHal, const std::string& interface,
-                                              const std::string& instance) {
-    if (!existingHal->hasInstance(interface, instance)) {
+                                              const std::string& instanceOrPattern, bool isRegex) {
+    bool found = false;
+    bool foundOthers = false;
+    existingHal->forEachInstance([&](const auto& matrixInstance) {
+        bool interfaceMatch = matrixInstance.interface() == interface;
+        bool instanceMatch = false;
+        if (matrixInstance.isRegex() && isRegex) {
+            instanceMatch = (matrixInstance.regexPattern() == instanceOrPattern);
+        } else if (!matrixInstance.isRegex() && !isRegex) {
+            instanceMatch = (matrixInstance.exactInstance() == instanceOrPattern);
+        }
+
+        bool match = interfaceMatch && instanceMatch;
+
+        found |= match;
+        foundOthers |= (!match);
+
+        return !found || !foundOthers;
+    });
+
+    if (!found) {
         return nullptr;
     }
 
-    if (existingHal->hasOnlyInstance(interface, instance)) {
+    if (!foundOthers) {
         return existingHal;
     }
 
-    existingHal->removeInstance(interface, instance);
+    existingHal->removeInstance(interface, instanceOrPattern, isRegex);
     MatrixHal copy = *existingHal;
     copy.clearInstances();
-    copy.insertInstance(interface, instance);
+    copy.insertInstance(interface, instanceOrPattern, isRegex);
 
     return addInternal(std::move(copy));
 }
@@ -114,16 +133,22 @@ bool CompatibilityMatrix::addAllHalsAsOptional(CompatibilityMatrix* other, std::
         MatrixHal& halToAdd = pair.second;
 
         std::set<std::pair<std::string, std::string>> insertedInstances;
+        std::set<std::pair<std::string, std::string>> insertedRegex;
         auto existingHals = getHals(name);
 
         halToAdd.forEachInstance([&](const std::vector<VersionRange>& versionRanges,
-                                     const std::string& interface, const std::string& instance,
-                                     bool /* isRegex */) {
+                                     const std::string& interface,
+                                     const std::string& instanceOrPattern, bool isRegex) {
             for (auto* existingHal : existingHals) {
-                MatrixHal* splitInstance = this->splitInstance(existingHal, interface, instance);
+                MatrixHal* splitInstance =
+                    this->splitInstance(existingHal, interface, instanceOrPattern, isRegex);
                 if (splitInstance != nullptr) {
                     splitInstance->insertVersionRanges(versionRanges);
-                    insertedInstances.insert(std::make_pair(interface, instance));
+                    if (isRegex) {
+                        insertedRegex.insert(std::make_pair(interface, instanceOrPattern));
+                    } else {
+                        insertedInstances.insert(std::make_pair(interface, instanceOrPattern));
+                    }
                 }
             }
             return true;
@@ -131,7 +156,10 @@ bool CompatibilityMatrix::addAllHalsAsOptional(CompatibilityMatrix* other, std::
 
         // Add the remaining instances.
         for (const auto& pair : insertedInstances) {
-            halToAdd.removeInstance(pair.first, pair.second);
+            halToAdd.removeInstance(pair.first, pair.second, false /* isRegex */);
+        }
+        for (const auto& pair : insertedRegex) {
+            halToAdd.removeInstance(pair.first, pair.second, true /* isRegex */);
         }
 
         if (halToAdd.instancesCount() > 0) {

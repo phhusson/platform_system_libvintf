@@ -69,14 +69,11 @@ struct MatrixHal {
 
     void setOptional(bool o);
     void insertVersionRanges(const std::vector<VersionRange>& other);
-    void insertInstance(const std::string& interface, const std::string& instance);
     // Return size of all interface/instance pairs.
     size_t instancesCount() const;
-    bool hasInstance(const std::string& interface, const std::string& instance) const;
-    // Return true if it contains only interface/instance.
-    bool hasOnlyInstance(const std::string& interface, const std::string& instance) const;
+    void insertInstance(const std::string& interface, const std::string& instance, bool isRegex);
     // Remove a specific interface/instances. Return true if removed, false otherwise.
-    bool removeInstance(const std::string& interface, const std::string& instance);
+    bool removeInstance(const std::string& interface, const std::string& instance, bool isRegex);
     // Remove all <interface> tags.
     void clearInstances();
 };
