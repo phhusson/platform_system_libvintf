@@ -25,6 +25,7 @@
 
 #include <tinyxml2.h>
 
+#include "Regex.h"
 #include "constants.h"
 #include "parse_string.h"
 
@@ -475,11 +476,14 @@ struct HalInterfaceConverter : public XmlNodeConverter<HalInterface> {
     void mutateNode(const HalInterface &intf, NodeType *root, DocType *d) const override {
         appendTextElement(root, "name", intf.name(), d);
         appendTextElements(root, "instance", intf.mInstances, d);
+        appendTextElements(root, "regex-instance", intf.mRegexes, d);
     }
     bool buildObject(HalInterface* intf, NodeType* root, std::string* error) const override {
         std::vector<std::string> instances;
+        std::vector<std::string> regexes;
         if (!parseTextElement(root, "name", &intf->mName, error) ||
-            !parseTextElements(root, "instance", &instances, error)) {
+            !parseTextElements(root, "instance", &instances, error) ||
+            !parseTextElements(root, "regex-instance", &regexes, error)) {
             return false;
         }
         bool success = true;
@@ -487,6 +491,19 @@ struct HalInterfaceConverter : public XmlNodeConverter<HalInterface> {
             if (!intf->insertInstance(e, false /* isRegex */)) {
                 if (!error->empty()) *error += "\n";
                 *error += "Duplicated instance '" + e + "' in " + intf->name();
+                success = false;
+            }
+        }
+        for (const auto& e : regexes) {
+            details::Regex regex;
+            if (!regex.compile(e)) {
+                if (!error->empty()) *error += "\n";
+                *error += "Invalid regular expression '" + e + "' in " + intf->name();
+                success = false;
+            }
+            if (!intf->insertInstance(e, true /* isRegex */)) {
+                if (!error->empty()) *error += "\n";
+                *error += "Duplicated regex-instance '" + e + "' in " + intf->name();
                 success = false;
             }
         }
