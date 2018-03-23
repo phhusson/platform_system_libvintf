@@ -144,21 +144,12 @@ void MatrixHal::insertVersionRanges(const std::vector<VersionRange>& other) {
     }
 }
 
-void MatrixHal::insertInstance(const std::string& interface, const std::string& instance) {
+void MatrixHal::insertInstance(const std::string& interface, const std::string& instance,
+                               bool isRegex) {
     auto it = interfaces.find(interface);
     if (it == interfaces.end())
         it = interfaces.emplace(interface, HalInterface{interface, {}}).first;
-    it->second.insertInstance(instance, false /* isRegex */);
-}
-
-bool MatrixHal::hasInstance(const std::string& interface, const std::string& instance) const {
-    bool found = false;
-    forEachInstance([&](const auto& matrixInstance) {
-        found |= matrixInstance.interface() == interface && !matrixInstance.isRegex() &&
-                 matrixInstance.matchInstance(instance);
-        return !found;  // continue if not match
-    });
-    return found;
+    it->second.insertInstance(instance, isRegex);
 }
 
 size_t MatrixHal::instancesCount() const {
@@ -170,27 +161,11 @@ size_t MatrixHal::instancesCount() const {
     return count;
 }
 
-bool MatrixHal::hasOnlyInstance(const std::string& interface, const std::string& instance) const {
-    bool found = false;
-    bool foundOthers = false;
-
-    forEachInstance([&](const auto& matrixInstance) {
-        bool match = matrixInstance.interface() == interface && !matrixInstance.isRegex() &&
-                     matrixInstance.matchInstance(instance);
-
-        found |= match;
-        foundOthers |= (!match);
-
-        return !foundOthers;
-    });
-
-    return found && !foundOthers;
-}
-
-bool MatrixHal::removeInstance(const std::string& interface, const std::string& instance) {
+bool MatrixHal::removeInstance(const std::string& interface, const std::string& instance,
+                               bool isRegex) {
     auto it = interfaces.find(interface);
     if (it == interfaces.end()) return false;
-    bool removed = it->second.removeInstance(instance, false /* isRegex */);
+    bool removed = it->second.removeInstance(instance, isRegex);
     if (!it->second.hasAnyInstance()) interfaces.erase(it);
     return removed;
 }
