@@ -331,5 +331,17 @@ bool CompatibilityMatrix::forEachInstanceOfVersion(
     return true;
 }
 
+bool CompatibilityMatrix::matchInstance(const std::string& halName, const Version& version,
+                                        const std::string& interfaceName,
+                                        const std::string& instance) const {
+    bool found = false;
+    (void)forEachInstanceOfInterface(halName, version, interfaceName,
+                                     [&found, &instance](const auto& e) {
+                                         found |= (e.matchInstance(instance));
+                                         return !found;  // if not found, continue
+                                     });
+    return found;
+}
+
 } // namespace vintf
 } // namespace android
