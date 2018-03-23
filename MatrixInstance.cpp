@@ -31,12 +31,16 @@ MatrixInstance& MatrixInstance::operator=(const MatrixInstance&) = default;
 
 MatrixInstance& MatrixInstance::operator=(MatrixInstance&&) = default;
 
-MatrixInstance::MatrixInstance(FqInstance&& fqInstance, VersionRange&& range, bool optional)
-    : mFqInstance(std::move(fqInstance)), mRange(std::move(range)), mOptional(optional) {}
+MatrixInstance::MatrixInstance(FqInstance&& fqInstance, VersionRange&& range, bool optional,
+                               bool isRegex)
+    : mFqInstance(std::move(fqInstance)),
+      mRange(std::move(range)),
+      mOptional(optional),
+      mIsRegex(isRegex) {}
 
 MatrixInstance::MatrixInstance(const FqInstance fqInstance, const VersionRange& range,
-                               bool optional)
-    : mFqInstance(fqInstance), mRange(range), mOptional(optional) {}
+                               bool optional, bool isRegex)
+    : mFqInstance(fqInstance), mRange(range), mOptional(optional), mIsRegex(isRegex) {}
 
 const std::string& MatrixInstance::package() const {
     return mFqInstance.getPackage();
@@ -61,7 +65,27 @@ bool MatrixInstance::optional() const {
 bool MatrixInstance::isSatisfiedBy(const FqInstance& provided) const {
     return package() == provided.getPackage() &&
            versionRange().supportedBy(provided.getVersion()) &&
-           interface() == provided.getInterface() && instance() == provided.getInstance();
+           interface() == provided.getInterface() && matchInstance(provided.getInstance());
+}
+
+bool MatrixInstance::matchInstance(const std::string& e) const {
+    if (!isRegex()) {
+        return exactInstance() == e;
+    }
+    return false;  // FIXME: do matching.
+}
+
+const std::string& MatrixInstance::regexPattern() const {
+    static const std::string kEmptyString;
+    return kEmptyString;
+}
+
+const std::string& MatrixInstance::exactInstance() const {
+    return mFqInstance.getInstance();
+}
+
+bool MatrixInstance::isRegex() const {
+    return mIsRegex;
 }
 
 }  // namespace vintf

@@ -36,20 +36,36 @@ class MatrixInstance {
 
     using VersionType = VersionRange;
     // fqInstance.version is ignored. Version range is provided separately.
-    MatrixInstance(FqInstance&& fqInstance, VersionRange&& range, bool optional);
-    MatrixInstance(const FqInstance fqInstance, const VersionRange& range, bool optional);
+    MatrixInstance(FqInstance&& fqInstance, VersionRange&& range, bool optional, bool isRegex);
+    MatrixInstance(const FqInstance fqInstance, const VersionRange& range, bool optional,
+                   bool isRegex);
     const std::string& package() const;
     const VersionRange& versionRange() const;
     const std::string& interface() const;
+    // deprecated; use regexPattern or exactInstance instead.
     const std::string& instance() const;
     bool optional() const;
 
     bool isSatisfiedBy(const FqInstance& provided) const;
 
+    // If isRegex, return true if instance matches the pattern.
+    // If !isRegex, return true if e == instance().
+    // Follows rules of "Extended Regular Expression" (ERE).
+    bool matchInstance(const std::string& e) const;
+
+    // If isRegex, return the regex pattern. Else empty string.
+    const std::string& regexPattern() const;
+
+    // If !isRegex, return the exact instance name. Else empty string.
+    const std::string& exactInstance() const;
+
+    bool isRegex() const;
+
    private:
     FqInstance mFqInstance;
     VersionRange mRange;
-    bool mOptional;
+    bool mOptional = false;
+    bool mIsRegex = false;
 };
 
 }  // namespace vintf
