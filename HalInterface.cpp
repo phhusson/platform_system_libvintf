@@ -23,13 +23,37 @@ namespace android {
 namespace vintf {
 
 bool operator==(const HalInterface& lft, const HalInterface& rgt) {
-    if (lft.name != rgt.name)
-        return false;
-    if (lft.instances != rgt.instances)
-        return false;
+    if (lft.mName != rgt.mName) return false;
+    if (lft.mInstances != rgt.mInstances) return false;
     return true;
+}
+
+bool HalInterface::forEachInstance(
+    const std::function<bool(const std::string&, const std::string&, bool isRegex)>& func) const {
+    for (const auto& instance : mInstances) {
+        if (!func(mName, instance, false /* isRegex */)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool HalInterface::hasAnyInstance() const {
+    bool found = false;
+    forEachInstance([&found](const auto&, const auto&, bool) {
+        found = true;
+        return false;  // break;
+    });
+    return found;
+}
+
+bool HalInterface::insertInstance(const std::string& instanceOrPattern, bool /*isRegex*/) {
+    return mInstances.insert(instanceOrPattern).second;
+}
+
+bool HalInterface::removeInstance(const std::string& instanceOrPattern, bool /*isRegex*/) {
+    return mInstances.erase(instanceOrPattern) > 0;
 }
 
 } // namespace vintf
 } // namespace android
-

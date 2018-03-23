@@ -51,13 +51,17 @@ struct MatrixHal {
    private:
     friend struct HalManifest;
     friend struct CompatibilityMatrix;
+    friend std::string expandInstances(const MatrixHal& req, const VersionRange& vr, bool brace);
+    friend std::vector<std::string> expandInstances(const MatrixHal& req);
+
     // Loop over interface/instance for a specific VersionRange.
     bool forEachInstance(const VersionRange& vr,
                          const std::function<bool(const MatrixInstance&)>& func) const;
     // Loop over interface/instance. VersionRange is supplied to the function as a vector.
     bool forEachInstance(
         const std::function<bool(const std::vector<VersionRange>&, const std::string&,
-                                 const std::string&)>& func) const;
+                                 const std::string& instanceOrPattern, bool isRegex)>& func) const;
+
     bool isCompatible(const std::set<FqInstance>& providedInstances,
                       const std::set<Version>& providedVersions) const;
     bool isCompatible(const VersionRange& vr, const std::set<FqInstance>& providedInstances,
@@ -66,8 +70,8 @@ struct MatrixHal {
     void setOptional(bool o);
     void insertVersionRanges(const std::vector<VersionRange>& other);
     void insertInstance(const std::string& interface, const std::string& instance);
-    // Return true if it has any interface/instance tags.
-    bool hasAnyInstance() const;
+    // Return size of all interface/instance pairs.
+    size_t instancesCount() const;
     bool hasInstance(const std::string& interface, const std::string& instance) const;
     // Return true if it contains only interface/instance.
     bool hasOnlyInstance(const std::string& interface, const std::string& instance) const;
