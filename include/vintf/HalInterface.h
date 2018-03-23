@@ -21,6 +21,8 @@
 #include <set>
 #include <string>
 
+#include "Regex.h"
+
 namespace android {
 namespace vintf {
 
