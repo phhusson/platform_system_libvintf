@@ -54,10 +54,6 @@ const std::string& MatrixInstance::interface() const {
     return mFqInstance.getInterface();
 }
 
-const std::string& MatrixInstance::instance() const {
-    return mFqInstance.getInstance();
-}
-
 bool MatrixInstance::optional() const {
     return mOptional;
 }
