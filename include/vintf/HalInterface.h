@@ -51,6 +51,7 @@ struct HalInterface {
 
     std::string mName;
     std::set<std::string> mInstances;
+    std::set<std::string> mRegexes;
 };
 
 } // namespace vintf

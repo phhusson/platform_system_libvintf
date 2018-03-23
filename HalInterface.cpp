@@ -35,6 +35,11 @@ bool HalInterface::forEachInstance(
             return false;
         }
     }
+    for (const auto& instance : mRegexes) {
+        if (!func(mName, instance, true /* isRegex */)) {
+            return false;
+        }
+    }
     return true;
 }
 
@@ -47,12 +52,20 @@ bool HalInterface::hasAnyInstance() const {
     return found;
 }
 
-bool HalInterface::insertInstance(const std::string& instanceOrPattern, bool /*isRegex*/) {
-    return mInstances.insert(instanceOrPattern).second;
+bool HalInterface::insertInstance(const std::string& instanceOrPattern, bool isRegex) {
+    if (isRegex) {
+        return mRegexes.insert(instanceOrPattern).second;
+    } else {
+        return mInstances.insert(instanceOrPattern).second;
+    }
 }
 
-bool HalInterface::removeInstance(const std::string& instanceOrPattern, bool /*isRegex*/) {
-    return mInstances.erase(instanceOrPattern) > 0;
+bool HalInterface::removeInstance(const std::string& instanceOrPattern, bool isRegex) {
+    if (isRegex) {
+        return mRegexes.erase(instanceOrPattern) > 0;
+    } else {
+        return mInstances.erase(instanceOrPattern) > 0;
+    }
 }
 
 } // namespace vintf
