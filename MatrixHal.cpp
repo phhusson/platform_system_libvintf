@@ -55,15 +55,20 @@ bool MatrixHal::forEachInstance(const std::function<bool(const MatrixInstance&)>
 bool MatrixHal::forEachInstance(const VersionRange& vr,
                                 const std::function<bool(const MatrixInstance&)>& func) const {
     for (const auto& intf : iterateValues(interfaces)) {
-        for (const auto& instance : intf.instances) {
-            // TODO(b/73556059): Store MatrixInstance as well to avoid creating temps
-            FqInstance fqInstance;
-            if (fqInstance.setTo(getName(), vr.majorVer, vr.minMinor, intf.name, instance)) {
-                if (!func(MatrixInstance(std::move(fqInstance), VersionRange(vr), optional,
-                                         false /* isRegex */))) {
-                    return false;
+        bool cont =
+            intf.forEachInstance([&](const auto& interface, const auto& instance, bool isRegex) {
+                // TODO(b/73556059): Store MatrixInstance as well to avoid creating temps
+                FqInstance fqInstance;
+                if (fqInstance.setTo(getName(), vr.majorVer, vr.minMinor, interface, instance)) {
+                    if (!func(MatrixInstance(std::move(fqInstance), VersionRange(vr), optional,
+                                             isRegex))) {
+                        return false;
+                    }
                 }
-            }
+                return true;
+            });
+        if (!cont) {
+            return false;
         }
     }
     return true;
@@ -71,12 +76,14 @@ bool MatrixHal::forEachInstance(const VersionRange& vr,
 
 bool MatrixHal::forEachInstance(
     const std::function<bool(const std::vector<VersionRange>&, const std::string&,
-                             const std::string&)>& func) const {
+                             const std::string&, bool isRegex)>& func) const {
     for (const auto& intf : iterateValues(interfaces)) {
-        for (const auto& instance : intf.instances) {
-            if (!func(versionRanges, intf.name, instance)) {
-                return false;
-            }
+        bool cont =
+            intf.forEachInstance([&](const auto& interface, const auto& instance, bool isRegex) {
+                return func(this->versionRanges, interface, instance, isRegex);
+            });
+        if (!cont) {
+            return false;
         }
     }
     return true;
@@ -141,16 +148,7 @@ void MatrixHal::insertInstance(const std::string& interface, const std::string& 
     auto it = interfaces.find(interface);
     if (it == interfaces.end())
         it = interfaces.emplace(interface, HalInterface{interface, {}}).first;
-    it->second.instances.insert(instance);
-}
-
-bool MatrixHal::hasAnyInstance() const {
-    bool found = false;
-    forEachInstance([&](const auto&) {
-        found = true;
-        return false;  // break if any instance
-    });
-    return found;
+    it->second.insertInstance(instance, false /* isRegex */);
 }
 
 bool MatrixHal::hasInstance(const std::string& interface, const std::string& instance) const {
@@ -161,6 +159,15 @@ bool MatrixHal::hasInstance(const std::string& interface, const std::string& ins
         return !found;  // continue if not match
     });
     return found;
+}
+
+size_t MatrixHal::instancesCount() const {
+    size_t count = 0;
+    forEachInstance([&](const MatrixInstance&) {
+        ++count;
+        return true;  // continue;
+    });
+    return count;
 }
 
 bool MatrixHal::hasOnlyInstance(const std::string& interface, const std::string& instance) const {
@@ -183,9 +190,9 @@ bool MatrixHal::hasOnlyInstance(const std::string& interface, const std::string&
 bool MatrixHal::removeInstance(const std::string& interface, const std::string& instance) {
     auto it = interfaces.find(interface);
     if (it == interfaces.end()) return false;
-    it->second.instances.erase(instance);
-    if (it->second.instances.empty()) interfaces.erase(it);
-    return true;
+    bool removed = it->second.removeInstance(instance, false /* isRegex */);
+    if (!it->second.hasAnyInstance()) interfaces.erase(it);
+    return removed;
 }
 
 void MatrixHal::clearInstances() {

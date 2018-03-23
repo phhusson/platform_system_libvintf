@@ -578,28 +578,28 @@ int32_t VintfObject::CheckCompatibility(const std::vector<std::string>& xmls, st
 bool VintfObject::isHalDeprecated(const MatrixHal& oldMatrixHal,
                                   const CompatibilityMatrix& targetMatrix,
                                   const IsInstanceInUse& isInstanceInUse, std::string* error) {
-    for (const VersionRange& range : oldMatrixHal.versionRanges) {
-        for (const HalInterface& interface : iterateValues(oldMatrixHal.interfaces)) {
-            for (const std::string& instance : interface.instances) {
-                if (isInstanceDeprecated(oldMatrixHal.name, range.minVer(), interface.name,
-                                         instance, targetMatrix, isInstanceInUse, error)) {
-                    return true;
-                }
-            }
+    bool isDeprecated = false;
+    oldMatrixHal.forEachInstance([&](const MatrixInstance& oldMatrixInstance) {
+        if (isInstanceDeprecated(oldMatrixInstance, targetMatrix, isInstanceInUse, error)) {
+            isDeprecated = true;
         }
-    }
-    return false;
+        return !isDeprecated;  // continue if no deprecated instance is found.
+    });
+    return isDeprecated;
 }
 
 // If isInstanceInUse(package@x.y::interface/instance), return true iff:
 // 1. package@x.?::interface/instance is not in targetMatrix; OR
 // 2. package@x.z::interface/instance is in targetMatrix but
 // !isInstanceInUse(package@x.z::interface/instance)
-bool VintfObject::isInstanceDeprecated(const std::string& package, Version version,
-                                       const std::string& interface, const std::string& instance,
+bool VintfObject::isInstanceDeprecated(const MatrixInstance& oldMatrixInstance,
                                        const CompatibilityMatrix& targetMatrix,
-                                       const IsInstanceInUse& isInstanceInUse,
-                                       std::string* error) {
+                                       const IsInstanceInUse& isInstanceInUse, std::string* error) {
+    const std::string& package = oldMatrixInstance.package();
+    const Version& version = oldMatrixInstance.versionRange().minVer();
+    const std::string& interface = oldMatrixInstance.interface();
+    const std::string& instance = oldMatrixInstance.instance();
+
     bool oldVersionIsServed;
     Version servedVersion;
     std::tie(oldVersionIsServed, servedVersion) =
