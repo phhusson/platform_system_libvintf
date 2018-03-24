@@ -92,7 +92,7 @@ struct CompatibilityMatrix : public HalGroup<MatrixHal>, public XmlFileGroup<Mat
         std::vector<Named<CompatibilityMatrix>>* matrices, std::string* error);
 
     MatrixHal* splitInstance(MatrixHal* existingHal, const std::string& interface,
-                             const std::string& instance);
+                             const std::string& instance, bool isRegex);
 
     // Return whether instance is in "this"; that is, instance is in any <instance> tag or
     // matches any <regex-instance> tag.
