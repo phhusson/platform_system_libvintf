@@ -25,6 +25,7 @@
 
 #include <tinyxml2.h>
 
+#include "Regex.h"
 #include "constants.h"
 #include "parse_string.h"
 
@@ -473,22 +474,40 @@ KernelConfigConverter kernelConfigConverter{};
 struct HalInterfaceConverter : public XmlNodeConverter<HalInterface> {
     std::string elementName() const override { return "interface"; }
     void mutateNode(const HalInterface &intf, NodeType *root, DocType *d) const override {
-        appendTextElement(root, "name", intf.name, d);
-        appendTextElements(root, "instance", intf.instances, d);
+        appendTextElement(root, "name", intf.name(), d);
+        appendTextElements(root, "instance", intf.mInstances, d);
+        appendTextElements(root, "regex-instance", intf.mRegexes, d);
     }
     bool buildObject(HalInterface* intf, NodeType* root, std::string* error) const override {
         std::vector<std::string> instances;
-        if (!parseTextElement(root, "name", &intf->name, error) ||
-            !parseTextElements(root, "instance", &instances, error)) {
+        std::vector<std::string> regexes;
+        if (!parseTextElement(root, "name", &intf->mName, error) ||
+            !parseTextElements(root, "instance", &instances, error) ||
+            !parseTextElements(root, "regex-instance", &regexes, error)) {
             return false;
         }
-        intf->instances.clear();
-        intf->instances.insert(instances.begin(), instances.end());
-        if (intf->instances.size() != instances.size()) {
-            *error = "Duplicated instances in " + intf->name;
-            return false;
+        bool success = true;
+        for (const auto& e : instances) {
+            if (!intf->insertInstance(e, false /* isRegex */)) {
+                if (!error->empty()) *error += "\n";
+                *error += "Duplicated instance '" + e + "' in " + intf->name();
+                success = false;
+            }
         }
-        return true;
+        for (const auto& e : regexes) {
+            details::Regex regex;
+            if (!regex.compile(e)) {
+                if (!error->empty()) *error += "\n";
+                *error += "Invalid regular expression '" + e + "' in " + intf->name();
+                success = false;
+            }
+            if (!intf->insertInstance(e, true /* isRegex */)) {
+                if (!error->empty()) *error += "\n";
+                *error += "Duplicated regex-instance '" + e + "' in " + intf->name();
+                success = false;
+            }
+        }
+        return success;
     }
 };
 
@@ -514,7 +533,7 @@ struct MatrixHalConverter : public XmlNodeConverter<MatrixHal> {
             return false;
         }
         for (auto&& interface : interfaces) {
-            std::string name{interface.name};
+            std::string name{interface.name()};
             auto res = object->interfaces.emplace(std::move(name), std::move(interface));
             if (!res.second) {
                 *error = "Duplicated interface entry \"" + res.first->first +
@@ -663,8 +682,7 @@ struct ManifestHalConverter : public XmlNodeConverter<ManifestHal> {
 
         object->interfaces.clear();
         for (auto &&interface : interfaces) {
-            auto res = object->interfaces.emplace(interface.name,
-                                                  std::move(interface));
+            auto res = object->interfaces.emplace(interface.name(), std::move(interface));
             if (!res.second) {
                 *error = "Duplicated interface entry \"" + res.first->first +
                          "\"; if additional instances are needed, add them to the "

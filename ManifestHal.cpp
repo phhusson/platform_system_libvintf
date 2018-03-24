@@ -51,15 +51,20 @@ bool ManifestHal::operator==(const ManifestHal &other) const {
 bool ManifestHal::forEachInstance(const std::function<bool(const ManifestInstance&)>& func) const {
     for (const auto& v : versions) {
         for (const auto& intf : iterateValues(interfaces)) {
-            for (const auto& instance : intf.instances) {
+            bool cont = intf.forEachInstance([&](const auto& interface, const auto& instance,
+                                                 bool /* isRegex */) {
                 // TODO(b/73556059): Store ManifestInstance as well to avoid creating temps
                 FqInstance fqInstance;
-                if (fqInstance.setTo(getName(), v.majorVer, v.minorVer, intf.name, instance)) {
+                if (fqInstance.setTo(getName(), v.majorVer, v.minorVer, interface, instance)) {
                     if (!func(ManifestInstance(std::move(fqInstance), TransportArch{transportArch},
                                                format))) {
                         return false;
                     }
                 }
+                return true;
+            });
+            if (!cont) {
+                return false;
             }
         }
     }
@@ -133,6 +138,13 @@ bool ManifestHal::insertInstances(const std::set<FqInstance>& fqInstances, std::
     }
 
     return true;
+}
+
+void ManifestHal::insertLegacyInstance(const std::string& interface, const std::string& instance) {
+    auto it = interfaces.find(interface);
+    if (it == interfaces.end())
+        it = interfaces.emplace(interface, HalInterface{interface, {}}).first;
+    it->second.insertInstance(instance, false /* isRegex */);
 }
 
 } // namespace vintf

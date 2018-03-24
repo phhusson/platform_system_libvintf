@@ -218,8 +218,8 @@ std::set<std::string> HalManifest::checkUnusedHals(const CompatibilityMatrix& ma
 
     forEachInstance([&ret, &mat](const auto& manifestInstance) {
         const auto& fqInstance = manifestInstance.getFqInstance();
-        if (!mat.hasInstance(fqInstance.getPackage(), fqInstance.getVersion(),
-                             fqInstance.getInterface(), fqInstance.getInstance())) {
+        if (!mat.matchInstance(fqInstance.getPackage(), fqInstance.getVersion(),
+                               fqInstance.getInterface(), fqInstance.getInstance())) {
             ret.insert(fqInstance.string());
         }
         return true;
@@ -421,6 +421,29 @@ bool operator==(const HalManifest &lft, const HalManifest &rgt) {
 #pragma clang diagnostic pop
                 lft.framework.mVendorNdks == rgt.framework.mVendorNdks &&
                 lft.framework.mSystemSdk == rgt.framework.mSystemSdk));
+}
+
+// Alternative to forEachInstance if you just need a set of instance names instead.
+std::set<std::string> HalManifest::getInstances(const std::string& halName, const Version& version,
+                                                const std::string& interfaceName) const {
+    std::set<std::string> ret;
+    (void)forEachInstanceOfInterface(halName, version, interfaceName, [&ret](const auto& e) {
+        ret.insert(e.instance());
+        return true;
+    });
+    return ret;
+}
+
+// Return whether instance is in getInstances(...).
+bool HalManifest::hasInstance(const std::string& halName, const Version& version,
+                              const std::string& interfaceName, const std::string& instance) const {
+    bool found = false;
+    (void)forEachInstanceOfInterface(halName, version, interfaceName,
+                                     [&found, &instance](const auto& e) {
+                                         found |= (instance == e.instance());
+                                         return !found;  // if not found, continue
+                                     });
+    return found;
 }
 
 } // namespace vintf

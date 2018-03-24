@@ -18,6 +18,8 @@
 
 #include <utility>
 
+#include "Regex.h"
+
 namespace android {
 namespace vintf {
 
@@ -31,12 +33,16 @@ MatrixInstance& MatrixInstance::operator=(const MatrixInstance&) = default;
 
 MatrixInstance& MatrixInstance::operator=(MatrixInstance&&) = default;
 
-MatrixInstance::MatrixInstance(FqInstance&& fqInstance, VersionRange&& range, bool optional)
-    : mFqInstance(std::move(fqInstance)), mRange(std::move(range)), mOptional(optional) {}
+MatrixInstance::MatrixInstance(FqInstance&& fqInstance, VersionRange&& range, bool optional,
+                               bool isRegex)
+    : mFqInstance(std::move(fqInstance)),
+      mRange(std::move(range)),
+      mOptional(optional),
+      mIsRegex(isRegex) {}
 
 MatrixInstance::MatrixInstance(const FqInstance fqInstance, const VersionRange& range,
-                               bool optional)
-    : mFqInstance(fqInstance), mRange(range), mOptional(optional) {}
+                               bool optional, bool isRegex)
+    : mFqInstance(fqInstance), mRange(range), mOptional(optional), mIsRegex(isRegex) {}
 
 const std::string& MatrixInstance::package() const {
     return mFqInstance.getPackage();
@@ -50,10 +56,6 @@ const std::string& MatrixInstance::interface() const {
     return mFqInstance.getInterface();
 }
 
-const std::string& MatrixInstance::instance() const {
-    return mFqInstance.getInstance();
-}
-
 bool MatrixInstance::optional() const {
     return mOptional;
 }
@@ -61,7 +63,32 @@ bool MatrixInstance::optional() const {
 bool MatrixInstance::isSatisfiedBy(const FqInstance& provided) const {
     return package() == provided.getPackage() &&
            versionRange().supportedBy(provided.getVersion()) &&
-           interface() == provided.getInterface() && instance() == provided.getInstance();
+           interface() == provided.getInterface() && matchInstance(provided.getInstance());
+}
+
+bool MatrixInstance::matchInstance(const std::string& e) const {
+    if (!isRegex()) {
+        return exactInstance() == e;
+    }
+    details::Regex regex;
+    if (!regex.compile(regexPattern())) {
+        return false;
+    }
+    return regex.matches(e);
+}
+
+const std::string& MatrixInstance::regexPattern() const {
+    static const std::string kEmptyString;
+    return isRegex() ? mFqInstance.getInstance() : kEmptyString;
+}
+
+const std::string& MatrixInstance::exactInstance() const {
+    static const std::string kEmptyString;
+    return isRegex() ? kEmptyString : mFqInstance.getInstance();
+}
+
+bool MatrixInstance::isRegex() const {
+    return mIsRegex;
 }
 
 }  // namespace vintf
