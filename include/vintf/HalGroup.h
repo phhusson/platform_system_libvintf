@@ -135,29 +135,6 @@ struct HalGroup {
         return v;
     }
 
-    // Alternative to forEachInstance if you just need a set of instance names instead.
-    std::set<std::string> getInstances(const std::string& halName, const Version& version,
-                                       const std::string& interfaceName) const {
-        std::set<std::string> ret;
-        (void)forEachInstanceOfInterface(halName, version, interfaceName, [&ret](const auto& e) {
-            ret.insert(e.instance());
-            return true;
-        });
-        return ret;
-    }
-
-    // Return whether instance is in getInstances(...).
-    bool hasInstance(const std::string& halName, const Version& version,
-                     const std::string& interfaceName, const std::string& instance) const {
-        bool found = false;
-        (void)forEachInstanceOfInterface(halName, version, interfaceName,
-                                         [&found, &instance](const auto& e) {
-                                             found |= (instance == e.instance());
-                                             return !found;  // if not found, continue
-                                         });
-        return found;
-    }
-
    protected:
     // sorted map from component name to the component.
     // The component name looks like: android.hardware.foo

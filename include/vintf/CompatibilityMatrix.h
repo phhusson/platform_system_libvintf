@@ -94,6 +94,11 @@ struct CompatibilityMatrix : public HalGroup<MatrixHal>, public XmlFileGroup<Mat
     MatrixHal* splitInstance(MatrixHal* existingHal, const std::string& interface,
                              const std::string& instance);
 
+    // Return whether instance is in "this"; that is, instance is in any <instance> tag or
+    // matches any <regex-instance> tag.
+    bool matchInstance(const std::string& halName, const Version& version,
+                       const std::string& interfaceName, const std::string& instance) const;
+
     friend struct HalManifest;
     friend struct RuntimeInfo;
     friend struct CompatibilityMatrixConverter;
