@@ -227,6 +227,54 @@ const std::string systemMatrixLevel2 =
     "    </hal>\n"
     "</compatibility-matrix>\n";
 
+//
+// Set of framework matrices of different FCM version with regex.
+//
+
+const static std::vector<std::string> systemMatrixRegexXmls = {
+    // 1.xml
+    "<compatibility-matrix version=\"1.0\" type=\"framework\" level=\"1\">\n"
+    "    <hal format=\"hidl\" optional=\"false\">\n"
+    "        <name>android.hardware.regex</name>\n"
+    "        <version>1.0-1</version>\n"
+    "        <interface>\n"
+    "            <name>IRegex</name>\n"
+    "            <instance>default</instance>\n"
+    "            <instance>special/1.0</instance>\n"
+    "            <regex-instance>regex/1.0/[0-9]+</regex-instance>\n"
+    "            <regex-instance>regex_common/[0-9]+</regex-instance>\n"
+    "        </interface>\n"
+    "    </hal>\n"
+    "</compatibility-matrix>\n",
+    // 2.xml
+    "<compatibility-matrix version=\"1.0\" type=\"framework\" level=\"2\">\n"
+    "    <hal format=\"hidl\" optional=\"false\">\n"
+    "        <name>android.hardware.regex</name>\n"
+    "        <version>1.1-2</version>\n"
+    "        <interface>\n"
+    "            <name>IRegex</name>\n"
+    "            <instance>default</instance>\n"
+    "            <instance>special/1.1</instance>\n"
+    "            <regex-instance>regex/1.1/[0-9]+</regex-instance>\n"
+    "            <regex-instance>[a-z]+_[a-z]+/[0-9]+</regex-instance>\n"
+    "        </interface>\n"
+    "    </hal>\n"
+    "</compatibility-matrix>\n",
+    // 3.xml
+    "<compatibility-matrix version=\"1.0\" type=\"framework\" level=\"3\">\n"
+    "    <hal format=\"hidl\" optional=\"false\">\n"
+    "        <name>android.hardware.regex</name>\n"
+    "        <version>2.0</version>\n"
+    "        <interface>\n"
+    "            <name>IRegex</name>\n"
+    "            <instance>default</instance>\n"
+    "            <instance>special/2.0</instance>\n"
+    "            <regex-instance>regex/2.0/[0-9]+</regex-instance>\n"
+    "            <regex-instance>regex_[a-z]+/[0-9]+</regex-instance>\n"
+    "        </interface>\n"
+    "    </hal>\n"
+    "</compatibility-matrix>\n"};
+
 // Setup the MockFileFetcher used by the fetchAllInformation template
 // so it returns the given metadata info instead of fetching from device.
 void setupMockFetcher(const std::string& vendorManifestXml, const std::string& systemMatrixXml,
@@ -327,6 +375,16 @@ class VintfObjectTestBase : public testing::Test {
     void expectFetch(const std::string& path, const std::string& content) {
         EXPECT_CALL(fetcher(), fetch(StrEq(path), _))
             .WillOnce(Invoke([content](const auto&, auto& out) {
+                out = content;
+                return ::android::OK;
+            }));
+    }
+
+    // Expect that a file exist and can be fetched 0 or more times.
+    void expectFetchRepeatedly(const std::string& path, const std::string& content) {
+        EXPECT_CALL(fetcher(), fetch(StrEq(path), _))
+            .Times(AnyNumber())
+            .WillRepeatedly(Invoke([content](const auto&, auto& out) {
                 out = content;
                 return ::android::OK;
             }));
@@ -957,6 +1015,201 @@ TEST_F(DeprecateTest, CheckMajor2) {
     std::string error;
     EXPECT_EQ(DEPRECATED, VintfObject::CheckDeprecation(pred, &error))
         << "major@1.0 should be deprecated. " << error;
+}
+
+class RegexTest : public VintfObjectTestBase {
+   protected:
+    static std::string getFileName(size_t i) {
+        return "compatibility_matrix." + std::to_string(static_cast<Level>(i)) + ".xml";
+    }
+    virtual void SetUp() override {
+        EXPECT_CALL(fetcher(), listFiles(StrEq(kSystemVintfDir), _, _))
+            .WillRepeatedly(Invoke([](const auto&, auto* out, auto*) {
+                size_t i = 1;
+                for (const auto& content : systemMatrixRegexXmls) {
+                    (void)content;
+                    out->push_back(getFileName(i));
+                    ++i;
+                }
+                return ::android::OK;
+            }));
+        size_t i = 1;
+        for (const auto& content : systemMatrixRegexXmls) {
+            expectFetchRepeatedly(kSystemVintfDir + getFileName(i), content);
+            ++i;
+        }
+        expectSystemMatrix(0);
+        expectFileNotExist(StartsWith("/odm/"));
+    }
+    void expectTargetFcmVersion(size_t level) {
+        expectFetch(kVendorManifest, "<manifest version=\"1.0\" type=\"device\" target-level=\"" +
+                                         to_string(static_cast<Level>(level)) + "\"/>");
+        VintfObject::GetDeviceHalManifest(true /* skipCache */);
+    }
+};
+
+TEST_F(RegexTest, CombineLevel1) {
+    expectTargetFcmVersion(1);
+    auto matrix = VintfObject::GetFrameworkCompatibilityMatrix(true /* skipCache */);
+    ASSERT_NE(nullptr, matrix);
+    std::string xml = gCompatibilityMatrixConverter(*matrix);
+
+    EXPECT_IN(
+        "    <hal format=\"hidl\" optional=\"false\">\n"
+        "        <name>android.hardware.regex</name>\n"
+        "        <version>1.0-2</version>\n"
+        "        <version>2.0</version>\n"
+        "        <interface>\n"
+        "            <name>IRegex</name>\n"
+        "            <instance>default</instance>\n"
+        "        </interface>\n"
+        "    </hal>\n",
+        xml);
+    EXPECT_IN(
+        "    <hal format=\"hidl\" optional=\"false\">\n"
+        "        <name>android.hardware.regex</name>\n"
+        "        <version>1.0-1</version>\n"
+        "        <interface>\n"
+        "            <name>IRegex</name>\n"
+        "            <instance>special/1.0</instance>\n"
+        "            <regex-instance>regex/1.0/[0-9]+</regex-instance>\n"
+        "            <regex-instance>regex_common/[0-9]+</regex-instance>\n"
+        "        </interface>\n"
+        "    </hal>\n",
+        xml);
+    EXPECT_IN(
+        "    <hal format=\"hidl\" optional=\"true\">\n"
+        "        <name>android.hardware.regex</name>\n"
+        "        <version>1.1-2</version>\n"
+        "        <interface>\n"
+        "            <name>IRegex</name>\n"
+        "            <instance>special/1.1</instance>\n"
+        "            <regex-instance>[a-z]+_[a-z]+/[0-9]+</regex-instance>\n"
+        "            <regex-instance>regex/1.1/[0-9]+</regex-instance>\n"
+        "        </interface>\n"
+        "    </hal>\n",
+        xml);
+    EXPECT_IN(
+        "    <hal format=\"hidl\" optional=\"true\">\n"
+        "        <name>android.hardware.regex</name>\n"
+        "        <version>2.0</version>\n"
+        "        <interface>\n"
+        "            <name>IRegex</name>\n"
+        "            <instance>special/2.0</instance>\n"
+        "            <regex-instance>regex/2.0/[0-9]+</regex-instance>\n"
+        "            <regex-instance>regex_[a-z]+/[0-9]+</regex-instance>\n"
+        "        </interface>\n"
+        "    </hal>\n",
+        xml);
+}
+
+TEST_F(RegexTest, CombineLevel2) {
+    expectTargetFcmVersion(2);
+    auto matrix = VintfObject::GetFrameworkCompatibilityMatrix(true /* skipCache */);
+    ASSERT_NE(nullptr, matrix);
+    std::string xml = gCompatibilityMatrixConverter(*matrix);
+
+    EXPECT_IN(
+        "    <hal format=\"hidl\" optional=\"false\">\n"
+        "        <name>android.hardware.regex</name>\n"
+        "        <version>1.1-2</version>\n"
+        "        <version>2.0</version>\n"
+        "        <interface>\n"
+        "            <name>IRegex</name>\n"
+        "            <instance>default</instance>\n"
+        "        </interface>\n"
+        "    </hal>\n",
+        xml);
+    EXPECT_IN(
+        "    <hal format=\"hidl\" optional=\"false\">\n"
+        "        <name>android.hardware.regex</name>\n"
+        "        <version>1.1-2</version>\n"
+        "        <interface>\n"
+        "            <name>IRegex</name>\n"
+        "            <instance>special/1.1</instance>\n"
+        "            <regex-instance>[a-z]+_[a-z]+/[0-9]+</regex-instance>\n"
+        "            <regex-instance>regex/1.1/[0-9]+</regex-instance>\n"
+        "        </interface>\n"
+        "    </hal>\n",
+        xml);
+    EXPECT_IN(
+        "    <hal format=\"hidl\" optional=\"true\">\n"
+        "        <name>android.hardware.regex</name>\n"
+        "        <version>2.0</version>\n"
+        "        <interface>\n"
+        "            <name>IRegex</name>\n"
+        "            <instance>special/2.0</instance>\n"
+        "            <regex-instance>regex/2.0/[0-9]+</regex-instance>\n"
+        "            <regex-instance>regex_[a-z]+/[0-9]+</regex-instance>\n"
+        "        </interface>\n"
+        "    </hal>\n",
+        xml);
+}
+
+TEST_F(RegexTest, DeprecateLevel2) {
+    std::string error;
+    expectTargetFcmVersion(2);
+
+    auto pred = getInstanceListFunc({
+        "android.hardware.regex@1.1::IRegex/default",
+        "android.hardware.regex@1.1::IRegex/special/1.1",
+        "android.hardware.regex@1.1::IRegex/regex/1.1/1",
+        "android.hardware.regex@1.1::IRegex/regex_common/0",
+        "android.hardware.regex@2.0::IRegex/default",
+    });
+    EXPECT_EQ(NO_DEPRECATED_HALS, VintfObject::CheckDeprecation(pred, &error)) << error;
+
+    for (const auto& deprecated : {
+             "android.hardware.regex@1.0::IRegex/default",
+             "android.hardware.regex@1.0::IRegex/special/1.0",
+             "android.hardware.regex@1.0::IRegex/regex/1.0/1",
+             "android.hardware.regex@1.0::IRegex/regex_common/0",
+             "android.hardware.regex@1.1::IRegex/special/1.0",
+             "android.hardware.regex@1.1::IRegex/regex/1.0/1",
+         }) {
+        // 2.0/default ensures compatibility.
+        pred = getInstanceListFunc({
+            deprecated,
+            "android.hardware.regex@2.0::IRegex/default",
+        });
+        error.clear();
+        EXPECT_EQ(DEPRECATED, VintfObject::CheckDeprecation(pred, &error))
+            << deprecated << " should be deprecated. " << error;
+    }
+}
+
+TEST_F(RegexTest, DeprecateLevel3) {
+    std::string error;
+    expectTargetFcmVersion(3);
+
+    auto pred = getInstanceListFunc({
+        "android.hardware.regex@2.0::IRegex/special/2.0",
+        "android.hardware.regex@2.0::IRegex/regex/2.0/1",
+        "android.hardware.regex@2.0::IRegex/default",
+    });
+    EXPECT_EQ(NO_DEPRECATED_HALS, VintfObject::CheckDeprecation(pred, &error)) << error;
+
+    for (const auto& deprecated : {
+             "android.hardware.regex@1.0::IRegex/default",
+             "android.hardware.regex@1.0::IRegex/special/1.0",
+             "android.hardware.regex@1.0::IRegex/regex/1.0/1",
+             "android.hardware.regex@1.0::IRegex/regex_common/0",
+             "android.hardware.regex@1.1::IRegex/special/1.0",
+             "android.hardware.regex@1.1::IRegex/regex/1.0/1",
+             "android.hardware.regex@1.1::IRegex/special/1.1",
+             "android.hardware.regex@1.1::IRegex/regex/1.1/1",
+             "android.hardware.regex@1.1::IRegex/regex_common/0",
+         }) {
+        // 2.0/default ensures compatibility.
+        pred = getInstanceListFunc({
+            deprecated,
+            "android.hardware.regex@2.0::IRegex/default",
+        });
+
+        error.clear();
+        EXPECT_EQ(DEPRECATED, VintfObject::CheckDeprecation(pred, &error))
+            << deprecated << " should be deprecated.";
+    }
 }
 
 int main(int argc, char** argv) {
