@@ -59,7 +59,8 @@ bool MatrixHal::forEachInstance(const VersionRange& vr,
             // TODO(b/73556059): Store MatrixInstance as well to avoid creating temps
             FqInstance fqInstance;
             if (fqInstance.setTo(getName(), vr.majorVer, vr.minMinor, intf.name, instance)) {
-                if (!func(MatrixInstance(std::move(fqInstance), VersionRange(vr), optional))) {
+                if (!func(MatrixInstance(std::move(fqInstance), VersionRange(vr), optional,
+                                         false /* isRegex */))) {
                     return false;
                 }
             }
@@ -155,7 +156,8 @@ bool MatrixHal::hasAnyInstance() const {
 bool MatrixHal::hasInstance(const std::string& interface, const std::string& instance) const {
     bool found = false;
     forEachInstance([&](const auto& matrixInstance) {
-        found |= matrixInstance.interface() == interface && matrixInstance.instance() == instance;
+        found |= matrixInstance.interface() == interface && !matrixInstance.isRegex() &&
+                 matrixInstance.matchInstance(instance);
         return !found;  // continue if not match
     });
     return found;
@@ -166,8 +168,8 @@ bool MatrixHal::hasOnlyInstance(const std::string& interface, const std::string&
     bool foundOthers = false;
 
     forEachInstance([&](const auto& matrixInstance) {
-        bool match =
-            matrixInstance.interface() == interface && matrixInstance.instance() == instance;
+        bool match = matrixInstance.interface() == interface && !matrixInstance.isRegex() &&
+                     matrixInstance.matchInstance(instance);
 
         found |= match;
         foundOthers |= (!match);
