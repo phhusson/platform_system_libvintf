@@ -37,8 +37,6 @@ struct MatrixHal {
     bool operator==(const MatrixHal &other) const;
     // Check whether the MatrixHal contains the given version.
     bool containsVersion(const Version& version) const;
-    // Get all instances of the ManifestHal with given interface name.
-    std::set<std::string> getInstances(const std::string& interfaceName) const;
 
     HalFormat format = HalFormat::HIDL;
     std::string name;
