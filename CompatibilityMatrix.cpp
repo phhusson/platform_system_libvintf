@@ -117,7 +117,8 @@ bool CompatibilityMatrix::addAllHalsAsOptional(CompatibilityMatrix* other, std::
         auto existingHals = getHals(name);
 
         halToAdd.forEachInstance([&](const std::vector<VersionRange>& versionRanges,
-                                     const std::string& interface, const std::string& instance) {
+                                     const std::string& interface, const std::string& instance,
+                                     bool /* isRegex */) {
             for (auto* existingHal : existingHals) {
                 MatrixHal* splitInstance = this->splitInstance(existingHal, interface, instance);
                 if (splitInstance != nullptr) {
@@ -133,7 +134,7 @@ bool CompatibilityMatrix::addAllHalsAsOptional(CompatibilityMatrix* other, std::
             halToAdd.removeInstance(pair.first, pair.second);
         }
 
-        if (halToAdd.hasAnyInstance()) {
+        if (halToAdd.instancesCount() > 0) {
             halToAdd.setOptional(true);
             if (!add(std::move(halToAdd))) {
                 if (error) {

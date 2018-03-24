@@ -395,16 +395,17 @@ std::ostream &operator<<(std::ostream &os, const MatrixHal &req) {
               << (req.optional ? kOptional : kRequired);
 }
 
-static std::string expandInstances(const MatrixHal& req, const VersionRange& vr, bool brace) {
+std::string expandInstances(const MatrixHal& req, const VersionRange& vr, bool brace) {
     std::string s;
     size_t count = 0;
-    for (const auto& interface : iterateValues(req.interfaces)) {
-        for (const auto& instance : interface.instances) {
-            if (count > 0) s += " AND ";
-            s += toFQNameString(vr, interface.name, instance);
-            count++;
-        }
-    }
+    req.forEachInstance(vr, [&](const auto& matrixInstance) {
+        if (count > 0) s += " AND ";
+        s += toFQNameString(vr, matrixInstance.interface(),
+                            matrixInstance.isRegex() ? matrixInstance.regexPattern()
+                                                     : matrixInstance.exactInstance());
+        count++;
+        return true;
+    });
     if (count == 0) {
         s += "@" + to_string(vr);
     }
@@ -415,11 +416,11 @@ static std::string expandInstances(const MatrixHal& req, const VersionRange& vr,
 }
 
 std::vector<std::string> expandInstances(const MatrixHal& req) {
-    if (req.versionRanges.empty()) {
+    size_t count = req.instancesCount();
+    if (count == 0) {
         return {};
     }
-    if (req.versionRanges.size() == 1 && req.interfaces.size() == 1 &&
-        req.interfaces.begin()->second.instances.size() == 1) {
+    if (count == 1) {
         return {expandInstances(req, req.versionRanges.front(), false /* brace */)};
     }
     std::vector<std::string> ss;
