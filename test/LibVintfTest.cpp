@@ -27,6 +27,7 @@
 
 #include <android-base/logging.h>
 #include <android-base/parseint.h>
+#include <android-base/strings.h>
 #include <gtest/gtest.h>
 
 namespace android {
@@ -111,13 +112,14 @@ public:
                                   std::string* e) {
         return cm1->addAllXmlFilesAsOptional(cm2, e);
     }
+    std::set<std::string> checkUnusedHals(const HalManifest& m, const CompatibilityMatrix& cm) {
+        return m.checkUnusedHals(cm);
+    }
 
     std::map<std::string, HalInterface> testHalInterfaces() {
-        HalInterface intf;
-        intf.name = "IFoo";
-        intf.instances.insert("default");
+        HalInterface intf("IFoo", {"default"});
         std::map<std::string, HalInterface> map;
-        map[intf.name] = intf;
+        map[intf.name()] = intf;
         return map;
     }
 
@@ -456,7 +458,7 @@ TEST_F(LibVintfTest, VersionConverter) {
 }
 
 static bool insert(std::map<std::string, HalInterface>* map, HalInterface&& intf) {
-    std::string name{intf.name};
+    std::string name{intf.name()};
     return map->emplace(std::move(name), std::move(intf)).second;
 }
 
@@ -3285,6 +3287,144 @@ TEST_F(LibVintfTest, FqNameInvalid) {
     ASSERT_FALSE(gManifestHalConverter(&hal, xml, &error));
     EXPECT_IN("Cannot create FqInstance", error);
     EXPECT_IN("n07 4 v4l1d 1n73rf4c3", error);
+}
+
+TEST_F(LibVintfTest, RegexInstanceValid) {
+    CompatibilityMatrix matrix;
+    std::string error;
+
+    std::string xml =
+        "<compatibility-matrix version=\"1.0\" type=\"framework\">\n"
+        "    <hal format=\"hidl\" optional=\"false\">\n"
+        "        <name>android.hardware.foo</name>\n"
+        "        <version>1.0</version>\n"
+        "        <interface>\n"
+        "            <name>IFoo</name>\n"
+        "            <regex-instance>legacy/[0-9]+</regex-instance>\n"
+        "            <regex-instance>slot[0-9]+</regex-instance>\n"
+        "            <regex-instance>.*</regex-instance>\n"
+        "        </interface>\n"
+        "    </hal>\n"
+        "</compatibility-matrix>\n";
+    EXPECT_TRUE(gCompatibilityMatrixConverter(&matrix, xml, &error)) << error;
+}
+
+TEST_F(LibVintfTest, RegexInstanceInvalid) {
+    CompatibilityMatrix matrix;
+    std::string error;
+    std::string xml =
+        "<compatibility-matrix version=\"1.0\" type=\"framework\">\n"
+        "    <hal format=\"hidl\" optional=\"false\">\n"
+        "        <name>android.hardware.foo</name>\n"
+        "        <version>1.0</version>\n"
+        "        <interface>\n"
+        "            <name>IFoo</name>\n"
+        "            <regex-instance>e{1,2,3}</regex-instance>\n"
+        "            <regex-instance>*</regex-instance>\n"
+        "            <regex-instance>+</regex-instance>\n"
+        "            <regex-instance>[0-9]+</regex-instance>\n"
+        "            <regex-instance>[0-9]+</regex-instance>\n"
+        "        </interface>\n"
+        "    </hal>\n"
+        "</compatibility-matrix>\n";
+    EXPECT_FALSE(gCompatibilityMatrixConverter(&matrix, xml, &error));
+    EXPECT_IN("Invalid regular expression 'e{1,2,3}'", error);
+    EXPECT_IN("Invalid regular expression '*'", error);
+    EXPECT_IN("Invalid regular expression '+'", error);
+    EXPECT_IN("Duplicated regex-instance '[0-9]+'", error);
+}
+
+TEST_F(LibVintfTest, RegexInstanceCompat) {
+    CompatibilityMatrix matrix;
+    std::string error;
+
+    std::string xml =
+        "<compatibility-matrix version=\"1.0\" type=\"framework\">\n"
+        "    <hal format=\"hidl\" optional=\"false\">\n"
+        "        <name>android.hardware.foo</name>\n"
+        "        <version>1.0</version>\n"
+        "        <version>3.1-2</version>\n"
+        "        <interface>\n"
+        "            <name>IFoo</name>\n"
+        "            <instance>default</instance>\n"
+        "            <regex-instance>legacy/[0-9]+</regex-instance>\n"
+        "        </interface>\n"
+        "    </hal>\n"
+        "    <sepolicy>\n"
+        "        <kernel-sepolicy-version>0</kernel-sepolicy-version>\n"
+        "        <sepolicy-version>0.0</sepolicy-version>\n"
+        "    </sepolicy>\n"
+        "</compatibility-matrix>\n";
+    EXPECT_TRUE(gCompatibilityMatrixConverter(&matrix, xml))
+        << gCompatibilityMatrixConverter.lastError();
+
+    {
+        std::string xml =
+            "<manifest version=\"1.0\" type=\"device\">\n"
+            "    <hal format=\"hidl\">\n"
+            "        <name>android.hardware.foo</name>\n"
+            "        <transport>hwbinder</transport>\n"
+            "        <version>1.0</version>\n"
+            "        <interface>\n"
+            "            <name>IFoo</name>\n"
+            "            <instance>default</instance>\n"
+            "            <instance>legacy/0</instance>\n"
+            "            <instance>legacy/1</instance>\n"
+            "        </interface>\n"
+            "    </hal>\n"
+            "</manifest>\n";
+
+        HalManifest manifest;
+        EXPECT_TRUE(gHalManifestConverter(&manifest, xml));
+        EXPECT_TRUE(manifest.checkCompatibility(matrix, &error)) << error;
+
+        auto unused = checkUnusedHals(manifest, matrix);
+        EXPECT_TRUE(unused.empty())
+            << "Contains unused HALs: " << android::base::Join(unused, "\n");
+    }
+
+    {
+        std::string xml =
+            "<manifest version=\"1.0\" type=\"device\">\n"
+            "    <hal format=\"hidl\">\n"
+            "        <name>android.hardware.foo</name>\n"
+            "        <transport>hwbinder</transport>\n"
+            "        <version>1.0</version>\n"
+            "        <interface>\n"
+            "            <name>IFoo</name>\n"
+            "            <instance>default</instance>\n"
+            "            <instance>legacy0</instance>\n"
+            "            <instance>nonmatch/legacy/0</instance>\n"
+            "            <instance>legacy/0/nonmatch</instance>\n"
+            "        </interface>\n"
+            "    </hal>\n"
+            "</manifest>\n";
+
+        HalManifest manifest;
+        EXPECT_TRUE(gHalManifestConverter(&manifest, xml));
+        EXPECT_FALSE(manifest.checkCompatibility(matrix, &error))
+            << "Should not be compatible because no legacy/[0-9]+ is provided.";
+
+        auto unused = checkUnusedHals(manifest, matrix);
+        EXPECT_EQ((std::set<std::string>{"android.hardware.foo@1.0::IFoo/nonmatch/legacy/0",
+                                         "android.hardware.foo@1.0::IFoo/legacy/0/nonmatch",
+                                         "android.hardware.foo@1.0::IFoo/legacy0"}),
+                  unused);
+    }
+}
+
+TEST_F(LibVintfTest, Regex) {
+    details::Regex regex;
+
+    EXPECT_FALSE(regex.compile("+"));
+    EXPECT_FALSE(regex.compile("*"));
+
+    ASSERT_TRUE(regex.compile("legacy/[0-9]+"));
+    EXPECT_TRUE(regex.matches("legacy/0"));
+    EXPECT_TRUE(regex.matches("legacy/000"));
+    EXPECT_FALSE(regex.matches("legacy/"));
+    EXPECT_FALSE(regex.matches("ssslegacy/0"));
+    EXPECT_FALSE(regex.matches("legacy/0sss"));
 }
 
 } // namespace vintf

@@ -110,22 +110,32 @@ public:
                                       std::string* error = nullptr,
                                       DisabledChecks disabledChecks = ENABLE_ALL_CHECKS);
 
-    using IsInstanceInUse = std::function<std::pair<bool, Version>(
+    /**
+     * A std::function that abstracts a list of "provided" instance names. Given package, version
+     * and interface, the function returns a list of instance names that matches.
+     * This function can represent a manifest, an IServiceManager, etc.
+     * If the source is passthrough service manager, a list of instance names cannot be provided.
+     * Instead, the function should call getService on each of the "hintInstances", and
+     * return those instances for which getService does not return a nullptr. This means that for
+     * passthrough HALs, the deprecation on <regex-instance>s cannot be enforced; only <instance>s
+     * can be enforced.
+     */
+    using ListInstances = std::function<std::vector<std::pair<std::string, Version>>(
         const std::string& package, Version version, const std::string& interface,
-        const std::string& instance)>;
+        const std::vector<std::string>& hintInstances)>;
     /**
      * Check deprecation on framework matrices with a provided predicate.
      *
-     * @param isInstanceInUse predicate that takes parameter in this format:
-     *        android.hardware.foo@1.0::IFoo/instance
-     *        and returns {true, version} if HAL is in use, where version =
+     * @param listInstances predicate that takes parameter in this format:
+     *        android.hardware.foo@1.0::IFoo
+     *        and returns {{"default", version}...} if HAL is in use, where version =
      *        first version in interfaceChain where package + major version matches.
      *
      * @return = 0 if success (no deprecated HALs)
      *         > 0 if there is at least one deprecated HAL
      *         < 0 if any error (mount partition fails, illformed XML, etc.)
      */
-    static int32_t CheckDeprecation(const IsInstanceInUse& isInstanceInUse,
+    static int32_t CheckDeprecation(const ListInstances& listInstances,
                                     std::string* error = nullptr);
 
     /**
@@ -153,11 +163,10 @@ public:
 
     static bool isHalDeprecated(const MatrixHal& oldMatrixHal,
                                 const CompatibilityMatrix& targetMatrix,
-                                const IsInstanceInUse& isInstanceInUse, std::string* error);
-    static bool isInstanceDeprecated(const std::string& package, Version version,
-                                     const std::string& interface, const std::string& instance,
+                                const ListInstances& listInstances, std::string* error);
+    static bool isInstanceDeprecated(const MatrixInstance& oldMatrixInstance,
                                      const CompatibilityMatrix& targetMatrix,
-                                     const IsInstanceInUse& isInstanceInUse, std::string* error);
+                                     const ListInstances& listInstances, std::string* error);
 };
 
 enum : int32_t {
