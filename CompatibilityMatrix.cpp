@@ -215,35 +215,25 @@ bool operator==(const CompatibilityMatrix &lft, const CompatibilityMatrix &rgt) 
 // as a base matrix.
 CompatibilityMatrix* CompatibilityMatrix::findOrInsertBaseMatrix(
     std::vector<Named<CompatibilityMatrix>>* matrices, std::string* error) {
-    bool multipleFound = false;
-    CompatibilityMatrix* matrix = nullptr;
+    std::vector<CompatibilityMatrix*> matricesUnspecified;
+    std::vector<CompatibilityMatrix*> matricesEmpty;
     for (auto& e : *matrices) {
         if (e.object.level() == Level::UNSPECIFIED) {
+            matricesUnspecified.push_back(&e.object);
+
             if (!e.object.mHals.empty()) {
-                if (error) {
-                    *error = "Error: File \"" + e.name + "\" should not contain " + "HAL elements.";
-                }
-                return nullptr;
+                continue;
             }
 
             if (!e.object.mXmlFiles.empty()) {
-                if (error) {
-                    *error =
-                        "Error: File \"" + e.name + "\" should not contain " + "XML File elements.";
-                }
-                return nullptr;
+                continue;
             }
 
-            if (matrix != nullptr) {
-                multipleFound = true;
-            }
-
-            matrix = &e.object;
-            // continue to detect multiple files with "unspecified" levels
+            matricesEmpty.push_back(&e.object);
         }
     }
 
-    if (multipleFound) {
+    if (matricesEmpty.size() > 1) {
         if (error) {
             *error =
                 "Error: multiple framework compatibility matrix files have "
@@ -256,25 +246,21 @@ CompatibilityMatrix* CompatibilityMatrix::findOrInsertBaseMatrix(
         }
         return nullptr;
     }
-
-    if (matrix == nullptr) {
-        matrix = &matrices->emplace(matrices->end())->object;
-        matrix->mType = SchemaType::FRAMEWORK;
-        matrix->mLevel = Level::UNSPECIFIED;
+    if (matricesEmpty.size() == 1) {
+        return matricesEmpty.front();
     }
-
+    if (!matricesUnspecified.empty()) {
+        return matricesUnspecified.front();
+    }
+    auto matrix = &matrices->emplace(matrices->end())->object;
+    matrix->mType = SchemaType::FRAMEWORK;
+    matrix->mLevel = Level::UNSPECIFIED;
     return matrix;
 }
 
 CompatibilityMatrix* CompatibilityMatrix::combine(Level deviceLevel,
                                                   std::vector<Named<CompatibilityMatrix>>* matrices,
                                                   std::string* error) {
-    if (deviceLevel == Level::UNSPECIFIED) {
-        if (error) {
-            *error = "Error: device level is unspecified.";
-        }
-        return nullptr;
-    }
 
     CompatibilityMatrix* matrix = findOrInsertBaseMatrix(matrices, error);
     if (matrix == nullptr) {
@@ -284,7 +270,8 @@ CompatibilityMatrix* CompatibilityMatrix::combine(Level deviceLevel,
     matrix->mLevel = deviceLevel;
 
     for (auto& e : *matrices) {
-        if (&e.object != matrix && e.object.level() == deviceLevel) {
+        if (&e.object != matrix &&
+            (e.object.level() == deviceLevel || e.object.level() == Level::UNSPECIFIED)) {
             if (!matrix->addAllHals(&e.object, error)) {
                 if (error) {
                     *error = "File \"" + e.name + "\" cannot be added: HAL " + *error +
