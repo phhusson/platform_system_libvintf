@@ -374,5 +374,87 @@ TEST_F(AssembleVintfTest, ManifestSystemSdk) {
         getOutput());
 }
 
+const std::string gEmptyOutManifest =
+    "<manifest version=\"1.0\" type=\"device\">\n"
+    "    <sepolicy>\n"
+    "        <version>10000.0</version>\n"
+    "    </sepolicy>\n"
+    "</manifest>\n";
+
+TEST_F(AssembleVintfTest, EmptyManifest) {
+    const std::string emptyManifest = "<manifest version=\"1.0\" type=\"device\" />";
+    setFakeEnvs({{"BOARD_SEPOLICY_VERS", "10000.0"}, {"IGNORE_TARGET_FCM_VERSION", "true"}});
+    addInput("manifest.empty.xml", emptyManifest);
+    EXPECT_TRUE(getInstance()->assemble());
+    EXPECT_IN(gEmptyOutManifest, getOutput());
+}
+
+TEST_F(AssembleVintfTest, DeviceFrameworkMatrixOptional) {
+    setFakeEnvs({{"POLICYVERS", "30"},
+                 {"PLATFORM_SEPOLICY_VERSION", "10000.0"},
+                 {"PLATFORM_SEPOLICY_COMPAT_VERSIONS", "26.0 27.0"},
+                 {"FRAMEWORK_VBMETA_VERSION", "1.0"},
+                 {"PRODUCT_ENFORCE_VINTF_MANIFEST", "true"}});
+    getInstance()->setCheckInputStream(makeStream(gEmptyOutManifest));
+
+    addInput("compatibility_matrix.empty.xml",
+             "<compatibility-matrix version=\"1.0\" type=\"framework\">\n"
+             "    <hal format=\"hidl\" optional=\"true\">\n"
+             "        <name>vendor.foo.bar</name>\n"
+             "        <version>1.0</version>\n"
+             "        <interface>\n"
+             "            <name>IFoo</name>\n"
+             "            <instance>default</instance>\n"
+             "        </interface>\n"
+             "    </hal>\n"
+             "</compatibility-matrix>");
+
+    EXPECT_TRUE(getInstance()->assemble());
+    EXPECT_IN(
+        "<compatibility-matrix version=\"1.0\" type=\"framework\">\n"
+        "    <hal format=\"hidl\" optional=\"true\">\n"
+        "        <name>vendor.foo.bar</name>\n"
+        "        <version>1.0</version>\n"
+        "        <interface>\n"
+        "            <name>IFoo</name>\n"
+        "            <instance>default</instance>\n"
+        "        </interface>\n"
+        "    </hal>\n"
+        "    <sepolicy>\n"
+        "        <kernel-sepolicy-version>30</kernel-sepolicy-version>\n"
+        "        <sepolicy-version>26.0</sepolicy-version>\n"
+        "        <sepolicy-version>27.0</sepolicy-version>\n"
+        "        <sepolicy-version>10000.0</sepolicy-version>\n"
+        "    </sepolicy>\n"
+        "    <avb>\n"
+        "        <vbmeta-version>1.0</vbmeta-version>\n"
+        "    </avb>\n"
+        "</compatibility-matrix>",
+        getOutput());
+}
+
+TEST_F(AssembleVintfTest, DeviceFrameworkMatrixRequired) {
+    setFakeEnvs({{"POLICYVERS", "30"},
+                 {"PLATFORM_SEPOLICY_VERSION", "10000.0"},
+                 {"PLATFORM_SEPOLICY_COMPAT_VERSIONS", "26.0 27.0"},
+                 {"FRAMEWORK_VBMETA_VERSION", "1.0"},
+                 {"PRODUCT_ENFORCE_VINTF_MANIFEST", "true"}});
+    getInstance()->setCheckInputStream(makeStream(gEmptyOutManifest));
+
+    addInput("compatibility_matrix.empty.xml",
+             "<compatibility-matrix version=\"1.0\" type=\"framework\">\n"
+             "    <hal format=\"hidl\" optional=\"false\">\n"
+             "        <name>vendor.foo.bar</name>\n"
+             "        <version>1.0</version>\n"
+             "        <interface>\n"
+             "            <name>IFoo</name>\n"
+             "            <instance>default</instance>\n"
+             "        </interface>\n"
+             "    </hal>\n"
+             "</compatibility-matrix>");
+
+    EXPECT_FALSE(getInstance()->assemble());
+}
+
 }  // namespace vintf
 }  // namespace android
