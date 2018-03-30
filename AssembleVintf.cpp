@@ -369,7 +369,7 @@ class AssembleVintfImpl : public AssembleVintf {
 
     bool setDeviceFcmVersion(HalManifest* manifest) {
         // Not needed for generating empty manifest for DEVICE_FRAMEWORK_COMPATIBILITY_MATRIX_FILE.
-        if (getBooleanFlag("IGNORE_TARGET_FCM_VERSION")) {
+        if (getBooleanFlag("VINTF_IGNORE_TARGET_FCM_VERSION")) {
             return true;
         }
 
