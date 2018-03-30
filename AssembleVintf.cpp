@@ -368,6 +368,11 @@ class AssembleVintfImpl : public AssembleVintf {
     }
 
     bool setDeviceFcmVersion(HalManifest* manifest) {
+        // Not needed for generating empty manifest for DEVICE_FRAMEWORK_COMPATIBILITY_MATRIX_FILE.
+        if (getBooleanFlag("IGNORE_TARGET_FCM_VERSION")) {
+            return true;
+        }
+
         size_t shippingApiLevel = getIntegerFlag("PRODUCT_SHIPPING_API_LEVEL");
 
         if (manifest->level() != Level::UNSPECIFIED) {
@@ -457,15 +462,10 @@ class AssembleVintfImpl : public AssembleVintf {
                 deviceLevel = getLowestFcmVersion(*matrices);
             }
 
-            if (deviceLevel == Level::UNSPECIFIED) {
-                // building empty.xml
-                matrix = &matrices->front().object;
-            } else {
-                matrix = CompatibilityMatrix::combine(deviceLevel, matrices, &error);
-                if (matrix == nullptr) {
-                    std::cerr << error << std::endl;
-                    return false;
-                }
+            matrix = CompatibilityMatrix::combine(deviceLevel, matrices, &error);
+            if (matrix == nullptr) {
+                std::cerr << error << std::endl;
+                return false;
             }
 
             if (!assembleFrameworkCompatibilityMatrixKernels(matrix)) {
