@@ -36,6 +36,8 @@ class AssembleVintfTest : public ::testing::Test {
         auto s = makeStream("");
         mOutputStream = s.get();
         mInstance->setOutputStream(std::move(s));
+
+        getInstance()->setFakeEnv("PRODUCT_ENFORCE_VINTF_MANIFEST", "true");
     }
     virtual void TearDown() override { mInstance = nullptr; }
 
