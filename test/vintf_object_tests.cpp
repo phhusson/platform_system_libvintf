@@ -282,6 +282,13 @@ void setupMockFetcher(const std::string& vendorManifestXml, const std::string& s
                       const std::string& productModel) {
     MockFileFetcher* fetcher = static_cast<MockFileFetcher*>(gFetcher);
 
+    ON_CALL(*fetcher, listFiles(StrEq(kVendorManifestFragmentDir), _, _))
+        .WillByDefault(Return(::android::OK));
+    ON_CALL(*fetcher, listFiles(StrEq(kSystemManifestFragmentDir), _, _))
+        .WillByDefault(Return(::android::OK));
+    ON_CALL(*fetcher, listFiles(StrEq(kOdmManifestFragmentDir), _, _))
+        .WillByDefault(Return(::android::OK));
+
     if (!productModel.empty()) {
         ON_CALL(*fetcher, fetch(StrEq(kOdmLegacyVintfDir + "manifest_" + productModel + ".xml"), _))
             .WillByDefault(Return(::android::NAME_NOT_FOUND));
@@ -929,6 +936,10 @@ class DeprecateTest : public VintfObjectTestBase {
                 };
                 return ::android::OK;
             }));
+        EXPECT_CALL(fetcher(), listFiles(StrEq(kVendorManifestFragmentDir), _, _))
+            .WillOnce(Return(::android::OK));
+        EXPECT_CALL(fetcher(), listFiles(StrEq(kOdmManifestFragmentDir), _, _))
+            .WillOnce(Return(::android::OK));
         expectFetch(kSystemVintfDir + "compatibility_matrix.1.xml", systemMatrixLevel1);
         expectFetch(kSystemVintfDir + "compatibility_matrix.2.xml", systemMatrixLevel2);
         expectSystemMatrix(0);
@@ -1033,6 +1044,10 @@ class RegexTest : public VintfObjectTestBase {
                 }
                 return ::android::OK;
             }));
+        EXPECT_CALL(fetcher(), listFiles(StrEq(kVendorManifestFragmentDir), _, _))
+            .WillOnce(Return(::android::OK));
+        EXPECT_CALL(fetcher(), listFiles(StrEq(kOdmManifestFragmentDir), _, _))
+            .WillOnce(Return(::android::OK));
         size_t i = 1;
         for (const auto& content : systemMatrixRegexXmls) {
             expectFetchRepeatedly(kSystemVintfDir + getFileName(i), content);
