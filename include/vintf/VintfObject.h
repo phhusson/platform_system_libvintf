@@ -154,6 +154,8 @@ public:
         std::string* error = nullptr);
     static std::vector<Named<CompatibilityMatrix>> GetAllFrameworkMatrixLevels(
         std::string* error = nullptr);
+    static status_t AddDirectoryManifests(const std::string& directory, HalManifest* manifests,
+                                          std::string* error = nullptr);
     static status_t FetchDeviceHalManifest(HalManifest* out, std::string* error = nullptr);
     static status_t FetchDeviceMatrix(CompatibilityMatrix* out, std::string* error = nullptr);
     static status_t FetchOdmHalManifest(HalManifest* out, std::string* error = nullptr);
@@ -193,6 +195,9 @@ extern const std::string kVendorManifest;
 extern const std::string kSystemManifest;
 extern const std::string kVendorMatrix;
 extern const std::string kOdmManifest;
+extern const std::string kVendorManifestFragmentDir;
+extern const std::string kSystemManifestFragmentDir;
+extern const std::string kOdmManifestFragmentDir;
 extern const std::string kVendorLegacyManifest;
 extern const std::string kVendorLegacyMatrix;
 extern const std::string kSystemLegacyManifest;
