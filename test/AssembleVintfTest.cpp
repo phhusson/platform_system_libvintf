@@ -458,5 +458,21 @@ TEST_F(AssembleVintfTest, DeviceFrameworkMatrixRequired) {
     EXPECT_FALSE(getInstance()->assemble());
 }
 
+TEST_F(AssembleVintfTest, OutputFileMatrixTest) {
+    const std::string kFile = "file_name_1.xml";
+    const std::string kMatrix = "<compatibility-matrix version=\"1.0\" type=\"framework\"/>";
+    addInput(kFile, kMatrix);
+    EXPECT_TRUE(getInstance()->assemble());
+    EXPECT_IN(kFile, getOutput());
+}
+
+TEST_F(AssembleVintfTest, OutputFileManifestTest) {
+    const std::string kFile = "file_name_1.xml";
+    std::string kManifest = "<manifest version=\"1.0\" type=\"device\" target-level=\"1\"/>";
+    addInput(kFile, kManifest);
+    EXPECT_TRUE(getInstance()->assemble());
+    EXPECT_IN(kFile, getOutput());
+}
+
 }  // namespace vintf
 }  // namespace android
