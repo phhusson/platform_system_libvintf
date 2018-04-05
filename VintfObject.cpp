@@ -161,17 +161,46 @@ status_t VintfObject::GetCombinedFrameworkMatrix(
     return OK;
 }
 
+// Load and combine all of the manifests in a directory
+status_t VintfObject::AddDirectoryManifests(const std::string& directory, HalManifest* manifest,
+                                            std::string* error) {
+    std::vector<std::string> fileNames;
+    status_t err = details::gFetcher->listFiles(directory, &fileNames, error);
+    // if the directory isn't there, that's okay
+    if (err == NAME_NOT_FOUND) return OK;
+    if (err != OK) return err;
+
+    for (const std::string& file : fileNames) {
+        // Only adds HALs because all other things are added by libvintf
+        // itself for now.
+        HalManifest fragmentManifest;
+        err = FetchOneHalManifest(directory + file, &fragmentManifest, error);
+        if (err != OK) return err;
+
+        manifest->addAllHals(&fragmentManifest);
+    }
+
+    return OK;
+}
+
 // Priority for loading vendor manifest:
-// 1. /vendor/etc/vintf/manifest.xml + ODM manifest
-// 2. /vendor/etc/vintf/manifest.xml
-// 3. ODM manifest
-// 4. /vendor/manifest.xml
+// 1. /vendor/etc/vintf/manifest.xml + device fragments + ODM manifest (optional) + odm fragments
+// 2. /vendor/etc/vintf/manifest.xml + device fragments
+// 3. ODM manifest (optional) + odm fragments
+// 4. /vendor/manifest.xml (legacy, no fragments)
 // where:
 // A + B means adding <hal> tags from B to A (so that <hal>s from B can override A)
 status_t VintfObject::FetchDeviceHalManifest(HalManifest* out, std::string* error) {
     status_t vendorStatus = FetchOneHalManifest(kVendorManifest, out, error);
     if (vendorStatus != OK && vendorStatus != NAME_NOT_FOUND) {
         return vendorStatus;
+    }
+
+    if (vendorStatus == OK) {
+        status_t fragmentStatus = AddDirectoryManifests(kVendorManifestFragmentDir, out, error);
+        if (fragmentStatus != OK) {
+            return fragmentStatus;
+        }
     }
 
     HalManifest odmManifest;
@@ -184,13 +213,13 @@ status_t VintfObject::FetchDeviceHalManifest(HalManifest* out, std::string* erro
         if (odmStatus == OK) {
             out->addAllHals(&odmManifest);
         }
-        return OK;
+        return AddDirectoryManifests(kOdmManifestFragmentDir, out, error);
     }
 
     // vendorStatus != OK, "out" is not changed.
     if (odmStatus == OK) {
         *out = std::move(odmManifest);
-        return OK;
+        return AddDirectoryManifests(kOdmManifestFragmentDir, out, error);
     }
 
     // Use legacy /vendor/manifest.xml
@@ -265,7 +294,7 @@ status_t VintfObject::FetchFrameworkHalManifest(HalManifest* out, std::string* e
     HalManifest etcManifest;
     if (etcManifest.fetchAllInformation(kSystemManifest, error) == OK) {
         *out = std::move(etcManifest);
-        return OK;
+        return AddDirectoryManifests(kSystemManifestFragmentDir, out, error);
     }
     return out->fetchAllInformation(kSystemLegacyManifest, error);
 }
@@ -550,6 +579,10 @@ const std::string kVendorManifest = kVendorVintfDir + "manifest.xml";
 const std::string kSystemManifest = kSystemVintfDir + "manifest.xml";
 const std::string kVendorMatrix = kVendorVintfDir + "compatibility_matrix.xml";
 const std::string kOdmManifest = kOdmVintfDir + "manifest.xml";
+
+const std::string kVendorManifestFragmentDir = kVendorVintfDir + "manifest/";
+const std::string kSystemManifestFragmentDir = kSystemVintfDir + "manifest/";
+const std::string kOdmManifestFragmentDir = kOdmVintfDir + "manifest/";
 
 const std::string kVendorLegacyManifest = "/vendor/manifest.xml";
 const std::string kVendorLegacyMatrix = "/vendor/compatibility_matrix.xml";
