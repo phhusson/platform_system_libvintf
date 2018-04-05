@@ -299,6 +299,18 @@ class AssembleVintfImpl : public AssembleVintf {
     using HalManifests = Schemas<HalManifest>;
     using CompatibilityMatrices = Schemas<CompatibilityMatrix>;
 
+    template <typename M>
+    void outputInputs(const Schemas<M>& inputs) {
+        out() << "<!--" << std::endl;
+        out() << "    Input:" << std::endl;
+        for (const auto& e : inputs) {
+            if (!e.name.empty()) {
+                out() << "        " << base::Basename(e.name) << std::endl;
+            }
+        }
+        out() << "-->" << std::endl;
+    }
+
     bool assembleHalManifest(HalManifests* halManifests) {
         std::string error;
         HalManifest* halManifest = &halManifests->front().object;
@@ -346,6 +358,8 @@ class AssembleVintfImpl : public AssembleVintf {
                 halManifest->framework.mSystemSdk.mVersions.emplace(std::move(v));
             }
         }
+
+        outputInputs(*halManifests);
 
         if (mOutputMatrix) {
             CompatibilityMatrix generatedMatrix = halManifest->generateCompatibleMatrix();
@@ -530,16 +544,8 @@ class AssembleVintfImpl : public AssembleVintf {
                            deviceLevel == Level::UNSPECIFIED /* log */);
             getFlagIfUnset("FRAMEWORK_VBMETA_VERSION", &matrix->framework.mAvbMetaVersion,
                            deviceLevel == Level::UNSPECIFIED /* log */);
-
-            out() << "<!--" << std::endl;
-            out() << "    Input:" << std::endl;
-            for (const auto& e : *matrices) {
-                if (!e.name.empty()) {
-                    out() << "        " << base::Basename(e.name) << std::endl;
-                }
-            }
-            out() << "-->" << std::endl;
         }
+        outputInputs(*matrices);
         out() << gCompatibilityMatrixConverter(*matrix, mSerializeFlags);
         out().flush();
 
