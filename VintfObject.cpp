@@ -165,7 +165,7 @@ status_t VintfObject::GetCombinedFrameworkMatrix(
 status_t VintfObject::AddDirectoryManifests(const std::string& directory, HalManifest* manifest,
                                             std::string* error) {
     std::vector<std::string> fileNames;
-    status_t err = details::gFetcher->listFiles(directory, &fileNames, error);
+    status_t err = details::getFileSystem().listFiles(directory, &fileNames, error);
     // if the directory isn't there, that's okay
     if (err == NAME_NOT_FOUND) return OK;
     if (err != OK) return err;
@@ -304,7 +304,7 @@ std::vector<Named<CompatibilityMatrix>> VintfObject::GetAllFrameworkMatrixLevels
     std::vector<std::string> fileNames;
     std::vector<Named<CompatibilityMatrix>> results;
 
-    if (details::gFetcher->listFiles(kSystemVintfDir, &fileNames, error) != OK) {
+    if (details::getFileSystem().listFiles(kSystemVintfDir, &fileNames, error) != OK) {
         return {};
     }
     for (const std::string& fileName : fileNames) {
@@ -312,7 +312,7 @@ std::vector<Named<CompatibilityMatrix>> VintfObject::GetAllFrameworkMatrixLevels
 
         std::string content;
         std::string fetchError;
-        status_t status = details::gFetcher->fetch(path, content, &fetchError);
+        status_t status = details::getFileSystem().fetch(path, &content, &fetchError);
         if (status != OK) {
             if (error) {
                 *error += "Framework Matrix: Ignore file " + path + ": " + fetchError + "\n";
@@ -751,6 +751,10 @@ int32_t VintfObject::CheckDeprecation(std::string* error) {
             return ret;
         };
     return CheckDeprecation(inManifest, error);
+}
+
+bool VintfObject::InitFileSystem(std::unique_ptr<FileSystem>&& fileSystem) {
+    return details::initFileSystem(std::move(fileSystem));
 }
 
 } // namespace vintf

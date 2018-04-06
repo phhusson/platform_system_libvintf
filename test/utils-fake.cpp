@@ -22,8 +22,6 @@ namespace details {
 
 // Do not create the mock objects here as InitGoogleMock must be called
 // first.
-FileFetcher* gFetcher = nullptr;
-
 PartitionMounter* gPartitionMounter = nullptr;
 
 ObjectFactory<RuntimeInfo>* gRuntimeInfoFactory = nullptr;

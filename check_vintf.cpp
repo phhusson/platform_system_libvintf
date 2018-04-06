@@ -43,37 +43,33 @@ enum Option : int {
 // command line arguments
 using Args = std::multimap<Option, std::string>;
 
-class HostFileFetcher : public FileFetcher {
+class HostFileSystem : public FileSystem {
    public:
-    void setRootDir(const std::string& rootdir) {
+    HostFileSystem(const std::string& rootdir) {
         mRootDir = rootdir;
         if (!mRootDir.empty() && mRootDir.back() != '/') {
             mRootDir.push_back('/');
         }
     }
-    virtual status_t fetch(const std::string& path, std::string& fetched, std::string* error) {
-        return HostFileFetcher::fetchInternal(path, fetched, error);
+    status_t fetch(const std::string& path, std::string* fetched,
+                   std::string* error) const override {
+        status_t status = mImpl.fetch(mRootDir + path, fetched, error);
+        std::cerr << "Debug: Fetch '" << mRootDir << path << "': " << toString(status) << std::endl;
+        return status;
     }
-    virtual status_t fetch(const std::string& path, std::string& fetched) {
-        return HostFileFetcher::fetchInternal(path, fetched, nullptr);
-    }
-    virtual status_t listFiles(const std::string& path, std::vector<std::string>* out,
-                               std::string* error) {
-        status_t status = FileFetcher::listFiles(mRootDir + path, out, error);
+    status_t listFiles(const std::string& path, std::vector<std::string>* out,
+                       std::string* error) const override {
+        status_t status = mImpl.listFiles(mRootDir + path, out, error);
         std::cerr << "Debug: List '" << mRootDir << path << "': " << toString(status) << std::endl;
         return status;
     }
 
    private:
-    status_t fetchInternal(const std::string& path, std::string& fetched, std::string* error) {
-        status_t status = FileFetcher::fetchInternal(mRootDir + path, fetched, error);
-        std::cerr << "Debug: Fetch '" << mRootDir << path << "': " << toString(status) << std::endl;
-        return status;
-    }
     static std::string toString(status_t status) {
         return status == OK ? "SUCCESS" : strerror(-status);
     }
     std::string mRootDir;
+    FileSystemImpl mImpl;
 };
 
 class PresetPropertyFetcher : public PropertyFetcher {
@@ -112,9 +108,6 @@ class PresetPropertyFetcher : public PropertyFetcher {
 };
 
 // globals
-static HostFileFetcher hostFileFetcher;
-FileFetcher* gFetcher = &hostFileFetcher;
-
 static PartitionMounter partitionMounter;
 PartitionMounter* gPartitionMounter = &partitionMounter;
 
@@ -131,7 +124,7 @@ template <typename T>
 std::unique_ptr<T> readObject(const std::string& path, const XmlConverter<T>& converter) {
     std::string xml;
     std::string error;
-    status_t err = details::gFetcher->fetch(path, xml, &error);
+    status_t err = details::getFileSystem().fetch(path, &xml, &error);
     if (err != OK) {
         std::cerr << "Error: Cannot read '" << path << "' (" << strerror(-err) << "): " << error
                   << std::endl;
@@ -146,6 +139,11 @@ std::unique_ptr<T> readObject(const std::string& path, const XmlConverter<T>& co
 }
 
 int checkCompatibilityForFiles(const std::string& manifestPath, const std::string& matrixPath) {
+    if (!VintfObject::InitFileSystem(std::make_unique<FileSystemImpl>())) {
+        std::cerr << "Cannot initialize FileSystem object." << std::endl;
+        return NO_INIT;
+    }
+
     auto manifest = readObject(manifestPath, gHalManifestConverter);
     auto matrix = readObject(matrixPath, gCompatibilityMatrixConverter);
     if (manifest == nullptr || matrix == nullptr) {
@@ -242,7 +240,10 @@ int usage(const char* me) {
 }
 
 int checkAllFiles(const std::string& rootdir, const Properties& props, std::string* error) {
-    hostFileFetcher.setRootDir(rootdir);
+    if (!VintfObject::InitFileSystem(std::make_unique<HostFileSystem>(rootdir))) {
+        std::cerr << "Cannot initialize FileSystem object." << std::endl;
+        return NO_INIT;
+    }
     hostPropertyFetcher.setProperties(props);
 
     return VintfObject::CheckCompatibility({} /* packageInfo */, error, DISABLE_RUNTIME_INFO);
