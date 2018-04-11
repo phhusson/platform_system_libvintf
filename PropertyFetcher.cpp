@@ -17,8 +17,6 @@
 
 #include "utils.h"
 
-// Default implementations for classes defined in utils.h
-
 namespace android {
 namespace vintf {
 namespace details {

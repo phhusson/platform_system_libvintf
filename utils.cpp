@@ -17,15 +17,13 @@
 #include "utils.h"
 
 #ifdef LIBVINTF_TARGET
+#include <android-base/logging.h>
 #include <android-base/properties.h>
 #endif
 
 namespace android {
 namespace vintf {
 namespace details {
-
-static FileFetcher fetcher;
-FileFetcher* gFetcher = &fetcher;
 
 static PartitionMounter partitionMounter;
 PartitionMounter* gPartitionMounter = &partitionMounter;

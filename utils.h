@@ -17,71 +17,17 @@
 #ifndef ANDROID_VINTF_UTILS_H
 #define ANDROID_VINTF_UTILS_H
 
-#include <dirent.h>
-
-#include <fstream>
-#include <iostream>
 #include <memory>
-#include <sstream>
+#include <mutex>
 
 #include <utils/Errors.h>
+#include <vintf/FileSystem.h>
 #include <vintf/RuntimeInfo.h>
 #include <vintf/parse_xml.h>
 
 namespace android {
 namespace vintf {
 namespace details {
-
-// Return the file from the given location as a string.
-//
-// This class can be used to create a mock for overriding.
-class FileFetcher {
-   public:
-    virtual ~FileFetcher() {}
-    status_t fetchInternal(const std::string& path, std::string& fetched, std::string* error) {
-        std::ifstream in;
-
-        in.open(path);
-        if (!in.is_open()) {
-            if (error) {
-                *error = "Cannot open " + path;
-            }
-            return NAME_NOT_FOUND;
-        }
-
-        std::stringstream ss;
-        ss << in.rdbuf();
-        fetched = ss.str();
-
-        return OK;
-    }
-    virtual status_t fetch(const std::string& path, std::string& fetched, std::string* error) {
-        return fetchInternal(path, fetched, error);
-    }
-    virtual status_t fetch(const std::string& path, std::string& fetched) {
-        return fetchInternal(path, fetched, nullptr);
-    }
-    virtual status_t listFiles(const std::string& path, std::vector<std::string>* out,
-                               std::string* error) {
-        std::unique_ptr<DIR, decltype(&closedir)> dir(opendir(path.c_str()), closedir);
-        if (!dir) {
-            if (error) {
-                *error = "Cannot open " + path;
-            }
-            return NAME_NOT_FOUND;
-        }
-
-        dirent* dp;
-        while ((dp = readdir(dir.get())) != nullptr) {
-            if (dp->d_type != DT_DIR) {
-                out->push_back(dp->d_name);
-            }
-        }
-        return OK;
-    }
-};
-
-extern FileFetcher* gFetcher;
 
 class PartitionMounter {
    public:
@@ -99,12 +45,7 @@ status_t fetchAllInformation(const std::string& path, const XmlConverter<T>& con
                              T* outObject, std::string* error = nullptr) {
     std::string info;
 
-    if (gFetcher == nullptr) {
-        // Should never happen.
-        return NO_INIT;
-    }
-
-    status_t result = gFetcher->fetch(path, info, error);
+    status_t result = getFileSystem().fetch(path, &info, error);
 
     if (result != OK) {
         return result;
