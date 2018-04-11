@@ -275,67 +275,67 @@ const static std::vector<std::string> systemMatrixRegexXmls = {
     "    </hal>\n"
     "</compatibility-matrix>\n"};
 
-// Setup the MockFileFetcher used by the fetchAllInformation template
+static MockPartitionMounter& mounter() {
+    return *static_cast<MockPartitionMounter*>(gPartitionMounter);
+}
+static MockFileSystem& fetcher() {
+    return static_cast<MockFileSystem&>(details::getFileSystem());
+}
+
+// Setup the MockFileSystem used by the fetchAllInformation template
 // so it returns the given metadata info instead of fetching from device.
 void setupMockFetcher(const std::string& vendorManifestXml, const std::string& systemMatrixXml,
                       const std::string& systemManifestXml, const std::string& vendorMatrixXml,
                       const std::string& productModel) {
-    MockFileFetcher* fetcher = static_cast<MockFileFetcher*>(gFetcher);
-
-    ON_CALL(*fetcher, listFiles(StrEq(kVendorManifestFragmentDir), _, _))
+    ON_CALL(fetcher(), listFiles(StrEq(kVendorManifestFragmentDir), _, _))
         .WillByDefault(Return(::android::OK));
-    ON_CALL(*fetcher, listFiles(StrEq(kSystemManifestFragmentDir), _, _))
+    ON_CALL(fetcher(), listFiles(StrEq(kSystemManifestFragmentDir), _, _))
         .WillByDefault(Return(::android::OK));
-    ON_CALL(*fetcher, listFiles(StrEq(kOdmManifestFragmentDir), _, _))
+    ON_CALL(fetcher(), listFiles(StrEq(kOdmManifestFragmentDir), _, _))
         .WillByDefault(Return(::android::OK));
 
     if (!productModel.empty()) {
-        ON_CALL(*fetcher, fetch(StrEq(kOdmLegacyVintfDir + "manifest_" + productModel + ".xml"), _))
+        ON_CALL(fetcher(),
+                fetch(StrEq(kOdmLegacyVintfDir + "manifest_" + productModel + ".xml"), _))
             .WillByDefault(Return(::android::NAME_NOT_FOUND));
-        ON_CALL(*fetcher, fetch(StrEq(kOdmVintfDir + "manifest_" + productModel + ".xml"), _))
+        ON_CALL(fetcher(), fetch(StrEq(kOdmVintfDir + "manifest_" + productModel + ".xml"), _))
             .WillByDefault(Return(::android::NAME_NOT_FOUND));
     }
-    ON_CALL(*fetcher, fetch(StrEq(kOdmLegacyManifest), _))
+    ON_CALL(fetcher(), fetch(StrEq(kOdmLegacyManifest), _))
         .WillByDefault(Return(::android::NAME_NOT_FOUND));
-    ON_CALL(*fetcher, fetch(StrEq(kOdmManifest), _))
+    ON_CALL(fetcher(), fetch(StrEq(kOdmManifest), _))
         .WillByDefault(Return(::android::NAME_NOT_FOUND));
-    ON_CALL(*fetcher, fetch(StrEq(kVendorManifest), _))
+    ON_CALL(fetcher(), fetch(StrEq(kVendorManifest), _))
         .WillByDefault(Return(::android::NAME_NOT_FOUND));
-    ON_CALL(*fetcher, fetch(StrEq(kVendorLegacyManifest), _))
+    ON_CALL(fetcher(), fetch(StrEq(kVendorLegacyManifest), _))
         .WillByDefault(Invoke([vendorManifestXml](const std::string& path, std::string& fetched) {
             (void)path;
             fetched = vendorManifestXml;
             return 0;
         }));
-    ON_CALL(*fetcher, fetch(StrEq(kSystemManifest), _))
+    ON_CALL(fetcher(), fetch(StrEq(kSystemManifest), _))
         .WillByDefault(Invoke([systemManifestXml](const std::string& path, std::string& fetched) {
             (void)path;
             fetched = systemManifestXml;
             return 0;
         }));
-    ON_CALL(*fetcher, fetch(StrEq(kVendorMatrix), _))
+    ON_CALL(fetcher(), fetch(StrEq(kVendorMatrix), _))
         .WillByDefault(Return(::android::NAME_NOT_FOUND));
-    ON_CALL(*fetcher, fetch(StrEq(kVendorLegacyMatrix), _))
+    ON_CALL(fetcher(), fetch(StrEq(kVendorLegacyMatrix), _))
         .WillByDefault(Invoke([vendorMatrixXml](const std::string& path, std::string& fetched) {
             (void)path;
             fetched = vendorMatrixXml;
             return 0;
         }));
-    ON_CALL(*fetcher, fetch(StrEq(kSystemLegacyMatrix), _))
+    ON_CALL(fetcher(), fetch(StrEq(kSystemLegacyMatrix), _))
         .WillByDefault(Invoke([systemMatrixXml](const std::string& path, std::string& fetched) {
             (void)path;
             fetched = systemMatrixXml;
             return 0;
         }));
     // Don't list /system/etc/vintf unless otherwise specified.
-    ON_CALL(*fetcher, listFiles(StrEq(kSystemVintfDir), _, _)).WillByDefault(Return(::android::OK));
-}
-
-static MockPartitionMounter &mounter() {
-    return *static_cast<MockPartitionMounter *>(gPartitionMounter);
-}
-static MockFileFetcher &fetcher() {
-    return *static_cast<MockFileFetcher*>(gFetcher);
+    ON_CALL(fetcher(), listFiles(StrEq(kSystemVintfDir), _, _))
+        .WillByDefault(Return(::android::OK));
 }
 
 class VintfObjectTestBase : public testing::Test {
@@ -1230,8 +1230,10 @@ TEST_F(RegexTest, DeprecateLevel3) {
 int main(int argc, char** argv) {
     ::testing::InitGoogleMock(&argc, argv);
 
-    NiceMock<MockFileFetcher> fetcher;
-    gFetcher = &fetcher;
+    if (!VintfObject::InitFileSystem(std::make_unique<NiceMock<MockFileSystem>>())) {
+        LOG(FATAL) << "Cannot set mock file system because it is already initialized.";
+        return 1;
+    }
 
     NiceMock<MockPartitionMounter> mounter;
     gPartitionMounter = &mounter;

@@ -21,6 +21,7 @@
 
 #include "CompatibilityMatrix.h"
 #include "DisabledChecks.h"
+#include "FileSystem.h"
 #include "HalManifest.h"
 #include "Named.h"
 #include "RuntimeInfo.h"
@@ -147,6 +148,14 @@ public:
      *         < 0 if any error (mount partition fails, illformed XML, etc.)
      */
     static int32_t CheckDeprecation(std::string* error = nullptr);
+
+    // Specify how the file system should be queried.
+    // Can only be initialized before VintfObject is queried, preferably in main().
+    static bool InitFileSystem(std::unique_ptr<FileSystem>&&);
+
+   protected:
+   private:
+    static std::unique_ptr<FileSystem> sInstance;
 
    private:
     static status_t GetCombinedFrameworkMatrix(
