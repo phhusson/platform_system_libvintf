@@ -27,28 +27,20 @@ namespace android {
 namespace vintf {
 namespace details {
 
-class MockFileFetcher : public FileFetcher {
+class MockFileSystem : public FileSystem {
    public:
-    MockFileFetcher() {
-        // By default call through to the original.
-        ON_CALL(*this, fetch(_, _)).WillByDefault(Invoke([this](const auto& path, auto& fetched) {
-            return real_.fetchInternal(path, fetched, nullptr);
-        }));
-        ON_CALL(*this, listFiles(_, _, _))
-            .WillByDefault(
-                Invoke([this](const std::string& path, std::vector<std::string>* out,
-                              std::string* error) { return real_.listFiles(path, out, error); }));
+    MockFileSystem() {}
+
+    MOCK_CONST_METHOD2(fetch, status_t(const std::string& path, std::string& fetched));
+    MOCK_CONST_METHOD3(listFiles,
+                       status_t(const std::string&, std::vector<std::string>*, std::string*));
+
+    status_t fetch(const std::string& path, std::string* fetched, std::string*) const override {
+        // Call the mocked function
+        return fetch(path, *fetched);
     }
-
-    MOCK_METHOD2(fetch, status_t(const std::string& path, std::string& fetched));
-    MOCK_METHOD3(listFiles, status_t(const std::string&, std::vector<std::string>*, std::string*));
-
-    status_t fetch(const std::string& path, std::string& fetched, std::string*) override final {
-        return fetch(path, fetched);
-    }
-
    private:
-    FileFetcher real_;
+    FileSystemImpl mImpl;
 };
 
 class MockPartitionMounter : public PartitionMounter {
