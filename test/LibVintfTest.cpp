@@ -827,11 +827,11 @@ TEST_F(LibVintfTest, RuntimeInfo) {
         MatrixKernel kernel(KernelVersion{3, 18, 22}, KernelConfigs(configs));
         CompatibilityMatrix cm = testMatrix(std::move(kernel));
         set(cm, Sepolicy{22, {{25, 0}}});
-        EXPECT_FALSE(ki.checkCompatibility(cm, &error))
-            << "kernel-sepolicy-version shouldn't match";
+        EXPECT_TRUE(ki.checkCompatibility(cm, &error)) << error;
         set(cm, Sepolicy{40, {{25, 0}}});
         EXPECT_FALSE(ki.checkCompatibility(cm, &error))
             << "kernel-sepolicy-version shouldn't match";
+        EXPECT_IN("kernelSepolicyVersion = 30 but required >= 40", error);
     }
 
     {
