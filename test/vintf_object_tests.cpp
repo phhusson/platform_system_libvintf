@@ -34,10 +34,12 @@ using namespace ::android::vintf::details;
 
 using android::FqInstance;
 
-static bool In(const std::string& sub, const std::string& str) {
-    return str.find(sub) != std::string::npos;
+static AssertionResult In(const std::string& sub, const std::string& str) {
+    return (str.find(sub) != std::string::npos ? AssertionSuccess() : AssertionFailure())
+           << "Value is " << str;
 }
-#define EXPECT_IN(sub, str) EXPECT_TRUE(In((sub), (str))) << (str);
+#define EXPECT_IN(sub, str) EXPECT_TRUE(In((sub), (str)))
+#define EXPECT_NOT_IN(sub, str) EXPECT_FALSE(In((sub), (str)))
 
 //
 // Set of Xml1 metadata compatible with each other.
@@ -1028,16 +1030,16 @@ TEST_F(DeprecateTest, CheckMajor2) {
         << "major@1.0 should be deprecated. " << error;
 }
 
-class RegexTest : public VintfObjectTestBase {
+class MultiMatrixTest : public VintfObjectTestBase {
    protected:
     static std::string getFileName(size_t i) {
         return "compatibility_matrix." + std::to_string(static_cast<Level>(i)) + ".xml";
     }
-    virtual void SetUp() override {
+    void SetUpMockSystemMatrices(const std::vector<std::string>& xmls) {
         EXPECT_CALL(fetcher(), listFiles(StrEq(kSystemVintfDir), _, _))
-            .WillRepeatedly(Invoke([](const auto&, auto* out, auto*) {
+            .WillRepeatedly(Invoke([=](const auto&, auto* out, auto*) {
                 size_t i = 1;
-                for (const auto& content : systemMatrixRegexXmls) {
+                for (const auto& content : xmls) {
                     (void)content;
                     out->push_back(getFileName(i));
                     ++i;
@@ -1049,7 +1051,7 @@ class RegexTest : public VintfObjectTestBase {
         EXPECT_CALL(fetcher(), listFiles(StrEq(kOdmManifestFragmentDir), _, _))
             .WillOnce(Return(::android::OK));
         size_t i = 1;
-        for (const auto& content : systemMatrixRegexXmls) {
+        for (const auto& content : xmls) {
             expectFetchRepeatedly(kSystemVintfDir + getFileName(i), content);
             ++i;
         }
@@ -1061,6 +1063,11 @@ class RegexTest : public VintfObjectTestBase {
                                          to_string(static_cast<Level>(level)) + "\"/>");
         VintfObject::GetDeviceHalManifest(true /* skipCache */);
     }
+};
+
+class RegexTest : public MultiMatrixTest {
+   protected:
+    virtual void SetUp() { SetUpMockSystemMatrices(systemMatrixRegexXmls); }
 };
 
 TEST_F(RegexTest, CombineLevel1) {
@@ -1225,6 +1232,77 @@ TEST_F(RegexTest, DeprecateLevel3) {
         EXPECT_EQ(DEPRECATED, VintfObject::CheckDeprecation(pred, &error))
             << deprecated << " should be deprecated.";
     }
+}
+
+//
+// Set of framework matrices of different FCM version with <kernel>.
+//
+
+#define FAKE_KERNEL(__version__, __key__)                   \
+    "    <kernel version=\"" __version__ "\">\n"            \
+    "        <config>\n"                                    \
+    "            <key>CONFIG_" __key__ "</key>\n"           \
+    "            <value type=\"tristate\">y</value>\n"      \
+    "        </config>\n"                                   \
+    "    </kernel>\n"
+
+const static std::vector<std::string> systemMatrixKernelXmls = {
+    // 1.xml
+    "<compatibility-matrix version=\"1.0\" type=\"framework\" level=\"1\">\n"
+    FAKE_KERNEL("1.0.0", "A1")
+    FAKE_KERNEL("2.0.0", "B1")
+    "</compatibility-matrix>\n",
+    // 2.xml
+    "<compatibility-matrix version=\"1.0\" type=\"framework\" level=\"2\">\n"
+    FAKE_KERNEL("2.0.0", "B2")
+    FAKE_KERNEL("3.0.0", "C2")
+    FAKE_KERNEL("4.0.0", "D2")
+    "</compatibility-matrix>\n",
+    // 3.xml
+    "<compatibility-matrix version=\"1.0\" type=\"framework\" level=\"3\">\n"
+    FAKE_KERNEL("4.0.0", "D3")
+    FAKE_KERNEL("5.0.0", "E3")
+    "</compatibility-matrix>\n",
+};
+
+class KernelTest : public MultiMatrixTest {};
+
+// Assume that we are developing level 2. Test that old <kernel> requirements should
+// not change and new <kernel> versions are added.
+TEST_F(KernelTest, Level1AndLevel2) {
+    SetUpMockSystemMatrices({systemMatrixKernelXmls[0], systemMatrixKernelXmls[1]});
+
+    expectTargetFcmVersion(1);
+    auto matrix = VintfObject::GetFrameworkCompatibilityMatrix(true /* skipCache */);
+    ASSERT_NE(nullptr, matrix);
+    std::string xml = gCompatibilityMatrixConverter(*matrix);
+
+    EXPECT_IN(FAKE_KERNEL("1.0.0", "A1"), xml) << "\nOld requirements must not change.";
+    EXPECT_IN(FAKE_KERNEL("2.0.0", "B1"), xml) << "\nOld requirements must not change.";
+    EXPECT_IN(FAKE_KERNEL("3.0.0", "C2"), xml) << "\nShould see <kernel> from new matrices";
+    EXPECT_IN(FAKE_KERNEL("4.0.0", "D2"), xml) << "\nShould see <kernel> from new matrices";
+
+    EXPECT_NOT_IN(FAKE_KERNEL("2.0.0", "B2"), xml) << "\nOld requirements must not change";
+}
+
+// Assume that we are developing level 3. Test that old <kernel> requirements should
+// not change and new <kernel> versions are added.
+TEST_F(KernelTest, Level1AndMore) {
+    SetUpMockSystemMatrices({systemMatrixKernelXmls});
+
+    expectTargetFcmVersion(1);
+    auto matrix = VintfObject::GetFrameworkCompatibilityMatrix(true /* skipCache */);
+    ASSERT_NE(nullptr, matrix);
+    std::string xml = gCompatibilityMatrixConverter(*matrix);
+
+    EXPECT_IN(FAKE_KERNEL("1.0.0", "A1"), xml) << "\nOld requirements must not change.";
+    EXPECT_IN(FAKE_KERNEL("2.0.0", "B1"), xml) << "\nOld requirements must not change.";
+    EXPECT_IN(FAKE_KERNEL("3.0.0", "C2"), xml) << "\nOld requirements must not change.";
+    EXPECT_IN(FAKE_KERNEL("4.0.0", "D2"), xml) << "\nOld requirements must not change.";
+    EXPECT_IN(FAKE_KERNEL("5.0.0", "E3"), xml) << "\nShould see <kernel> from new matrices";
+
+    EXPECT_NOT_IN(FAKE_KERNEL("2.0.0", "B2"), xml) << "\nOld requirements must not change";
+    EXPECT_NOT_IN(FAKE_KERNEL("4.0.0", "D3"), xml) << "\nOld requirements must not change";
 }
 
 int main(int argc, char** argv) {
