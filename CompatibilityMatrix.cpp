@@ -194,6 +194,36 @@ bool CompatibilityMatrix::addAllXmlFilesAsOptional(CompatibilityMatrix* other, s
     return true;
 }
 
+bool CompatibilityMatrix::addAllKernelsAsOptional(CompatibilityMatrix* other, std::string* error) {
+    if (other == nullptr || other->level() <= level()) {
+        return true;
+    }
+
+    for (MatrixKernel& kernelToAdd : other->framework.mKernels) {
+        bool exists =
+            std::any_of(this->framework.mKernels.begin(), this->framework.mKernels.end(),
+                        [&kernelToAdd](const MatrixKernel& existing) {
+                            return kernelToAdd.minLts().version == existing.minLts().version &&
+                                   kernelToAdd.minLts().majorRev == existing.minLts().majorRev;
+                        });
+
+        if (exists) {
+            // Shouldn't retroactively add requirements to minLts(), so ignore this.
+            // This happens even when kernelToAdd.conditions() != existing.conditions().
+            continue;
+        }
+
+        KernelVersion minLts = kernelToAdd.minLts();
+        if (!add(std::move(kernelToAdd))) {
+            if (error) {
+                *error = "Cannot add " + to_string(minLts) + " for unknown reason.";
+            }
+            return false;
+        }
+    }
+    return true;
+}
+
 bool operator==(const CompatibilityMatrix &lft, const CompatibilityMatrix &rgt) {
     return lft.mType == rgt.mType && lft.mLevel == rgt.mLevel && lft.mHals == rgt.mHals &&
            lft.mXmlFiles == rgt.mXmlFiles &&
@@ -258,9 +288,32 @@ CompatibilityMatrix* CompatibilityMatrix::findOrInsertBaseMatrix(
     return matrix;
 }
 
+// Check if there are two files declaring level="1", for example, because
+// combine() use this assumption to simplify a lot of logic.
+static bool checkDuplicateLevels(const std::vector<Named<CompatibilityMatrix>>& matrices,
+                                 std::string* error) {
+    std::map<Level, const std::string*> existingLevels;
+    for (const auto& e : matrices) {
+        if (e.object.level() == Level::UNSPECIFIED &&
+            existingLevels.find(e.object.level()) != existingLevels.end()) {
+            if (error) {
+                *error = "Conflict of levels: file \"" +
+                         *existingLevels.find(e.object.level())->second + "\" and \"" + e.name +
+                         " both have level " + to_string(e.object.level());
+            }
+            return false;
+        }
+        existingLevels.emplace(e.object.level(), &e.name);
+    }
+    return true;
+}
+
 CompatibilityMatrix* CompatibilityMatrix::combine(Level deviceLevel,
                                                   std::vector<Named<CompatibilityMatrix>>* matrices,
                                                   std::string* error) {
+    if (!checkDuplicateLevels(*matrices, error)) {
+        return nullptr;
+    }
 
     CompatibilityMatrix* matrix = findOrInsertBaseMatrix(matrices, error);
     if (matrix == nullptr) {
@@ -312,6 +365,13 @@ CompatibilityMatrix* CompatibilityMatrix::combine(Level deviceLevel,
         }
     }
 
+    // Add <kernel> from exact "level", then optionally add <kernel> from high levels to low levels.
+    // For example, (each letter is a kernel version x.y.z)
+    // 1.xml: A1, B1
+    // 2.xml: B2, C2, D2
+    // 3.xml: D3, E3
+    // Then the combined 1.xml should have
+    // A1, B1 (from 1.xml, required), C2, D2, E3 (optional, use earliest possible).
     for (auto& e : *matrices) {
         if (&e.object != matrix && e.object.level() == deviceLevel &&
             e.object.type() == SchemaType::FRAMEWORK) {
@@ -325,6 +385,27 @@ CompatibilityMatrix* CompatibilityMatrix::combine(Level deviceLevel,
                     return nullptr;
                 }
             }
+        }
+    }
+
+    // There is only one file per level, hence a map is used instead of a multimap. Also, there is
+    // no good ordering (i.e. priority) for multiple files with the same level.
+    std::map<Level, Named<CompatibilityMatrix>*> matricesMap;
+    for (auto& e : *matrices) {
+        if (&e.object != matrix && e.object.level() != Level::UNSPECIFIED &&
+            e.object.level() > deviceLevel && e.object.type() == SchemaType::FRAMEWORK) {
+            matricesMap.emplace(e.object.level(), &e);
+        }
+    }
+
+    for (auto&& pair : matricesMap) {
+        if (!matrix->addAllKernelsAsOptional(&pair.second->object, error)) {
+            if (error) {
+                *error = "Cannot add new kernel versions from FCM version " +
+                         to_string(pair.first) + " (" + pair.second->name + ")" +
+                         " to FCM version " + to_string(deviceLevel) + ": " + *error;
+            }
+            return nullptr;
         }
     }
 
