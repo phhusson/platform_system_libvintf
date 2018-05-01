@@ -266,7 +266,7 @@ class AssembleVintf {
             }
 
             matrix->framework.mSepolicy =
-                Sepolicy(kernelSepolicyVers, {{sepolicyVers.majorVer, sepolicyVers.minorVer}});
+                Sepolicy(kernelSepolicyVers, {{sepolicyVers.majorVer, sepolicyVers.minorVer}, { 26, 0}});
 
             Version avbMetaVersion;
             if (!getFlag("FRAMEWORK_VBMETA_VERSION", &avbMetaVersion)) {
