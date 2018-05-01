@@ -75,6 +75,9 @@ struct CompatibilityMatrix : public HalGroup<MatrixHal>, public XmlFileGroup<Mat
     // Similar to addAllHalsAsOptional but on <xmlfile> entries.
     bool addAllXmlFilesAsOptional(CompatibilityMatrix* other, std::string* error);
 
+    // Similar to addAllHalsAsOptional but on <kernel> entries.
+    bool addAllKernelsAsOptional(CompatibilityMatrix* other, std::string* error);
+
     status_t fetchAllInformation(const std::string& path, std::string* error = nullptr);
 
     // Combine a subset of "matrices". For each CompatibilityMatrix in matrices,
