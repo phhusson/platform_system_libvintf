@@ -60,6 +60,8 @@ struct ManifestHal {
         return transportArch.transport;
     }
 
+    inline Arch arch() const { return transportArch.arch; }
+
     inline const std::string& getName() const { return name; }
     bool forEachInstance(const std::function<bool(const ManifestInstance&)>& func) const;
 
