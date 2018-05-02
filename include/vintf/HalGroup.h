@@ -50,9 +50,9 @@ struct HalGroup {
     // Add an hal to this HalGroup so that it can be constructed programatically.
     virtual bool add(Hal&& hal) { return addInternal(std::move(hal)) != nullptr; }
 
+   protected:
     // Get all hals with the given name (e.g "android.hardware.camera").
     // There could be multiple hals that matches the same given name.
-    // TODO(b/74247301) Deprecated; use forEachInstanceOfPackage instead.
     std::vector<const Hal*> getHals(const std::string& name) const {
         std::vector<const Hal*> ret;
         auto range = mHals.equal_range(name);
@@ -65,7 +65,6 @@ struct HalGroup {
     // Get all hals with the given name (e.g "android.hardware.camera").
     // There could be multiple hals that matches the same given name.
     // Non-const version of the above getHals() method.
-    // TODO(b/74247301) Deprecated; use forEachInstanceOfPackage instead.
     std::vector<Hal*> getHals(const std::string& name) {
         std::vector<Hal*> ret;
         auto range = mHals.equal_range(name);
@@ -75,6 +74,7 @@ struct HalGroup {
         return ret;
     }
 
+   public:
     // Apply func to all instances.
     bool forEachInstance(const std::function<bool(const InstanceType&)>& func) const {
         for (const auto& hal : getHals()) {

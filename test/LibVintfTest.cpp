@@ -101,6 +101,12 @@ public:
     ConstMultiMapValueIterable<std::string, ManifestHal> getHals(const HalManifest& vm) {
         return vm.getHals();
     }
+    std::vector<const ManifestHal*> getHals(const HalManifest& vm, const std::string& name) {
+        return vm.getHals(name);
+    }
+    std::vector<const MatrixHal*> getHals(const CompatibilityMatrix& cm, const std::string& name) {
+        return cm.getHals(name);
+    }
     bool isValid(const ManifestHal &mh) {
         return mh.isValid();
     }
@@ -741,11 +747,11 @@ TEST_F(LibVintfTest, HalManifestGetHals) {
                                              {Version(1, 0), Version(2, 1)},
                                              {Transport::PASSTHROUGH, Arch::ARCH_32_64},
                                              {{"INfc", {"INfc", {"default"}}}}};
-    auto cameraHals = vm.getHals("android.hardware.camera");
+    auto cameraHals = getHals(vm, "android.hardware.camera");
     EXPECT_EQ((int)cameraHals.size(), 2);
     EXPECT_EQ(*cameraHals[0], expectedCameraHalV1_2);
     EXPECT_EQ(*cameraHals[1], expectedCameraHalV2_0);
-    auto nfcHals = vm.getHals("android.hardware.nfc");
+    auto nfcHals = getHals(vm, "android.hardware.nfc");
     EXPECT_EQ((int)nfcHals.size(), 1);
     EXPECT_EQ(*nfcHals[0], expectedNfcHal);
 }
@@ -775,10 +781,10 @@ TEST_F(LibVintfTest, CompatibilityMatrixGetHals) {
                                          {{VersionRange(4, 5, 6), VersionRange(10, 11, 12)}},
                                          true /* optional */,
                                          testHalInterfaces()};
-    auto cameraHals = cm.getHals("android.hardware.camera");
+    auto cameraHals = getHals(cm, "android.hardware.camera");
     EXPECT_EQ((int)cameraHals.size(), 1);
     EXPECT_EQ(*cameraHals[0], expectedCameraHal);
-    auto nfcHals = cm.getHals("android.hardware.nfc");
+    auto nfcHals = getHals(cm, "android.hardware.nfc");
     EXPECT_EQ((int)nfcHals.size(), 1);
     EXPECT_EQ(*nfcHals[0], expectedNfcHal);
 }
@@ -2658,10 +2664,10 @@ TEST_F(LibVintfTest, ManifestHalOverride) {
         "    </hal>\n"
         "</manifest>\n";
     EXPECT_TRUE(gHalManifestConverter(&manifest, xml)) << gHalManifestConverter.lastError();
-    const auto& foo = manifest.getHals("android.hardware.foo");
+    const auto& foo = getHals(manifest, "android.hardware.foo");
     ASSERT_FALSE(foo.empty());
     EXPECT_TRUE(foo.front()->isOverride());
-    const auto& bar = manifest.getHals("android.hardware.bar");
+    const auto& bar = getHals(manifest, "android.hardware.bar");
     ASSERT_FALSE(bar.empty());
     EXPECT_FALSE(bar.front()->isOverride());
 }
@@ -3112,13 +3118,13 @@ TEST_F(LibVintfTest, DisabledHal) {
         "</manifest>\n";
     ASSERT_TRUE(gHalManifestConverter(&manifest, xml, &error)) << error;
 
-    auto foo = manifest.getHals("android.hardware.foo");
+    auto foo = getHals(manifest, "android.hardware.foo");
     ASSERT_EQ(1u, foo.size());
     EXPECT_TRUE(foo.front()->isDisabledHal());
-    auto bar = manifest.getHals("android.hardware.bar");
+    auto bar = getHals(manifest, "android.hardware.bar");
     ASSERT_EQ(1u, bar.size());
     EXPECT_FALSE(bar.front()->isDisabledHal());
-    auto baz = manifest.getHals("android.hardware.baz");
+    auto baz = getHals(manifest, "android.hardware.baz");
     ASSERT_EQ(1u, baz.size());
     EXPECT_FALSE(baz.front()->isDisabledHal());
 }
