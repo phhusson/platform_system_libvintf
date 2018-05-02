@@ -70,8 +70,6 @@ struct ManifestHal {
     // a HAL is disabled on certain products.
     bool isDisabledHal() const;
 
-    // insert instance to <interface> <instance>.
-    void insertLegacyInstance(const std::string& interface, const std::string& instance);
    private:
     friend struct LibVintfTest;
     friend struct ManifestHalConverter;

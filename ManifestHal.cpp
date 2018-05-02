@@ -159,12 +159,5 @@ bool ManifestHal::insertInstance(const FqInstance& e, std::string* error) {
     return true;
 }
 
-void ManifestHal::insertLegacyInstance(const std::string& interface, const std::string& instance) {
-    auto it = interfaces.find(interface);
-    if (it == interfaces.end())
-        it = interfaces.emplace(interface, HalInterface{interface, {}}).first;
-    it->second.insertInstance(instance, false /* isRegex */);
-}
-
 } // namespace vintf
 } // namespace android
