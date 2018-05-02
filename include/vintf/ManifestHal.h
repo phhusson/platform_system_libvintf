@@ -93,7 +93,11 @@ struct ManifestHal {
     // Existing instances will be ignored.
     // Pre: all instances to be inserted must satisfy
     // !hasPackage() && hasVersion() && hasInterface() && hasInstance()
+    bool insertInstance(const FqInstance& fqInstance, std::string* error = nullptr);
     bool insertInstances(const std::set<FqInstance>& fqInstances, std::string* error = nullptr);
+
+    // Verify instance before inserting.
+    bool verifyInstance(const FqInstance& fqInstance, std::string* error = nullptr) const;
 };
 
 } // namespace vintf

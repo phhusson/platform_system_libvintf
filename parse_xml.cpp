@@ -705,6 +705,12 @@ struct ManifestHalConverter : public XmlNodeConverter<ManifestHal> {
         if (!parseChildren(root, fqInstanceConverter, &fqInstances, error)) {
             return false;
         }
+        for (const auto& e : fqInstances) {
+            if (e.hasPackage()) {
+                *error = "Should not specify package: \"" + e.string() + "\"";
+                return false;
+            }
+        }
         if (!object->insertInstances(fqInstances, error)) {
             return false;
         }
