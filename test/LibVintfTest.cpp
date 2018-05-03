@@ -98,7 +98,7 @@ public:
     MatrixHal *getAnyHal(CompatibilityMatrix &cm, const std::string &name) {
         return cm.getAnyHal(name);
     }
-    ConstMultiMapValueIterable<std::string, ManifestHal> getHals(HalManifest &vm) {
+    ConstMultiMapValueIterable<std::string, ManifestHal> getHals(const HalManifest& vm) {
         return vm.getHals();
     }
     bool isValid(const ManifestHal &mh) {
