@@ -143,11 +143,13 @@ struct HalGroup {
     // override this to filter for add.
     virtual bool shouldAdd(const Hal&) const { return true; }
 
-    // Return an iterable to all ManifestHal objects. Call it as follows:
+    // Return an iterable to all Hal objects. Call it as follows:
     // for (const auto& e : vm.getHals()) { }
-    ConstMultiMapValueIterable<std::string, Hal> getHals() const {
-        return ConstMultiMapValueIterable<std::string, Hal>(mHals);
-    }
+    ConstMultiMapValueIterable<std::string, Hal> getHals() const { return iterateValues(mHals); }
+
+    // Return an iterable to all Hal objects. Call it as follows:
+    // for (const auto& e : vm.getHals()) { }
+    MultiMapValueIterable<std::string, Hal> getHals() { return iterateValues(mHals); }
 
     // Get any HAL component based on the component name. Return any one
     // if multiple. Return nullptr if the component does not exist. This is only
