@@ -331,6 +331,7 @@ class AssembleVintfImpl : public AssembleVintf {
                 }
             }
 
+            // TODO(b/78943004): add everything
             if (!halManifest->addAllHals(&halToAdd, &error)) {
                 std::cerr << "File \"" << path << "\" cannot be added: conflict on HAL \"" << error
                           << "\" with an existing HAL. See <hal> with the same name "
@@ -341,9 +342,8 @@ class AssembleVintfImpl : public AssembleVintf {
         }
 
         if (halManifest->mType == SchemaType::DEVICE) {
-            if (!getFlag("BOARD_SEPOLICY_VERS", &halManifest->device.mSepolicyVersion)) {
-                return false;
-            }
+            (void)getFlagIfUnset("BOARD_SEPOLICY_VERS", &halManifest->device.mSepolicyVersion);
+
             if (!setDeviceFcmVersion(halManifest)) {
                 return false;
             }
