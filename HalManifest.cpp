@@ -446,5 +446,22 @@ bool HalManifest::hasInstance(const std::string& halName, const Version& version
     return found;
 }
 
+bool HalManifest::insertInstance(const FqInstance& fqInstance, Transport transport, Arch arch,
+                                 HalFormat format, std::string* error) {
+    for (ManifestHal& hal : getHals()) {
+        if (hal.name == fqInstance.getPackage() && hal.format == format &&
+            hal.transport() == transport && hal.arch() == arch) {
+            return hal.insertInstance(fqInstance, error);
+        }
+    }
+
+    ManifestHal hal;
+    hal.name = fqInstance.getPackage();
+    hal.format = format;
+    hal.transportArch = TransportArch(transport, arch);
+    if (!hal.insertInstance(fqInstance, error)) return false;
+    return add(std::move(hal));
+}
+
 } // namespace vintf
 } // namespace android
