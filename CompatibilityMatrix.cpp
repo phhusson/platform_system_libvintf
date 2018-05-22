@@ -439,5 +439,9 @@ bool CompatibilityMatrix::matchInstance(const std::string& halName, const Versio
     return found;
 }
 
+std::string CompatibilityMatrix::getVendorNdkVersion() const {
+    return type() == SchemaType::DEVICE ? device.mVendorNdk.version() : "";
+}
+
 } // namespace vintf
 } // namespace android
