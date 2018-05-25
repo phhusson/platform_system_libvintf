@@ -2542,6 +2542,8 @@ TEST_F(LibVintfTest, VendorNdk) {
         << gCompatibilityMatrixConverter.lastError();
     EXPECT_EQ(xml, gCompatibilityMatrixConverter(cm));
 
+    EXPECT_EQ("P", cm.getVendorNdkVersion());
+
     {
         HalManifest manifest;
         xml =

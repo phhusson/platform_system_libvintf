@@ -63,6 +63,8 @@ struct CompatibilityMatrix : public HalGroup<MatrixHal>, public XmlFileGroup<Mat
         const std::string& package, const Version& expectVersion,
         const std::function<bool(const MatrixInstance&)>& func) const override;
 
+    std::string getVendorNdkVersion() const;
+
    private:
     bool add(MatrixHal &&hal);
     bool add(MatrixKernel &&kernel);
