@@ -29,3 +29,5 @@ LOCAL_STATIC_LIBRARIES := \
 LOCAL_EXPORT_STATIC_LIBRARY_HEADERS := libhidl-gen-utils
 
 include $(BUILD_STATIC_LIBRARY)
+
+$(call dist-for-goals,dist_files,$(HOST_OUT_EXECUTABLES)/checkvintf)
