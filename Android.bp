@@ -22,6 +22,12 @@ cc_defaults {
         "-Wall",
         "-Werror",
     ],
+
+    target: {
+        android: {
+            cflags: ["-DLIBVINTF_TARGET"],
+        },
+    }
 }
 
 cc_library_static {
@@ -74,7 +80,6 @@ cc_library_static {
             srcs: [
                 "RuntimeInfo-target.cpp",
             ],
-            cflags: ["-DLIBVINTF_TARGET"],
         },
     }
 }
