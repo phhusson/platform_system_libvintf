@@ -129,14 +129,13 @@ cc_binary_host {
     name: "checkvintf",
     defaults: ["libvintf-defaults"],
     static_libs: [
+        "libbase",
         "libhidl-gen-utils",
         "libvintf_common",
         "libutils",
         "libtinyxml2",
     ],
-    shared_libs: [
-        "libbase",
-    ],
+    stl: "libc++_static",
     srcs: [
         "check_vintf.cpp",
     ],
