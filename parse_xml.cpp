@@ -862,6 +862,7 @@ struct CompatibilityMatrixConverter : public XmlNodeConverter<CompatibilityMatri
             appendChildren(root, matrixKernelConverter, m.framework.mKernels, d);
             appendChild(root, sepolicyConverter(m.framework.mSepolicy, d));
             appendChild(root, avbConverter(m.framework.mAvbMetaVersion, d));
+            appendChild(root, avbConverter({1, 0}, d));
         } else if (m.mType == SchemaType::DEVICE) {
             appendChild(root, vndkConverter(m.device.mVndk, d));
         }
