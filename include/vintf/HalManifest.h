@@ -159,6 +159,9 @@ struct HalManifest : public HalGroup<ManifestHal>, public XmlFileGroup<ManifestX
     // (instance in manifest) => (instance in matrix).
     std::set<std::string> checkUnusedHals(const CompatibilityMatrix& mat) const;
 
+    // Check that manifest has no entries.
+    bool empty() const;
+
     SchemaType mType;
     Level mLevel = Level::UNSPECIFIED;
     // version attribute. Default is 1.0 for manifests created programatically.

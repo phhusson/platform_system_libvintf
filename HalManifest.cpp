@@ -463,5 +463,11 @@ bool HalManifest::insertInstance(const FqInstance& fqInstance, Transport transpo
     return add(std::move(hal));
 }
 
+bool HalManifest::empty() const {
+    HalManifest emptyManifest;
+    emptyManifest.setType(type());
+    return (*this) == emptyManifest;
+}
+
 } // namespace vintf
 } // namespace android

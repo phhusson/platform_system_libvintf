@@ -316,27 +316,38 @@ class AssembleVintfImpl : public AssembleVintf {
         HalManifest* halManifest = &halManifests->front().object;
         for (auto it = halManifests->begin() + 1; it != halManifests->end(); ++it) {
             const std::string& path = it->name;
-            HalManifest& halToAdd = it->object;
+            HalManifest& manifestToAdd = it->object;
 
-            if (halToAdd.level() != Level::UNSPECIFIED) {
+            if (manifestToAdd.level() != Level::UNSPECIFIED) {
                 if (halManifest->level() == Level::UNSPECIFIED) {
-                    halManifest->mLevel = halToAdd.level();
-                } else if (halManifest->level() != halToAdd.level()) {
+                    halManifest->mLevel = manifestToAdd.level();
+                } else if (halManifest->level() != manifestToAdd.level()) {
                     std::cerr << "Inconsistent FCM Version in HAL manifests:" << std::endl
                               << "    File '" << halManifests->front().name << "' has level "
                               << halManifest->level() << std::endl
-                              << "    File '" << path << "' has level " << halToAdd.level()
+                              << "    File '" << path << "' has level " << manifestToAdd.level()
                               << std::endl;
                     return false;
                 }
             }
 
             // TODO(b/78943004): add everything
-            if (!halManifest->addAllHals(&halToAdd, &error)) {
+            if (!halManifest->addAllHals(&manifestToAdd, &error)) {
                 std::cerr << "File \"" << path << "\" cannot be added: conflict on HAL \"" << error
                           << "\" with an existing HAL. See <hal> with the same name "
                           << "in previously parsed files or previously declared in this file."
                           << std::endl;
+                return false;
+            }
+
+            // Check that manifestToAdd is empty.
+            if (!manifestToAdd.empty()) {
+                std::cerr << "File \"" << path << "\" contains extraneous entries and attributes. "
+                          << "This is currently unsupported (b/78943004); it can only contain "
+                          << "<hal>s and attribute \"type\". Only the first input "
+                          << "file to assemble_vintf can contain other things. "
+                          << "Remaining entries and attributes are:" << std::endl
+                          << gHalManifestConverter(manifestToAdd);
                 return false;
             }
         }
