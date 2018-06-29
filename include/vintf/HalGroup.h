@@ -44,6 +44,7 @@ struct HalGroup {
                 return false;
             }
         }
+        other->mHals.clear();
         return true;
     }
 
