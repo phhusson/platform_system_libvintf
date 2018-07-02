@@ -294,7 +294,7 @@ static bool checkDuplicateLevels(const std::vector<Named<CompatibilityMatrix>>& 
                                  std::string* error) {
     std::map<Level, const std::string*> existingLevels;
     for (const auto& e : matrices) {
-        if (e.object.level() == Level::UNSPECIFIED &&
+        if (e.object.level() != Level::UNSPECIFIED &&
             existingLevels.find(e.object.level()) != existingLevels.end()) {
             if (error) {
                 *error = "Conflict of levels: file \"" +
