@@ -27,28 +27,6 @@ namespace android {
 namespace vintf {
 namespace details {
 
-static std::mutex sFileSystemMutex;
-static std::unique_ptr<FileSystem> sFileSystem{};
-
-bool initFileSystem(std::unique_ptr<FileSystem>&& value) {
-    std::lock_guard<std::mutex> lock(sFileSystemMutex);
-    if (sFileSystem != nullptr) return false;
-    sFileSystem = std::move(value);
-    return true;
-}
-
-FileSystem& getFileSystem() {
-    std::lock_guard<std::mutex> lock(sFileSystemMutex);
-    if (sFileSystem == nullptr) {
-#ifdef LIBVINTF_TARGET
-        sFileSystem = std::make_unique<details::FileSystemImpl>();
-#else
-        sFileSystem = std::make_unique<details::FileSystemNoOp>();
-#endif
-    }
-    return *sFileSystem;
-}
-
 status_t FileSystemImpl::fetch(const std::string& path, std::string* fetched,
                                std::string* error) const {
     std::ifstream in;
