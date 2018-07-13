@@ -43,24 +43,21 @@ enum Option : int {
 // command line arguments
 using Args = std::multimap<Option, std::string>;
 
-class HostFileSystem : public FileSystem {
+class HostFileSystem : public FileSystemUnderPath {
    public:
-    HostFileSystem(const std::string& rootdir) {
-        mRootDir = rootdir;
-        if (!mRootDir.empty() && mRootDir.back() != '/') {
-            mRootDir.push_back('/');
-        }
-    }
+    HostFileSystem(const std::string& rootdir) : FileSystemUnderPath(rootdir) {}
     status_t fetch(const std::string& path, std::string* fetched,
                    std::string* error) const override {
-        status_t status = mImpl.fetch(mRootDir + path, fetched, error);
-        std::cerr << "Debug: Fetch '" << mRootDir << path << "': " << toString(status) << std::endl;
+        status_t status = FileSystemUnderPath::fetch(path, fetched, error);
+        std::cerr << "Debug: Fetch '" << getRootDir() << path << "': " << toString(status)
+                  << std::endl;
         return status;
     }
     status_t listFiles(const std::string& path, std::vector<std::string>* out,
                        std::string* error) const override {
-        status_t status = mImpl.listFiles(mRootDir + path, out, error);
-        std::cerr << "Debug: List '" << mRootDir << path << "': " << toString(status) << std::endl;
+        status_t status = FileSystemUnderPath::listFiles(path, out, error);
+        std::cerr << "Debug: List '" << getRootDir() << path << "': " << toString(status)
+                  << std::endl;
         return status;
     }
 
@@ -68,8 +65,6 @@ class HostFileSystem : public FileSystem {
     static std::string toString(status_t status) {
         return status == OK ? "SUCCESS" : strerror(-status);
     }
-    std::string mRootDir;
-    FileSystemImpl mImpl;
 };
 
 class PresetPropertyFetcher : public PropertyFetcher {
