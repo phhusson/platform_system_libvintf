@@ -33,7 +33,7 @@ struct [[deprecated]] VndkVersionRange {
     VndkVersionRange(size_t s, size_t v, size_t pi, size_t pa)
         : sdk(s), vndk(v), patchMin(pi), patchMax(pa) {}
 
-    inline bool isSingleVersion() const { return patchMin == patchMax; };
+    inline bool isSingleVersion() const { return patchMin == patchMax; }
 
     size_t sdk;
     size_t vndk;
