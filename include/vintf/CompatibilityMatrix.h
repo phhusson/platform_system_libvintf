@@ -22,6 +22,7 @@
 
 #include <utils/Errors.h>
 
+#include "FileSystem.h"
 #include "HalGroup.h"
 #include "Level.h"
 #include "MapValueIterator.h"
@@ -80,7 +81,8 @@ struct CompatibilityMatrix : public HalGroup<MatrixHal>, public XmlFileGroup<Mat
     // Similar to addAllHalsAsOptional but on <kernel> entries.
     bool addAllKernelsAsOptional(CompatibilityMatrix* other, std::string* error);
 
-    status_t fetchAllInformation(const std::string& path, std::string* error = nullptr);
+    status_t fetchAllInformation(const FileSystem* fileSystem, const std::string& path,
+                                 std::string* error = nullptr);
 
     // Combine a subset of "matrices". For each CompatibilityMatrix in matrices,
     // - If level() == UNSPECIFIED, use it as the base matrix (for non-HAL, non-XML-file

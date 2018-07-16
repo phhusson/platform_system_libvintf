@@ -107,24 +107,13 @@ class PresetPropertyFetcher : public PropertyFetcher {
     std::map<std::string, std::string> mProps;
 };
 
-// globals
-static PartitionMounter partitionMounter;
-PartitionMounter* gPartitionMounter = &partitionMounter;
-
-static ObjectFactory<RuntimeInfo> runtimeInfoFactory;
-ObjectFactory<RuntimeInfo>* gRuntimeInfoFactory = &runtimeInfoFactory;
-
-static PresetPropertyFetcher hostPropertyFetcher;
-const PropertyFetcher& getPropertyFetcher() {
-    return hostPropertyFetcher;
-}
-
 // helper functions
 template <typename T>
-std::unique_ptr<T> readObject(const std::string& path, const XmlConverter<T>& converter) {
+std::unique_ptr<T> readObject(FileSystem* fileSystem, const std::string& path,
+                              const XmlConverter<T>& converter) {
     std::string xml;
     std::string error;
-    status_t err = details::getFileSystem().fetch(path, &xml, &error);
+    status_t err = fileSystem->fetch(path, &xml, &error);
     if (err != OK) {
         std::cerr << "Error: Cannot read '" << path << "' (" << strerror(-err) << "): " << error
                   << std::endl;
@@ -139,13 +128,9 @@ std::unique_ptr<T> readObject(const std::string& path, const XmlConverter<T>& co
 }
 
 int checkCompatibilityForFiles(const std::string& manifestPath, const std::string& matrixPath) {
-    if (!VintfObject::InitFileSystem(std::make_unique<FileSystemImpl>())) {
-        std::cerr << "Cannot initialize FileSystem object." << std::endl;
-        return NO_INIT;
-    }
-
-    auto manifest = readObject(manifestPath, gHalManifestConverter);
-    auto matrix = readObject(matrixPath, gCompatibilityMatrixConverter);
+    auto fileSystem = std::make_unique<FileSystemImpl>();
+    auto manifest = readObject(fileSystem.get(), manifestPath, gHalManifestConverter);
+    auto matrix = readObject(fileSystem.get(), matrixPath, gCompatibilityMatrixConverter);
     if (manifest == nullptr || matrix == nullptr) {
         return -1;
     }
@@ -240,13 +225,12 @@ int usage(const char* me) {
 }
 
 int checkAllFiles(const std::string& rootdir, const Properties& props, std::string* error) {
-    if (!VintfObject::InitFileSystem(std::make_unique<HostFileSystem>(rootdir))) {
-        std::cerr << "Cannot initialize FileSystem object." << std::endl;
-        return NO_INIT;
-    }
-    hostPropertyFetcher.setProperties(props);
-
-    return VintfObject::CheckCompatibility({} /* packageInfo */, error, DISABLE_RUNTIME_INFO);
+    auto hostPropertyFetcher = std::make_unique<PresetPropertyFetcher>();
+    hostPropertyFetcher->setProperties(props);
+    VintfObject vintfObject(std::make_unique<HostFileSystem>(rootdir),
+                            nullptr /* partition mounter */, nullptr /* runtime info factory */,
+                            std::move(hostPropertyFetcher));
+    return vintfObject.checkCompatibility({} /* packageInfo */, error, DISABLE_RUNTIME_INFO);
 }
 
 }  // namespace details
