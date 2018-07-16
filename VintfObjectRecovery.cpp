@@ -42,12 +42,14 @@ static FstabMgr defaultFstabMgr() {
 
 class RecoveryPartitionMounter : public PartitionMounter {
    public:
+    RecoveryPartitionMounter(PropertyFetcher* propertyFetcher)
+        : mPropertyFetcher(propertyFetcher) {}
     status_t mountSystem() const override {
         FstabMgr fstab = defaultFstabMgr();
         if (fstab == NULL) {
             return UNKNOWN_ERROR;
         }
-        if (getPropertyFetcher().getBoolProperty("ro.build.system_root_image", false)) {
+        if (mPropertyFetcher->getBoolProperty("ro.build.system_root_image", false)) {
             return mountAt(fstab, "/", "/system_root");
         } else {
             return mountAt(fstab, "/system", "/system");
@@ -63,7 +65,7 @@ class RecoveryPartitionMounter : public PartitionMounter {
     }
 
     status_t umountSystem() const override {
-        if (getPropertyFetcher().getBoolProperty("ro.build.system_root_image", false)) {
+        if (mPropertyFetcher->getBoolProperty("ro.build.system_root_image", false)) {
             return umount("/system_root");
         } else {
             return umount("/system");
@@ -73,6 +75,9 @@ class RecoveryPartitionMounter : public PartitionMounter {
     status_t umountVendor() const override {
         return umount("/vendor");
     }
+
+   private:
+    PropertyFetcher* mPropertyFetcher{nullptr};
 };
 
 } // namespace details
@@ -80,8 +85,12 @@ class RecoveryPartitionMounter : public PartitionMounter {
 // static
 int32_t VintfObjectRecovery::CheckCompatibility(
         const std::vector<std::string> &xmls, std::string *error) {
-    static details::RecoveryPartitionMounter mounter;
-    return details::checkCompatibility(xmls, true /* mount */, mounter, error);
+    auto propertyFetcher = std::make_unique<details::PropertyFetcherImpl>();
+    auto mounter = std::make_unique<details::RecoveryPartitionMounter>(propertyFetcher.get());
+    auto vintfObject = std::make_unique<VintfObject>(nullptr /* fileSystem */, std::move(mounter),
+                                                     nullptr /* runtime info factory */,
+                                                     std::move(propertyFetcher));
+    return vintfObject->checkCompatibility(xmls, true /* mount */, error);
 }
 
 

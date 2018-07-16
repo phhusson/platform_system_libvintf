@@ -17,22 +17,39 @@
 
 #include "utils.h"
 
+#include <android-base/logging.h>
+#include <android-base/properties.h>
+
 namespace android {
 namespace vintf {
 namespace details {
 
-std::string PropertyFetcher::getProperty(const std::string&,
-                                         const std::string& defaultValue) const {
+std::string PropertyFetcherNoOp::getProperty(const std::string&,
+                                             const std::string& defaultValue) const {
     return defaultValue;
 }
 
-uint64_t PropertyFetcher::getUintProperty(const std::string&, uint64_t,
-                                          uint64_t defaultValue) const {
+uint64_t PropertyFetcherNoOp::getUintProperty(const std::string&, uint64_t,
+                                              uint64_t defaultValue) const {
     return defaultValue;
 }
 
-bool PropertyFetcher::getBoolProperty(const std::string&, bool defaultValue) const {
+bool PropertyFetcherNoOp::getBoolProperty(const std::string&, bool defaultValue) const {
     return defaultValue;
+}
+
+std::string PropertyFetcherImpl::getProperty(const std::string& key,
+                                             const std::string& defaultValue) const {
+    return android::base::GetProperty(key, defaultValue);
+}
+
+uint64_t PropertyFetcherImpl::getUintProperty(const std::string& key, uint64_t defaultValue,
+                                              uint64_t max) const {
+    return android::base::GetUintProperty(key, defaultValue, max);
+}
+
+bool PropertyFetcherImpl::getBoolProperty(const std::string& key, bool defaultValue) const {
+    return android::base::GetBoolProperty(key, defaultValue);
 }
 
 }  // namespace details

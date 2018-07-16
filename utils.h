@@ -38,14 +38,11 @@ class PartitionMounter {
     virtual status_t umountVendor() const { return OK; }
 };
 
-extern PartitionMounter* gPartitionMounter;
-
 template <typename T>
-status_t fetchAllInformation(const std::string& path, const XmlConverter<T>& converter,
-                             T* outObject, std::string* error = nullptr) {
+status_t fetchAllInformation(const FileSystem* fileSystem, const std::string& path,
+                             const XmlConverter<T>& converter, T* outObject, std::string* error) {
     std::string info;
-
-    status_t result = getFileSystem().fetch(path, &info, error);
+    status_t result = fileSystem->fetch(path, &info, error);
 
     if (result != OK) {
         return result;
@@ -67,7 +64,6 @@ class ObjectFactory {
     virtual ~ObjectFactory() = default;
     virtual std::shared_ptr<T> make_shared() const { return std::make_shared<T>(); }
 };
-extern ObjectFactory<RuntimeInfo>* gRuntimeInfoFactory;
 
 // TODO(b/70628538): Do not infer from Shipping API level.
 inline Level convertFromApiLevel(size_t apiLevel) {
@@ -86,13 +82,29 @@ class PropertyFetcher {
    public:
     virtual ~PropertyFetcher() = default;
     virtual std::string getProperty(const std::string& key,
+                                    const std::string& defaultValue = "") const = 0;
+    virtual uint64_t getUintProperty(const std::string& key, uint64_t defaultValue,
+                                     uint64_t max = UINT64_MAX) const = 0;
+    virtual bool getBoolProperty(const std::string& key, bool defaultValue) const = 0;
+};
+
+class PropertyFetcherImpl : public PropertyFetcher {
+   public:
+    virtual std::string getProperty(const std::string& key,
                                     const std::string& defaultValue = "") const;
     virtual uint64_t getUintProperty(const std::string& key, uint64_t defaultValue,
                                      uint64_t max = UINT64_MAX) const;
     virtual bool getBoolProperty(const std::string& key, bool defaultValue) const;
 };
 
-const PropertyFetcher& getPropertyFetcher();
+class PropertyFetcherNoOp : public PropertyFetcher {
+   public:
+    virtual std::string getProperty(const std::string& key,
+                                    const std::string& defaultValue = "") const override;
+    virtual uint64_t getUintProperty(const std::string& key, uint64_t defaultValue,
+                                     uint64_t max = UINT64_MAX) const override;
+    virtual bool getBoolProperty(const std::string& key, bool defaultValue) const override;
+};
 
 }  // namespace details
 }  // namespace vintf

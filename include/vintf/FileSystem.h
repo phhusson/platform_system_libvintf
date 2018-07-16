@@ -19,10 +19,10 @@
 
 #include <memory>
 #include <mutex>
+#include <string>
+#include <vector>
 
 #include <utils/Errors.h>
-#include <vintf/RuntimeInfo.h>
-#include <vintf/parse_xml.h>
 
 namespace android {
 namespace vintf {
@@ -46,15 +46,6 @@ class FileSystem {
 };
 
 namespace details {
-
-// Initialize the global instance.
-__attribute__((warn_unused_result)) bool initFileSystem(std::unique_ptr<FileSystem>&& value);
-
-// Return the instance provided through init(), or a default implementation
-// if init() is not called. The default implementation queries the actual
-// file system on the device and does nothing on host.
-// Once get(), cannot be init()-ed again.
-FileSystem& getFileSystem();
 
 // Class that actually queries the file system.
 class FileSystemImpl : public FileSystem {

@@ -360,8 +360,9 @@ CompatibilityMatrix HalManifest::generateCompatibleMatrix() const {
     return matrix;
 }
 
-status_t HalManifest::fetchAllInformation(const std::string& path, std::string* error) {
-    return details::fetchAllInformation(path, gHalManifestConverter, this, error);
+status_t HalManifest::fetchAllInformation(const FileSystem* fileSystem, const std::string& path,
+                                          std::string* error) {
+    return details::fetchAllInformation(fileSystem, path, gHalManifestConverter, this, error);
 }
 
 SchemaType HalManifest::type() const {
