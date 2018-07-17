@@ -455,26 +455,31 @@ static ParseStatus tryParse(const std::string &xml, const XmlConverter<T> &parse
     return ParseStatus::OK;
 }
 
-template<typename T, typename GetFunction>
-static status_t getMissing(const std::shared_ptr<T>& pkg, bool mount,
-        std::function<status_t(void)> mountFunction,
-        std::shared_ptr<const T>* updated,
-        GetFunction getFunction) {
+static void appendLine(std::string* error, const std::string& message) {
+    if (error != nullptr) {
+        if (!error->empty()) *error += "\n";
+        *error += message;
+    }
+}
+
+template <typename T, typename GetFunction>
+static status_t getMissing(const std::string& msg, const std::shared_ptr<T>& pkg, bool mount,
+                           std::function<status_t(void)> mountFunction,
+                           std::shared_ptr<const T>* updated, GetFunction getFunction,
+                           std::string* error) {
     if (pkg != nullptr) {
         *updated = pkg;
     } else {
         if (mount) {
-            (void)mountFunction(); // ignore mount errors
+            status_t mountStatus = mountFunction();
+            if (mountStatus != OK) {
+                appendLine(error, "warning: mount " + msg + " failed: " + strerror(-mountStatus));
+            }
         }
         *updated = getFunction();
     }
     return OK;
 }
-
-#define ADD_MESSAGE(__error__)  \
-    if (error != nullptr) {     \
-        *error += (__error__);  \
-    }                           \
 
 struct PackageInfo {
     struct Pair {
@@ -514,7 +519,7 @@ int32_t VintfObject::checkCompatibility(const std::vector<std::string>& xmls, bo
             continue; // work on next one
         }
         if (parseStatus != ParseStatus::PARSE_ERROR) {
-            ADD_MESSAGE(toString(parseStatus) + " manifest");
+            appendLine(error, toString(parseStatus) + " manifest");
             return ALREADY_EXISTS;
         }
         parseStatus = tryParse(xml, gCompatibilityMatrixConverter, &pkg.fwk.matrix, &pkg.dev.matrix);
@@ -522,10 +527,10 @@ int32_t VintfObject::checkCompatibility(const std::vector<std::string>& xmls, bo
             continue; // work on next one
         }
         if (parseStatus != ParseStatus::PARSE_ERROR) {
-            ADD_MESSAGE(toString(parseStatus) + " matrix");
+            appendLine(error, toString(parseStatus) + " matrix");
             return ALREADY_EXISTS;
         }
-        ADD_MESSAGE(toString(parseStatus)); // parse error
+        appendLine(error, toString(parseStatus));  // parse error
         return BAD_VALUE;
     }
 
@@ -534,29 +539,41 @@ int32_t VintfObject::checkCompatibility(const std::vector<std::string>& xmls, bo
     auto mountSystem = [this] { return this->mPartitionMounter->mountSystem(); };
     auto mountVendor = [this] { return this->mPartitionMounter->mountVendor(); };
     if ((status = getMissing(
-             pkg.fwk.manifest, mount, mountSystem, &updated.fwk.manifest,
-             std::bind(&VintfObject::getFrameworkHalManifest, this, true /* skipCache */))) != OK) {
+             "system", pkg.fwk.manifest, mount, mountSystem, &updated.fwk.manifest,
+             std::bind(&VintfObject::getFrameworkHalManifest, this, true /* skipCache */),
+             error)) != OK) {
+        return status;
+    }
+    if ((status =
+             getMissing("vendor", pkg.dev.manifest, mount, mountVendor, &updated.dev.manifest,
+                        std::bind(&VintfObject::getDeviceHalManifest, this, true /* skipCache */),
+                        error)) != OK) {
         return status;
     }
     if ((status = getMissing(
-             pkg.dev.manifest, mount, mountVendor, &updated.dev.manifest,
-             std::bind(&VintfObject::getDeviceHalManifest, this, true /* skipCache */))) != OK) {
+             "system", pkg.fwk.matrix, mount, mountSystem, &updated.fwk.matrix,
+             std::bind(&VintfObject::getFrameworkCompatibilityMatrix, this, true /* skipCache */),
+             error)) != OK) {
         return status;
     }
-    if ((status = getMissing(pkg.fwk.matrix, mount, mountSystem, &updated.fwk.matrix,
-                             std::bind(&VintfObject::getFrameworkCompatibilityMatrix, this,
-                                       true /* skipCache */))) != OK) {
-        return status;
-    }
-    if ((status = getMissing(pkg.dev.matrix, mount, mountVendor, &updated.dev.matrix,
-                             std::bind(&VintfObject::getDeviceCompatibilityMatrix, this,
-                                       true /* skipCache */))) != OK) {
+    if ((status = getMissing(
+             "vendor", pkg.dev.matrix, mount, mountVendor, &updated.dev.matrix,
+             std::bind(&VintfObject::getDeviceCompatibilityMatrix, this, true /* skipCache */),
+             error)) != OK) {
         return status;
     }
 
     if (mount) {
-        (void)mPartitionMounter->umountSystem();  // ignore errors
-        (void)mPartitionMounter->umountVendor();  // ignore errors
+        status_t umountStatus = mPartitionMounter->umountSystem();
+        if (umountStatus != OK) {
+            appendLine(error,
+                       std::string{"warning: umount system failed: "} + strerror(-umountStatus));
+        }
+        umountStatus = mPartitionMounter->umountVendor();
+        if (umountStatus != OK) {
+            appendLine(error,
+                       std::string{"warning: umount vendor failed: "} + strerror(-umountStatus));
+        }
     }
 
     if ((disabledChecks & DISABLE_RUNTIME_INFO) == 0) {
@@ -565,28 +582,29 @@ int32_t VintfObject::checkCompatibility(const std::vector<std::string>& xmls, bo
 
     // null checks for files and runtime info after the update
     if (updated.fwk.manifest == nullptr) {
-        ADD_MESSAGE("No framework manifest file from device or from update package");
-        return NO_INIT;
+        appendLine(error, "No framework manifest file from device or from update package");
+        status = NO_INIT;
     }
     if (updated.dev.manifest == nullptr) {
-        ADD_MESSAGE("No device manifest file from device or from update package");
-        return NO_INIT;
+        appendLine(error, "No device manifest file from device or from update package");
+        status = NO_INIT;
     }
     if (updated.fwk.matrix == nullptr) {
-        ADD_MESSAGE("No framework matrix file from device or from update package");
-        return NO_INIT;
+        appendLine(error, "No framework matrix file from device or from update package");
+        status = NO_INIT;
     }
     if (updated.dev.matrix == nullptr) {
-        ADD_MESSAGE("No device matrix file from device or from update package");
-        return NO_INIT;
+        appendLine(error, "No device matrix file from device or from update package");
+        status = NO_INIT;
     }
 
     if ((disabledChecks & DISABLE_RUNTIME_INFO) == 0) {
         if (updated.runtimeInfo == nullptr) {
-            ADD_MESSAGE("No runtime info from device");
-            return NO_INIT;
+            appendLine(error, "No runtime info from device");
+            status = NO_INIT;
         }
     }
+    if (status != OK) return status;
 
     // compatiblity check.
     if (!updated.dev.manifest->checkCompatibility(*updated.fwk.matrix, error)) {
