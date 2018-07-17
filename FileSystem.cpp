@@ -77,6 +77,27 @@ status_t FileSystemNoOp::listFiles(const std::string&, std::vector<std::string>*
     return NAME_NOT_FOUND;
 }
 
+FileSystemUnderPath::FileSystemUnderPath(const std::string& rootdir) {
+    mRootDir = rootdir;
+    if (!mRootDir.empty() && mRootDir.back() != '/') {
+        mRootDir.push_back('/');
+    }
+}
+
+status_t FileSystemUnderPath::fetch(const std::string& path, std::string* fetched,
+                                    std::string* error) const {
+    return mImpl.fetch(mRootDir + path, fetched, error);
+}
+
+status_t FileSystemUnderPath::listFiles(const std::string& path, std::vector<std::string>* out,
+                                        std::string* error) const {
+    return mImpl.listFiles(mRootDir + path, out, error);
+}
+
+const std::string& FileSystemUnderPath::getRootDir() const {
+    return mRootDir;
+}
+
 }  // namespace details
 }  // namespace vintf
 }  // namespace android
