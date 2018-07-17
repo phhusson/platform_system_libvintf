@@ -29,8 +29,6 @@
 #include <hidl-util/FQName.h>
 
 using namespace ::testing;
-using namespace ::android::vintf;
-using namespace ::android::vintf::details;
 
 using android::FqInstance;
 
@@ -40,6 +38,12 @@ static AssertionResult In(const std::string& sub, const std::string& str) {
 }
 #define EXPECT_IN(sub, str) EXPECT_TRUE(In((sub), (str)))
 #define EXPECT_NOT_IN(sub, str) EXPECT_FALSE(In((sub), (str)))
+
+namespace android {
+namespace vintf {
+namespace testing {
+
+using namespace ::android::vintf::details;
 
 //
 // Set of Xml1 metadata compatible with each other.
@@ -277,75 +281,89 @@ const static std::vector<std::string> systemMatrixRegexXmls = {
     "    </hal>\n"
     "</compatibility-matrix>\n"};
 
-static MockPartitionMounter& mounter() {
-    return *static_cast<MockPartitionMounter*>(gPartitionMounter);
-}
-static MockFileSystem& fetcher() {
-    return static_cast<MockFileSystem&>(details::getFileSystem());
-}
-
-// Setup the MockFileSystem used by the fetchAllInformation template
-// so it returns the given metadata info instead of fetching from device.
-void setupMockFetcher(const std::string& vendorManifestXml, const std::string& systemMatrixXml,
-                      const std::string& systemManifestXml, const std::string& vendorMatrixXml,
-                      const std::string& productModel) {
-    ON_CALL(fetcher(), listFiles(StrEq(kVendorManifestFragmentDir), _, _))
-        .WillByDefault(Return(::android::OK));
-    ON_CALL(fetcher(), listFiles(StrEq(kSystemManifestFragmentDir), _, _))
-        .WillByDefault(Return(::android::OK));
-    ON_CALL(fetcher(), listFiles(StrEq(kOdmManifestFragmentDir), _, _))
-        .WillByDefault(Return(::android::OK));
-
-    if (!productModel.empty()) {
-        ON_CALL(fetcher(),
-                fetch(StrEq(kOdmLegacyVintfDir + "manifest_" + productModel + ".xml"), _))
-            .WillByDefault(Return(::android::NAME_NOT_FOUND));
-        ON_CALL(fetcher(), fetch(StrEq(kOdmVintfDir + "manifest_" + productModel + ".xml"), _))
-            .WillByDefault(Return(::android::NAME_NOT_FOUND));
-    }
-    ON_CALL(fetcher(), fetch(StrEq(kOdmLegacyManifest), _))
-        .WillByDefault(Return(::android::NAME_NOT_FOUND));
-    ON_CALL(fetcher(), fetch(StrEq(kOdmManifest), _))
-        .WillByDefault(Return(::android::NAME_NOT_FOUND));
-    ON_CALL(fetcher(), fetch(StrEq(kVendorManifest), _))
-        .WillByDefault(Return(::android::NAME_NOT_FOUND));
-    ON_CALL(fetcher(), fetch(StrEq(kVendorLegacyManifest), _))
-        .WillByDefault(Invoke([vendorManifestXml](const std::string& path, std::string& fetched) {
-            (void)path;
-            fetched = vendorManifestXml;
-            return 0;
-        }));
-    ON_CALL(fetcher(), fetch(StrEq(kSystemManifest), _))
-        .WillByDefault(Invoke([systemManifestXml](const std::string& path, std::string& fetched) {
-            (void)path;
-            fetched = systemManifestXml;
-            return 0;
-        }));
-    ON_CALL(fetcher(), fetch(StrEq(kVendorMatrix), _))
-        .WillByDefault(Return(::android::NAME_NOT_FOUND));
-    ON_CALL(fetcher(), fetch(StrEq(kVendorLegacyMatrix), _))
-        .WillByDefault(Invoke([vendorMatrixXml](const std::string& path, std::string& fetched) {
-            (void)path;
-            fetched = vendorMatrixXml;
-            return 0;
-        }));
-    ON_CALL(fetcher(), fetch(StrEq(kSystemLegacyMatrix), _))
-        .WillByDefault(Invoke([systemMatrixXml](const std::string& path, std::string& fetched) {
-            (void)path;
-            fetched = systemMatrixXml;
-            return 0;
-        }));
-    // Don't list /system/etc/vintf unless otherwise specified.
-    ON_CALL(fetcher(), listFiles(StrEq(kSystemVintfDir), _, _))
-        .WillByDefault(Return(::android::OK));
-}
-
-class VintfObjectTestBase : public testing::Test {
+class VintfObjectTestBase : public ::testing::Test {
    protected:
-    virtual void SetUp() {
+    MockPartitionMounter& mounter() {
+        return static_cast<MockPartitionMounter&>(*vintfObject->getPartitionMounter());
+    }
+    MockFileSystem& fetcher() {
+        return static_cast<MockFileSystem&>(*vintfObject->getFileSystem());
+    }
+    MockPropertyFetcher& propertyFetcher() {
+        return static_cast<MockPropertyFetcher&>(*vintfObject->getPropertyFetcher());
+    }
+
+    // Setup the MockFileSystem used by the fetchAllInformation template
+    // so it returns the given metadata info instead of fetching from device.
+    void setupMockFetcher(const std::string& vendorManifestXml, const std::string& systemMatrixXml,
+                          const std::string& systemManifestXml, const std::string& vendorMatrixXml,
+                          const std::string& productModel) {
+        ON_CALL(fetcher(), listFiles(StrEq(kVendorManifestFragmentDir), _, _))
+            .WillByDefault(Return(::android::OK));
+        ON_CALL(fetcher(), listFiles(StrEq(kSystemManifestFragmentDir), _, _))
+            .WillByDefault(Return(::android::OK));
+        ON_CALL(fetcher(), listFiles(StrEq(kOdmManifestFragmentDir), _, _))
+            .WillByDefault(Return(::android::OK));
+
+        if (!productModel.empty()) {
+            ON_CALL(fetcher(),
+                    fetch(StrEq(kOdmLegacyVintfDir + "manifest_" + productModel + ".xml"), _))
+                .WillByDefault(Return(::android::NAME_NOT_FOUND));
+            ON_CALL(fetcher(), fetch(StrEq(kOdmVintfDir + "manifest_" + productModel + ".xml"), _))
+                .WillByDefault(Return(::android::NAME_NOT_FOUND));
+        }
+        ON_CALL(fetcher(), fetch(StrEq(kOdmLegacyManifest), _))
+            .WillByDefault(Return(::android::NAME_NOT_FOUND));
+        ON_CALL(fetcher(), fetch(StrEq(kOdmManifest), _))
+            .WillByDefault(Return(::android::NAME_NOT_FOUND));
+        ON_CALL(fetcher(), fetch(StrEq(kVendorManifest), _))
+            .WillByDefault(Return(::android::NAME_NOT_FOUND));
+        ON_CALL(fetcher(), fetch(StrEq(kVendorLegacyManifest), _))
+            .WillByDefault(
+                Invoke([vendorManifestXml](const std::string& path, std::string& fetched) {
+                    (void)path;
+                    fetched = vendorManifestXml;
+                    return 0;
+                }));
+        ON_CALL(fetcher(), fetch(StrEq(kSystemManifest), _))
+            .WillByDefault(
+                Invoke([systemManifestXml](const std::string& path, std::string& fetched) {
+                    (void)path;
+                    fetched = systemManifestXml;
+                    return 0;
+                }));
+        ON_CALL(fetcher(), fetch(StrEq(kVendorMatrix), _))
+            .WillByDefault(Return(::android::NAME_NOT_FOUND));
+        ON_CALL(fetcher(), fetch(StrEq(kVendorLegacyMatrix), _))
+            .WillByDefault(Invoke([vendorMatrixXml](const std::string& path, std::string& fetched) {
+                (void)path;
+                fetched = vendorMatrixXml;
+                return 0;
+            }));
+        ON_CALL(fetcher(), fetch(StrEq(kSystemLegacyMatrix), _))
+            .WillByDefault(Invoke([systemMatrixXml](const std::string& path, std::string& fetched) {
+                (void)path;
+                fetched = systemMatrixXml;
+                return 0;
+            }));
+        // Don't list /system/etc/vintf unless otherwise specified.
+        ON_CALL(fetcher(), listFiles(StrEq(kSystemVintfDir), _, _))
+            .WillByDefault(Return(::android::OK));
+    }
+
+    void setFakeProperties() {
         productModel = "fake_sku";
-        ON_CALL(*gPropertyFetcher, getProperty("ro.boot.product.hardware.sku", _))
+        ON_CALL(propertyFetcher(), getProperty("ro.boot.product.hardware.sku", _))
             .WillByDefault(Return(productModel));
+    }
+
+    virtual void SetUp() {
+        vintfObject =
+            std::make_unique<VintfObject>(std::make_unique<NiceMock<MockFileSystem>>(),
+                                          std::make_unique<NiceMock<MockPartitionMounter>>(),
+                                          std::make_unique<NiceMock<MockRuntimeInfoFactory>>(
+                                              std::make_shared<NiceMock<MockRuntimeInfo>>()),
+                                          std::make_unique<NiceMock<MockPropertyFetcher>>());
     }
     virtual void TearDown() {
         Mock::VerifyAndClear(&mounter());
@@ -413,6 +431,7 @@ class VintfObjectTestBase : public testing::Test {
     }
 
     std::string productModel;
+    std::unique_ptr<VintfObject> vintfObject;
 };
 
 // Test fixture that provides compatible metadata from the mock device.
@@ -420,9 +439,15 @@ class VintfObjectCompatibleTest : public VintfObjectTestBase {
    protected:
     virtual void SetUp() {
         VintfObjectTestBase::SetUp();
+        setFakeProperties();
         mounter().reset();
         setupMockFetcher(vendorManifestXml1, systemMatrixXml1, systemManifestXml1, vendorMatrixXml1,
                          productModel);
+    }
+
+    // Access to private method for force mounting.
+    int checkCompatibility(const std::vector<std::string>& xmls, bool mount, std::string* error) {
+        return vintfObject->checkCompatibility(xmls, mount, error);
     }
 };
 
@@ -440,7 +465,7 @@ TEST_F(VintfObjectCompatibleTest, TestDeviceCompatibility) {
     EXPECT_CALL(mounter(), mountVendor()).Times(0);
     EXPECT_CALL(mounter(), umountVendor()).Times(0);
 
-    int result = VintfObject::CheckCompatibility(packageInfo, &error);
+    int result = vintfObject->checkCompatibility(packageInfo, &error);
 
     ASSERT_EQ(result, 0) << "Fail message:" << error.c_str();
     // Check that nothing was ignored.
@@ -458,7 +483,7 @@ TEST_F(VintfObjectCompatibleTest, TestDeviceCompatibilityMount) {
     EXPECT_CALL(mounter(), mountVendor()).Times(2);
     EXPECT_CALL(mounter(), umountVendor()).Times(1);
 
-    int result = details::checkCompatibility(packageInfo, true /* mount */, mounter(), &error);
+    int result = checkCompatibility(packageInfo, true /* mount */, &error);
 
     ASSERT_EQ(result, 0) << "Fail message:" << error.c_str();
     EXPECT_FALSE(mounter().systemMounted());
@@ -479,7 +504,7 @@ TEST_F(VintfObjectCompatibleTest, TestInputVsDeviceSuccess) {
     EXPECT_CALL(mounter(), mountVendor()).Times(0);
     EXPECT_CALL(mounter(), umountVendor()).Times(0);
 
-    int result = VintfObject::CheckCompatibility(packageInfo, &error);
+    int result = vintfObject->checkCompatibility(packageInfo, &error);
 
     ASSERT_EQ(result, 0) << "Fail message:" << error.c_str();
     ASSERT_STREQ(error.c_str(), "");
@@ -496,7 +521,7 @@ TEST_F(VintfObjectCompatibleTest, TestInputVsDeviceSuccessMount) {
     EXPECT_CALL(mounter(), mountVendor()).Times(2);
     EXPECT_CALL(mounter(), umountVendor()).Times(1);
 
-    int result = details::checkCompatibility(packageInfo, true /* mount */, mounter(), &error);
+    int result = checkCompatibility(packageInfo, true /* mount */, &error);
 
     ASSERT_EQ(result, 0) << "Fail message:" << error.c_str();
     EXPECT_FALSE(mounter().systemMounted());
@@ -508,7 +533,7 @@ TEST_F(VintfObjectCompatibleTest, TestInputVsDeviceFail) {
     std::string error;
     std::vector<std::string> packageInfo = {systemMatrixXml2};
 
-    int result = VintfObject::CheckCompatibility(packageInfo, &error);
+    int result = vintfObject->checkCompatibility(packageInfo, &error);
 
     ASSERT_EQ(result, 1) << "Should have failed:" << error.c_str();
     EXPECT_IN(
@@ -523,7 +548,7 @@ TEST_F(VintfObjectCompatibleTest, TestInputSuccess) {
     std::string error;
     std::vector<std::string> packageInfo = {systemMatrixXml2, vendorManifestXml2};
 
-    int result = VintfObject::CheckCompatibility(packageInfo, &error);
+    int result = vintfObject->checkCompatibility(packageInfo, &error);
 
     ASSERT_EQ(result, 0) << "Failed message:" << error.c_str();
     ASSERT_STREQ(error.c_str(), "");
@@ -542,7 +567,7 @@ TEST_F(VintfObjectCompatibleTest, TestFrameworkOnlyOta) {
     EXPECT_CALL(mounter(), mountVendor()).Times(0);
     EXPECT_CALL(mounter(), umountVendor()).Times(0);
 
-    int result = VintfObject::CheckCompatibility(packageInfo, &error);
+    int result = vintfObject->checkCompatibility(packageInfo, &error);
 
     ASSERT_EQ(result, 0) << "Fail message:" << error.c_str();
     ASSERT_STREQ(error.c_str(), "");
@@ -559,7 +584,7 @@ TEST_F(VintfObjectCompatibleTest, TestFrameworkOnlyOtaMount) {
     EXPECT_CALL(mounter(), mountVendor()).Times(2);
     EXPECT_CALL(mounter(), umountVendor()).Times(1);
 
-    int result = details::checkCompatibility(packageInfo, true /* mount */, mounter(), &error);
+    int result = checkCompatibility(packageInfo, true /* mount */, &error);
 
     ASSERT_EQ(result, 0) << "Fail message:" << error.c_str();
     EXPECT_FALSE(mounter().systemMounted());
@@ -580,7 +605,7 @@ TEST_F(VintfObjectCompatibleTest, TestFullOta) {
     EXPECT_CALL(mounter(), mountVendor()).Times(0);
     EXPECT_CALL(mounter(), umountVendor()).Times(0);
 
-    int result = VintfObject::CheckCompatibility(packageInfo, &error);
+    int result = vintfObject->checkCompatibility(packageInfo, &error);
 
     ASSERT_EQ(result, 0) << "Fail message:" << error.c_str();
     ASSERT_STREQ(error.c_str(), "");
@@ -598,7 +623,7 @@ TEST_F(VintfObjectCompatibleTest, TestFullOnlyOtaMount) {
     EXPECT_CALL(mounter(), mountVendor()).Times(0);
     EXPECT_CALL(mounter(), umountVendor()).Times(1);
 
-    int result = details::checkCompatibility(packageInfo, true /* mount */, mounter(), &error);
+    int result = checkCompatibility(packageInfo, true /* mount */, &error);
 
     ASSERT_EQ(result, 0) << "Fail message:" << error.c_str();
     EXPECT_FALSE(mounter().systemMounted());
@@ -610,6 +635,7 @@ class VintfObjectIncompatibleTest : public VintfObjectTestBase {
    protected:
     virtual void SetUp() {
         VintfObjectTestBase::SetUp();
+        setFakeProperties();
         mounter().reset();
         setupMockFetcher(vendorManifestXml1, systemMatrixXml2, systemManifestXml1, vendorMatrixXml1,
                          productModel);
@@ -626,7 +652,7 @@ TEST_F(VintfObjectIncompatibleTest, TestDeviceCompatibility) {
     expectVendorMatrix();
     expectSystemMatrix();
 
-    int result = VintfObject::CheckCompatibility(packageInfo, &error);
+    int result = vintfObject->checkCompatibility(packageInfo, &error);
 
     ASSERT_EQ(result, 1) << "Should have failed:" << error.c_str();
 }
@@ -641,27 +667,27 @@ TEST_F(VintfObjectIncompatibleTest, TestInputVsDeviceSuccess) {
     expectVendorMatrix();
     expectSystemMatrix(0);
 
-    int result = VintfObject::CheckCompatibility(packageInfo, &error);
+    int result = vintfObject->checkCompatibility(packageInfo, &error);
 
     ASSERT_EQ(result, 0) << "Failed message:" << error.c_str();
     ASSERT_STREQ(error.c_str(), "");
 }
 
-static MockRuntimeInfoFactory& runtimeInfoFactory() {
-    return *static_cast<MockRuntimeInfoFactory*>(gRuntimeInfoFactory);
-}
-
 // Test fixture that provides compatible metadata from the mock device.
-class VintfObjectRuntimeInfoTest : public testing::Test {
+class VintfObjectRuntimeInfoTest : public VintfObjectTestBase {
    protected:
     virtual void SetUp() {
+        VintfObjectTestBase::SetUp();
         // clear fetch flags
         runtimeInfoFactory().getInfo()->failNextFetch();
-        VintfObject::GetRuntimeInfo(true /* skipCache */, RuntimeInfo::FetchFlag::ALL);
+        vintfObject->getRuntimeInfo(true /* skipCache */, RuntimeInfo::FetchFlag::ALL);
     }
     virtual void TearDown() {
         Mock::VerifyAndClear(&runtimeInfoFactory());
         Mock::VerifyAndClear(runtimeInfoFactory().getInfo().get());
+    }
+    MockRuntimeInfoFactory& runtimeInfoFactory() {
+        return static_cast<MockRuntimeInfoFactory&>(*vintfObject->getRuntimeInfoFactory());
     }
 };
 
@@ -679,18 +705,28 @@ TEST_F(VintfObjectRuntimeInfoTest, GetRuntimeInfo) {
     EXPECT_CALL(*runtimeInfoFactory().getInfo(), fetchAllInformation(RuntimeInfo::FetchFlag::ALL));
     EXPECT_CALL(*runtimeInfoFactory().getInfo(), fetchAllInformation(RuntimeInfo::FetchFlag::NONE));
 
-    VintfObject::GetRuntimeInfo(false /* skipCache */, RuntimeInfo::FetchFlag::CPU_VERSION);
-    VintfObject::GetRuntimeInfo(false /* skipCache */, RuntimeInfo::FetchFlag::CPU_VERSION);
-    VintfObject::GetRuntimeInfo(true /* skipCache */, RuntimeInfo::FetchFlag::CPU_VERSION);
-    VintfObject::GetRuntimeInfo(false /* skipCache */, RuntimeInfo::FetchFlag::ALL);
-    VintfObject::GetRuntimeInfo(true /* skipCache */, RuntimeInfo::FetchFlag::ALL);
-    VintfObject::GetRuntimeInfo(false /* skipCache */, RuntimeInfo::FetchFlag::ALL);
+    vintfObject->getRuntimeInfo(false /* skipCache */, RuntimeInfo::FetchFlag::CPU_VERSION);
+    vintfObject->getRuntimeInfo(false /* skipCache */, RuntimeInfo::FetchFlag::CPU_VERSION);
+    vintfObject->getRuntimeInfo(true /* skipCache */, RuntimeInfo::FetchFlag::CPU_VERSION);
+    vintfObject->getRuntimeInfo(false /* skipCache */, RuntimeInfo::FetchFlag::ALL);
+    vintfObject->getRuntimeInfo(true /* skipCache */, RuntimeInfo::FetchFlag::ALL);
+    vintfObject->getRuntimeInfo(false /* skipCache */, RuntimeInfo::FetchFlag::ALL);
 }
 
 // Test fixture that provides incompatible metadata from the mock device.
 class VintfObjectTest : public VintfObjectTestBase {
    protected:
-    virtual void SetUp() {}
+    virtual void SetUp() {
+        VintfObjectTestBase::SetUp();
+
+        // By default use empty filesystem
+        EXPECT_CALL(fetcher(), listFiles(_, _, _))
+            .Times(AnyNumber())
+            .WillRepeatedly(Return(::android::OK));
+        EXPECT_CALL(fetcher(), fetch(_, _))
+            .Times(AnyNumber())
+            .WillRepeatedly(Return(::android::NAME_NOT_FOUND));
+    }
 };
 
 // Test framework compatibility matrix is combined at runtime
@@ -707,9 +743,10 @@ TEST_F(VintfObjectTest, FrameworkCompatibilityMatrixCombine) {
                 "<compatibility-matrix version=\"1.0\" type=\"framework\" level=\"1\"/>");
     expectFetch(kSystemVintfDir + "compatibility_matrix.empty.xml",
                 "<compatibility-matrix version=\"1.0\" type=\"framework\"/>");
+    expectFetch(kVendorManifest, "<manifest version=\"1.0\" type=\"device\" />\n");
     expectSystemMatrix(0);
 
-    EXPECT_NE(nullptr, VintfObject::GetFrameworkCompatibilityMatrix(true /* skipCache */));
+    EXPECT_NE(nullptr, vintfObject->getFrameworkCompatibilityMatrix(true /* skipCache */));
 }
 
 const std::string vendorEtcManifest =
@@ -801,7 +838,7 @@ class DeviceManifestTest : public VintfObjectTestBase {
     }
     void noOdmManifest() { expectFileNotExist(StartsWith("/odm/")); }
     std::shared_ptr<const HalManifest> get() {
-        return VintfObject::GetDeviceHalManifest(true /* skipCache */);
+        return vintfObject->getDeviceHalManifest(true /* skipCache */);
     }
 };
 
@@ -857,6 +894,7 @@ TEST_F(DeviceManifestTest, Combine4) {
 class OdmManifestTest : public VintfObjectTestBase {
    protected:
     virtual void SetUp() override {
+        VintfObjectTestBase::SetUp();
         // Assume /vendor/etc/vintf/manifest.xml does not exist to simplify
         // testing logic.
         expectFileNotExist(StrEq(kVendorManifest));
@@ -866,7 +904,7 @@ class OdmManifestTest : public VintfObjectTestBase {
         expectFileNotExist(StartsWith("/odm/"));
     }
     std::shared_ptr<const HalManifest> get() {
-        return VintfObject::GetDeviceHalManifest(true /* skipCache */);
+        return vintfObject->getDeviceHalManifest(true /* skipCache */);
     }
 };
 
@@ -930,6 +968,7 @@ static VintfObject::ListInstances getInstanceListFunc(
 class DeprecateTest : public VintfObjectTestBase {
    protected:
     virtual void SetUp() override {
+        VintfObjectTestBase::SetUp();
         EXPECT_CALL(fetcher(), listFiles(StrEq(kSystemVintfDir), _, _))
             .WillRepeatedly(Invoke([](const auto&, auto* out, auto*) {
                 *out = {
@@ -952,7 +991,7 @@ class DeprecateTest : public VintfObjectTestBase {
 
         // Update the device manifest cache because CheckDeprecate does not fetch
         // device manifest again if cache exist.
-        VintfObject::GetDeviceHalManifest(true /* skipCache */);
+        vintfObject->getDeviceHalManifest(true /* skipCache */);
     }
 
 };
@@ -963,7 +1002,7 @@ TEST_F(DeprecateTest, CheckNoDeprecate) {
         "android.hardware.major@2.0::IMajor/default",
     });
     std::string error;
-    EXPECT_EQ(NO_DEPRECATED_HALS, VintfObject::CheckDeprecation(pred, &error)) << error;
+    EXPECT_EQ(NO_DEPRECATED_HALS, vintfObject->checkDeprecation(pred, &error)) << error;
 }
 
 TEST_F(DeprecateTest, CheckRemoved) {
@@ -973,7 +1012,7 @@ TEST_F(DeprecateTest, CheckRemoved) {
         "android.hardware.major@2.0::IMajor/default",
     });
     std::string error;
-    EXPECT_EQ(DEPRECATED, VintfObject::CheckDeprecation(pred, &error))
+    EXPECT_EQ(DEPRECATED, vintfObject->checkDeprecation(pred, &error))
         << "removed@1.0 should be deprecated. " << error;
 }
 
@@ -983,7 +1022,7 @@ TEST_F(DeprecateTest, CheckMinor) {
         "android.hardware.major@2.0::IMajor/default",
     });
     std::string error;
-    EXPECT_EQ(DEPRECATED, VintfObject::CheckDeprecation(pred, &error))
+    EXPECT_EQ(DEPRECATED, vintfObject->checkDeprecation(pred, &error))
         << "minor@1.0 should be deprecated. " << error;
 }
 
@@ -994,7 +1033,7 @@ TEST_F(DeprecateTest, CheckMinorDeprecatedInstance1) {
         "android.hardware.major@2.0::IMajor/default",
     });
     std::string error;
-    EXPECT_EQ(DEPRECATED, VintfObject::CheckDeprecation(pred, &error))
+    EXPECT_EQ(DEPRECATED, vintfObject->checkDeprecation(pred, &error))
         << "minor@1.0::IMinor/legacy should be deprecated. " << error;
 }
 
@@ -1005,7 +1044,7 @@ TEST_F(DeprecateTest, CheckMinorDeprecatedInstance2) {
         "android.hardware.major@2.0::IMajor/default",
     });
     std::string error;
-    EXPECT_EQ(DEPRECATED, VintfObject::CheckDeprecation(pred, &error))
+    EXPECT_EQ(DEPRECATED, vintfObject->checkDeprecation(pred, &error))
         << "minor@1.1::IMinor/legacy should be deprecated. " << error;
 }
 
@@ -1016,7 +1055,7 @@ TEST_F(DeprecateTest, CheckMajor1) {
         "android.hardware.major@2.0::IMajor/default",
     });
     std::string error;
-    EXPECT_EQ(DEPRECATED, VintfObject::CheckDeprecation(pred, &error))
+    EXPECT_EQ(DEPRECATED, vintfObject->checkDeprecation(pred, &error))
         << "major@1.0 should be deprecated. " << error;
 }
 
@@ -1026,7 +1065,7 @@ TEST_F(DeprecateTest, CheckMajor2) {
         "android.hardware.major@1.0::IMajor/default",
     });
     std::string error;
-    EXPECT_EQ(DEPRECATED, VintfObject::CheckDeprecation(pred, &error))
+    EXPECT_EQ(DEPRECATED, vintfObject->checkDeprecation(pred, &error))
         << "major@1.0 should be deprecated. " << error;
 }
 
@@ -1061,18 +1100,21 @@ class MultiMatrixTest : public VintfObjectTestBase {
     void expectTargetFcmVersion(size_t level) {
         expectFetch(kVendorManifest, "<manifest version=\"1.0\" type=\"device\" target-level=\"" +
                                          to_string(static_cast<Level>(level)) + "\"/>");
-        VintfObject::GetDeviceHalManifest(true /* skipCache */);
+        vintfObject->getDeviceHalManifest(true /* skipCache */);
     }
 };
 
 class RegexTest : public MultiMatrixTest {
    protected:
-    virtual void SetUp() { SetUpMockSystemMatrices(systemMatrixRegexXmls); }
+    virtual void SetUp() {
+        MultiMatrixTest::SetUp();
+        SetUpMockSystemMatrices(systemMatrixRegexXmls);
+    }
 };
 
 TEST_F(RegexTest, CombineLevel1) {
     expectTargetFcmVersion(1);
-    auto matrix = VintfObject::GetFrameworkCompatibilityMatrix(true /* skipCache */);
+    auto matrix = vintfObject->getFrameworkCompatibilityMatrix(true /* skipCache */);
     ASSERT_NE(nullptr, matrix);
     std::string xml = gCompatibilityMatrixConverter(*matrix);
 
@@ -1127,7 +1169,7 @@ TEST_F(RegexTest, CombineLevel1) {
 
 TEST_F(RegexTest, CombineLevel2) {
     expectTargetFcmVersion(2);
-    auto matrix = VintfObject::GetFrameworkCompatibilityMatrix(true /* skipCache */);
+    auto matrix = vintfObject->getFrameworkCompatibilityMatrix(true /* skipCache */);
     ASSERT_NE(nullptr, matrix);
     std::string xml = gCompatibilityMatrixConverter(*matrix);
 
@@ -1179,7 +1221,7 @@ TEST_F(RegexTest, DeprecateLevel2) {
         "android.hardware.regex@1.1::IRegex/regex_common/0",
         "android.hardware.regex@2.0::IRegex/default",
     });
-    EXPECT_EQ(NO_DEPRECATED_HALS, VintfObject::CheckDeprecation(pred, &error)) << error;
+    EXPECT_EQ(NO_DEPRECATED_HALS, vintfObject->checkDeprecation(pred, &error)) << error;
 
     for (const auto& deprecated : {
              "android.hardware.regex@1.0::IRegex/default",
@@ -1195,7 +1237,7 @@ TEST_F(RegexTest, DeprecateLevel2) {
             "android.hardware.regex@2.0::IRegex/default",
         });
         error.clear();
-        EXPECT_EQ(DEPRECATED, VintfObject::CheckDeprecation(pred, &error))
+        EXPECT_EQ(DEPRECATED, vintfObject->checkDeprecation(pred, &error))
             << deprecated << " should be deprecated. " << error;
     }
 }
@@ -1209,7 +1251,7 @@ TEST_F(RegexTest, DeprecateLevel3) {
         "android.hardware.regex@2.0::IRegex/regex/2.0/1",
         "android.hardware.regex@2.0::IRegex/default",
     });
-    EXPECT_EQ(NO_DEPRECATED_HALS, VintfObject::CheckDeprecation(pred, &error)) << error;
+    EXPECT_EQ(NO_DEPRECATED_HALS, vintfObject->checkDeprecation(pred, &error)) << error;
 
     for (const auto& deprecated : {
              "android.hardware.regex@1.0::IRegex/default",
@@ -1229,7 +1271,7 @@ TEST_F(RegexTest, DeprecateLevel3) {
         });
 
         error.clear();
-        EXPECT_EQ(DEPRECATED, VintfObject::CheckDeprecation(pred, &error))
+        EXPECT_EQ(DEPRECATED, vintfObject->checkDeprecation(pred, &error))
             << deprecated << " should be deprecated.";
     }
 }
@@ -1273,7 +1315,7 @@ TEST_F(KernelTest, Level1AndLevel2) {
     SetUpMockSystemMatrices({systemMatrixKernelXmls[0], systemMatrixKernelXmls[1]});
 
     expectTargetFcmVersion(1);
-    auto matrix = VintfObject::GetFrameworkCompatibilityMatrix(true /* skipCache */);
+    auto matrix = vintfObject->getFrameworkCompatibilityMatrix(true /* skipCache */);
     ASSERT_NE(nullptr, matrix);
     std::string xml = gCompatibilityMatrixConverter(*matrix);
 
@@ -1291,7 +1333,7 @@ TEST_F(KernelTest, Level1AndMore) {
     SetUpMockSystemMatrices({systemMatrixKernelXmls});
 
     expectTargetFcmVersion(1);
-    auto matrix = VintfObject::GetFrameworkCompatibilityMatrix(true /* skipCache */);
+    auto matrix = vintfObject->getFrameworkCompatibilityMatrix(true /* skipCache */);
     ASSERT_NE(nullptr, matrix);
     std::string xml = gCompatibilityMatrixConverter(*matrix);
 
@@ -1305,23 +1347,11 @@ TEST_F(KernelTest, Level1AndMore) {
     EXPECT_NOT_IN(FAKE_KERNEL("4.0.0", "D3"), xml) << "\nOld requirements must not change";
 }
 
+}  // namespace testing
+}  // namespace vintf
+}  // namespace android
+
 int main(int argc, char** argv) {
     ::testing::InitGoogleMock(&argc, argv);
-
-    if (!VintfObject::InitFileSystem(std::make_unique<NiceMock<MockFileSystem>>())) {
-        LOG(FATAL) << "Cannot set mock file system because it is already initialized.";
-        return 1;
-    }
-
-    NiceMock<MockPartitionMounter> mounter;
-    gPartitionMounter = &mounter;
-
-    NiceMock<MockRuntimeInfoFactory> runtimeInfoFactory(
-        std::make_shared<NiceMock<MockRuntimeInfo>>());
-    gRuntimeInfoFactory = &runtimeInfoFactory;
-
-    NiceMock<MockPropertyFetcher> properties;
-    gPropertyFetcher = &properties;
-
     return RUN_ALL_TESTS();
 }

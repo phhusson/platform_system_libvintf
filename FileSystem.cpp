@@ -27,28 +27,6 @@ namespace android {
 namespace vintf {
 namespace details {
 
-static std::mutex sFileSystemMutex;
-static std::unique_ptr<FileSystem> sFileSystem{};
-
-bool initFileSystem(std::unique_ptr<FileSystem>&& value) {
-    std::lock_guard<std::mutex> lock(sFileSystemMutex);
-    if (sFileSystem != nullptr) return false;
-    sFileSystem = std::move(value);
-    return true;
-}
-
-FileSystem& getFileSystem() {
-    std::lock_guard<std::mutex> lock(sFileSystemMutex);
-    if (sFileSystem == nullptr) {
-#ifdef LIBVINTF_TARGET
-        sFileSystem = std::make_unique<details::FileSystemImpl>();
-#else
-        sFileSystem = std::make_unique<details::FileSystemNoOp>();
-#endif
-    }
-    return *sFileSystem;
-}
-
 status_t FileSystemImpl::fetch(const std::string& path, std::string* fetched,
                                std::string* error) const {
     std::ifstream in;
@@ -97,6 +75,27 @@ status_t FileSystemNoOp::fetch(const std::string&, std::string*, std::string*) c
 status_t FileSystemNoOp::listFiles(const std::string&, std::vector<std::string>*,
                                    std::string*) const {
     return NAME_NOT_FOUND;
+}
+
+FileSystemUnderPath::FileSystemUnderPath(const std::string& rootdir) {
+    mRootDir = rootdir;
+    if (!mRootDir.empty() && mRootDir.back() != '/') {
+        mRootDir.push_back('/');
+    }
+}
+
+status_t FileSystemUnderPath::fetch(const std::string& path, std::string* fetched,
+                                    std::string* error) const {
+    return mImpl.fetch(mRootDir + path, fetched, error);
+}
+
+status_t FileSystemUnderPath::listFiles(const std::string& path, std::vector<std::string>* out,
+                                        std::string* error) const {
+    return mImpl.listFiles(mRootDir + path, out, error);
+}
+
+const std::string& FileSystemUnderPath::getRootDir() const {
+    return mRootDir;
 }
 
 }  // namespace details

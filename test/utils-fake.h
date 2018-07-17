@@ -108,11 +108,12 @@ class MockPropertyFetcher : public PropertyFetcher {
    public:
     MockPropertyFetcher();
     MOCK_CONST_METHOD2(getProperty, std::string(const std::string&, const std::string&));
+    MOCK_CONST_METHOD2(getBoolProperty, bool(const std::string&, bool));
+    MOCK_CONST_METHOD3(getUintProperty, uint64_t(const std::string&, uint64_t, uint64_t));
 
    private:
-    PropertyFetcher real_;
+    PropertyFetcherImpl real_;
 };
-extern MockPropertyFetcher* gPropertyFetcher;
 
 }  // namespace details
 }  // namespace vintf

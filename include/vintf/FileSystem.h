@@ -19,10 +19,10 @@
 
 #include <memory>
 #include <mutex>
+#include <string>
+#include <vector>
 
 #include <utils/Errors.h>
-#include <vintf/RuntimeInfo.h>
-#include <vintf/parse_xml.h>
 
 namespace android {
 namespace vintf {
@@ -34,7 +34,7 @@ namespace vintf {
 // This class can be used to create a mock for overriding.
 class FileSystem {
    public:
-    virtual ~FileSystem(){};
+    virtual ~FileSystem() {}
     // Return NAME_NOT_FOUND if file is not found,
     //        OK if file is retrieved and written to "fetched".
     virtual status_t fetch(const std::string& path, std::string* fetched,
@@ -46,15 +46,6 @@ class FileSystem {
 };
 
 namespace details {
-
-// Initialize the global instance.
-__attribute__((warn_unused_result)) bool initFileSystem(std::unique_ptr<FileSystem>&& value);
-
-// Return the instance provided through init(), or a default implementation
-// if init() is not called. The default implementation queries the actual
-// file system on the device and does nothing on host.
-// Once get(), cannot be init()-ed again.
-FileSystem& getFileSystem();
 
 // Class that actually queries the file system.
 class FileSystemImpl : public FileSystem {
@@ -68,6 +59,23 @@ class FileSystemNoOp : public FileSystem {
    public:
     status_t fetch(const std::string&, std::string*, std::string*) const;
     status_t listFiles(const std::string&, std::vector<std::string>*, std::string*) const;
+};
+
+// The root is mounted to a given path.
+class FileSystemUnderPath : public FileSystem {
+   public:
+    FileSystemUnderPath(const std::string& rootdir);
+    virtual status_t fetch(const std::string& path, std::string* fetched,
+                           std::string* error) const override;
+    virtual status_t listFiles(const std::string& path, std::vector<std::string>* out,
+                               std::string* error) const override;
+
+   protected:
+    const std::string& getRootDir() const;
+
+   private:
+    std::string mRootDir;
+    FileSystemImpl mImpl;
 };
 
 }  // namespace details

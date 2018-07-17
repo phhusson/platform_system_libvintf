@@ -21,6 +21,7 @@ cc_defaults {
     cflags: [
         "-Wall",
         "-Werror",
+        "-Wextra-semi",
     ],
 
     target: {
@@ -30,8 +31,8 @@ cc_defaults {
     }
 }
 
-cc_library_static {
-    name: "libvintf_common",
+cc_library {
+    name: "libvintf",
     defaults: ["libvintf-defaults"],
     host_supported: true,
     srcs: [
@@ -85,33 +86,6 @@ cc_library_static {
     }
 }
 
-// libvintf_common + utils.cpp
-cc_library {
-    name: "libvintf",
-    host_supported: true,
-    defaults: ["libvintf-defaults"],
-    shared_libs: [
-        "libbase",
-        "libhidl-gen-utils",
-        "liblog",
-        "libselinux",
-        "libtinyxml2",
-        "libz",
-    ],
-    export_include_dirs: ["include"],
-    local_include_dirs: ["include/vintf"],
-
-    srcs: [
-        "utils.cpp",
-    ],
-
-    export_shared_lib_headers: [
-        "libhidl-gen-utils",
-    ],
-
-    whole_static_libs: ["libvintf_common"],
-}
-
 cc_binary {
     name: "vintf",
     defaults: ["libvintf-defaults"],
@@ -131,7 +105,7 @@ cc_binary_host {
     static_libs: [
         "libbase",
         "libhidl-gen-utils",
-        "libvintf_common",
+        "libvintf",
         "libutils",
         "libtinyxml2",
     ],
