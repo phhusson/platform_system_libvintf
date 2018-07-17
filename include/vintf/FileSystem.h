@@ -34,7 +34,7 @@ namespace vintf {
 // This class can be used to create a mock for overriding.
 class FileSystem {
    public:
-    virtual ~FileSystem(){};
+    virtual ~FileSystem() {}
     // Return NAME_NOT_FOUND if file is not found,
     //        OK if file is retrieved and written to "fetched".
     virtual status_t fetch(const std::string& path, std::string* fetched,
