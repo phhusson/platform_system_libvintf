@@ -393,8 +393,9 @@ struct XmlTextConverter : public XmlNodeConverter<Object> {
     virtual bool buildObject(Object* object, NodeType* root, std::string* error) const override {
         return this->parseText(root, object, error);
     }
-    virtual std::string elementName() const { return mElementName; };
-private:
+    virtual std::string elementName() const { return mElementName; }
+
+   private:
     std::string mElementName;
 };
 
