@@ -52,7 +52,7 @@ struct MapIterTypes {
         inline IteratorImpl &operator++()    {
             mIter++;
             return *this;
-        };
+        }
         inline IteratorImpl  operator++(int) {
             IteratorImpl i = *this;
             mIter++;

@@ -43,7 +43,7 @@ namespace vintf {
 // Compatibility matrix defines what hardware does the framework requires.
 struct CompatibilityMatrix : public HalGroup<MatrixHal>, public XmlFileGroup<MatrixXmlFile> {
     // Create a framework compatibility matrix.
-    CompatibilityMatrix() : mType(SchemaType::FRAMEWORK) {};
+    CompatibilityMatrix() : mType(SchemaType::FRAMEWORK) {}
 
     SchemaType type() const;
     Level level() const;
