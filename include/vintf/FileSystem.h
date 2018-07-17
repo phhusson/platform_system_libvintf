@@ -61,6 +61,23 @@ class FileSystemNoOp : public FileSystem {
     status_t listFiles(const std::string&, std::vector<std::string>*, std::string*) const;
 };
 
+// The root is mounted to a given path.
+class FileSystemUnderPath : public FileSystem {
+   public:
+    FileSystemUnderPath(const std::string& rootdir);
+    virtual status_t fetch(const std::string& path, std::string* fetched,
+                           std::string* error) const override;
+    virtual status_t listFiles(const std::string& path, std::vector<std::string>* out,
+                               std::string* error) const override;
+
+   protected:
+    const std::string& getRootDir() const;
+
+   private:
+    std::string mRootDir;
+    FileSystemImpl mImpl;
+};
+
 }  // namespace details
 }  // namespace vintf
 }  // namespace android
