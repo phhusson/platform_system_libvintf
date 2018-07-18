@@ -35,6 +35,7 @@ cc_library {
     name: "libvintf",
     defaults: ["libvintf-defaults"],
     host_supported: true,
+    recovery_available: true,
     srcs: [
         "parse_string.cpp",
         "parse_xml.cpp",
