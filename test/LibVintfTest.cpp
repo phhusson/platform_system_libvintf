@@ -1502,7 +1502,7 @@ TEST_F(LibVintfTest, KernelConfigParser) {
 }
 
 TEST_F(LibVintfTest, KernelConfigParser2) {
-    // usage in android-base.cfg
+    // usage in android-base.config
     const std::string data =
         "# CONFIG_NOT_SET is not set\n"
         "CONFIG_ONE=1\n"
@@ -1522,7 +1522,7 @@ TEST_F(LibVintfTest, KernelConfigParser2) {
 }
 
 TEST_F(LibVintfTest, KernelConfigParserSpace) {
-    // usage in android-base.cfg
+    // usage in android-base.config
     const std::string data =
         "   #   CONFIG_NOT_SET is not set   \n"
         "  CONFIG_ONE=1   # 'tis a one!\n"
