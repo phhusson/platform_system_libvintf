@@ -79,12 +79,12 @@ TEST_F(AssembleVintfTest, FrameworkMatrixEmpty) {
         {"PLATFORM_SEPOLICY_VERSION", "10000.0"},
         {"FRAMEWORK_VBMETA_VERSION", "1.0"},
     });
-    getInstance()->addKernelConfigInputStream({3, 18, 0}, "android-base.cfg",
+    getInstance()->addKernelConfigInputStream({3, 18, 0}, "android-base.config",
                                               makeStream(kernel318));
-    getInstance()->addKernelConfigInputStream({3, 18, 0}, "android-base-arm64.cfg",
+    getInstance()->addKernelConfigInputStream({3, 18, 0}, "android-base-arm64.config",
                                               makeStream(kernel318_64));
-    getInstance()->addKernelConfigInputStream({4, 4, 0}, "android-base.cfg", makeStream(kernel44));
-    getInstance()->addKernelConfigInputStream({4, 4, 0}, "android-base-arm64.cfg",
+    getInstance()->addKernelConfigInputStream({4, 4, 0}, "android-base.config", makeStream(kernel44));
+    getInstance()->addKernelConfigInputStream({4, 4, 0}, "android-base-arm64.config",
                                               makeStream(kernel44_64));
 
     EXPECT_TRUE(getInstance()->assemble());
