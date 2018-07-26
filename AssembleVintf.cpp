@@ -39,8 +39,8 @@ namespace android {
 namespace vintf {
 
 static const std::string gConfigPrefix = "android-base-";
-static const std::string gConfigSuffix = ".cfg";
-static const std::string gBaseConfig = "android-base.cfg";
+static const std::string gConfigSuffix = ".config";
+static const std::string gBaseConfig = "android-base.config";
 
 // An input stream with a name.
 // The input stream may be an actual file, or a stringstream for testing.
@@ -193,7 +193,8 @@ class AssembleVintfImpl : public AssembleVintf {
             }
             std::cerr << "'" << fname << "' (in " << path
                       << ") is not a valid kernel config file name. Must match regex: "
-                      << "android-base(-[0-9a-zA-Z-]+)?\\.cfg" << std::endl;
+                      << "android-base(-[0-9a-zA-Z-]+)?\\" << gConfigSuffix
+                      << std::endl;
             return nullptr;
         }
         sub.insert(0, "CONFIG_");
@@ -250,7 +251,7 @@ class AssembleVintfImpl : public AssembleVintf {
         }
 
         if (!foundCommonConfig) {
-            std::cerr << "No android-base.cfg is found in these paths:" << std::endl;
+            std::cerr << "No " << gBaseConfig << " is found in these paths:" << std::endl;
             for (auto& namedStream : *streams) {
                 std::cerr << "    " << namedStream.name() << std::endl;
             }
