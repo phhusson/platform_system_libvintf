@@ -678,6 +678,12 @@ class AssembleVintfImpl : public AssembleVintf {
         return true;
     }
 
+    bool setNoKernelRequirements() override {
+        mSerializeFlags |= SerializeFlag::NO_KERNEL_CONFIGS;
+        mSerializeFlags |= SerializeFlag::NO_KERNEL_MINOR_REVISION;
+        return true;
+    }
+
    private:
     std::vector<NamedIstream> mInFiles;
     Ostream mOutRef;
