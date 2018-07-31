@@ -601,12 +601,23 @@ MatrixKernelConditionsConverter matrixKernelConditionsConverter{};
 
 struct MatrixKernelConverter : public XmlNodeConverter<MatrixKernel> {
     std::string elementName() const override { return "kernel"; }
-    void mutateNode(const MatrixKernel &kernel, NodeType *root, DocType *d) const override {
-        appendAttr(root, "version", kernel.mMinLts);
+    void mutateNode(const MatrixKernel& kernel, NodeType* root, DocType* d) const override {
+        mutateNode(kernel, root, d, SerializeFlag::EVERYTHING);
+    }
+    void mutateNode(const MatrixKernel& kernel, NodeType* root, DocType* d,
+                    SerializeFlags flags) const override {
+        KernelVersion kv = kernel.mMinLts;
+        if (flags & SerializeFlag::NO_KERNEL_MINOR_REVISION) {
+            kv.minorRev = 0u;
+        }
+        appendAttr(root, "version", kv);
+
         if (!kernel.mConditions.empty()) {
             appendChild(root, matrixKernelConditionsConverter(kernel.mConditions, d));
         }
-        appendChildren(root, kernelConfigConverter, kernel.mConfigs, d);
+        if (!(flags & SerializeFlag::NO_KERNEL_CONFIGS)) {
+            appendChildren(root, kernelConfigConverter, kernel.mConfigs, d);
+        }
     }
     bool buildObject(MatrixKernel* object, NodeType* root, std::string* error) const override {
         if (!parseAttr(root, "version", &object->mMinLts, error) ||
@@ -1023,7 +1034,7 @@ struct CompatibilityMatrixConverter : public XmlNodeConverter<CompatibilityMatri
         }
         if (m.mType == SchemaType::FRAMEWORK) {
             if (!(flags & SerializeFlag::NO_KERNEL)) {
-                appendChildren(root, matrixKernelConverter, m.framework.mKernels, d);
+                appendChildren(root, matrixKernelConverter, m.framework.mKernels, d, flags);
             }
             if (!(flags & SerializeFlag::NO_SEPOLICY)) {
                 if (!(m.framework.mSepolicy == Sepolicy{})) {

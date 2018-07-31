@@ -63,7 +63,10 @@ void help() {
                  "               Output has only <hal> entries. Cannot be used with -n.\n"
                  "    -n, --no-hals\n"
                  "               Output has no <hal> entries (but all other entries).\n"
-                 "               Cannot be used with -l.\n";
+                 "               Cannot be used with -l.\n"
+                 "    --no-kernel-requirements\n"
+                 "               Output has no <config> entries in <kernel>, and kernel minor\n"
+                 "               version is set to zero. (For example, 3.18.0).\n";
 }
 
 int main(int argc, char** argv) {
@@ -71,6 +74,7 @@ int main(int argc, char** argv) {
     const struct option longopts[] = {{"kernel", required_argument, NULL, 'k'},
                                       {"hals-only", no_argument, NULL, 'l'},
                                       {"no-hals", no_argument, NULL, 'n'},
+                                      {"no-kernel-requirements", no_argument, NULL, 'K'},
                                       {0, 0, 0, 0}};
 
     std::string outFilePath;
@@ -122,6 +126,12 @@ int main(int argc, char** argv) {
 
             case 'n': {
                 if (!assembleVintf->setNoHals()) {
+                    return 1;
+                }
+            } break;
+
+            case 'K': {
+                if (!assembleVintf->setNoKernelRequirements()) {
                     return 1;
                 }
             } break;
