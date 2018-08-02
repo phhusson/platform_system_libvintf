@@ -865,15 +865,21 @@ struct HalManifestConverter : public XmlNodeConverter<HalManifest> {
     }
     void mutateNode(const HalManifest& m, NodeType* root, DocType* d,
                     SerializeFlags flags) const override {
-        appendAttr(root, "version", m.getMetaVersion());
-        appendAttr(root, "type", m.mType);
+        if (flags.isMetaVersionEnabled()) {
+            appendAttr(root, "version", m.getMetaVersion());
+        }
+        if (flags.isSchemaTypeEnabled()) {
+            appendAttr(root, "type", m.mType);
+        }
 
         if (flags.isHalsEnabled()) {
             appendChildren(root, manifestHalConverter, m.getHals(), d, flags);
         }
         if (m.mType == SchemaType::DEVICE) {
             if (flags.isSepolicyEnabled()) {
-                appendChild(root, halManifestSepolicyConverter(m.device.mSepolicyVersion, d));
+                if (m.device.mSepolicyVersion != Version{}) {
+                    appendChild(root, halManifestSepolicyConverter(m.device.mSepolicyVersion, d));
+                }
             }
             if (m.mLevel != Level::UNSPECIFIED) {
                 this->appendAttr(root, "target-level", m.mLevel);
@@ -1026,8 +1032,12 @@ struct CompatibilityMatrixConverter : public XmlNodeConverter<CompatibilityMatri
     }
     void mutateNode(const CompatibilityMatrix& m, NodeType* root, DocType* d,
                     SerializeFlags flags) const override {
-        appendAttr(root, "version", m.getMinimumMetaVersion());
-        appendAttr(root, "type", m.mType);
+        if (flags.isMetaVersionEnabled()) {
+            appendAttr(root, "version", m.getMinimumMetaVersion());
+        }
+        if (flags.isSchemaTypeEnabled()) {
+            appendAttr(root, "type", m.mType);
+        }
 
         if (flags.isHalsEnabled()) {
             appendChildren(root, matrixHalConverter, iterateValues(m.mHals), d);
