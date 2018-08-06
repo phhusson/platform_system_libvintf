@@ -147,6 +147,7 @@ cc_binary_host {
 
 cc_library_static {
     name: "libvintf_recovery",
+    recovery_available: true,
     defaults: ["libvintf-defaults"],
     srcs: ["VintfObjectRecovery.cpp"],
     export_include_dirs: ["include"],
