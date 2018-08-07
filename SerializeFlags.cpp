@@ -19,16 +19,15 @@
 namespace android {
 namespace vintf {
 
-SerializeFlags::SerializeFlags(uint32_t legacyValue) : mValue(~legacyValue) {}
-
+SerializeFlags::SerializeFlags(uint32_t value) : mValue(value) {}
 SerializeFlags::SerializeFlags(const SerializeFlags& other) : mValue(other.mValue) {}
 
 SerializeFlags SerializeFlags::operator|(SerializeFlags other) const {
-    return SerializeFlags(legacyValue() | other.legacyValue());
+    return SerializeFlags(mValue & other.mValue);
 }
 
 SerializeFlags SerializeFlags::operator&(SerializeFlags other) const {
-    return SerializeFlags(legacyValue() & other.legacyValue());
+    return SerializeFlags(mValue | other.mValue);
 }
 
 SerializeFlags& SerializeFlags::operator|=(SerializeFlags other) {
@@ -37,10 +36,6 @@ SerializeFlags& SerializeFlags::operator|=(SerializeFlags other) {
 }
 
 SerializeFlags::operator bool() const {
-    return legacyValue();
-}
-
-uint32_t SerializeFlags::legacyValue() const {
     return ~mValue;
 }
 
@@ -68,7 +63,7 @@ VINTF_SERIALIZE_FLAGS_FIELD_DEFINE(Fqname, 7)
 VINTF_SERIALIZE_FLAGS_FIELD_DEFINE(KernelConfigs, 8)
 VINTF_SERIALIZE_FLAGS_FIELD_DEFINE(KernelMinorRevision, 9)
 
-const SerializeFlags SerializeFlags::EVERYTHING = SerializeFlags(0);
+const SerializeFlags SerializeFlags::EVERYTHING = SerializeFlags(~0);
 const SerializeFlags SerializeFlags::NO_HALS = EVERYTHING.disableHals();
 const SerializeFlags SerializeFlags::NO_AVB = EVERYTHING.disableAvb();
 const SerializeFlags SerializeFlags::NO_SEPOLICY = EVERYTHING.disableSepolicy();
@@ -81,7 +76,7 @@ const SerializeFlags SerializeFlags::NO_KERNEL_CONFIGS = EVERYTHING.disableKerne
 const SerializeFlags SerializeFlags::NO_KERNEL_MINOR_REVISION =
     EVERYTHING.disableKernelMinorRevision();
 
-const SerializeFlags SerializeFlags::NO_TAGS = SerializeFlags(~0);
+const SerializeFlags SerializeFlags::NO_TAGS = SerializeFlags(0);
 const SerializeFlags SerializeFlags::HALS_ONLY =
     NO_TAGS.enableHals().enableFqname();  // <hal> with <fqname>
 const SerializeFlags SerializeFlags::XMLFILES_ONLY = NO_TAGS.enableXmlFiles();
