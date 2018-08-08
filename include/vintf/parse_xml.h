@@ -32,10 +32,12 @@ struct XmlConverter {
     virtual const std::string &lastError() const = 0;
 
     // deprecated. Use operator() instead.
-    virtual std::string serialize(const Object& o, SerializeFlags flags = EVERYTHING) const = 0;
+    virtual std::string serialize(const Object& o,
+                                  SerializeFlags flags = SerializeFlags::EVERYTHING) const = 0;
 
     // Serialize an object to XML.
-    virtual std::string operator()(const Object& o, SerializeFlags flags = EVERYTHING) const = 0;
+    virtual std::string operator()(const Object& o,
+                                   SerializeFlags flags = SerializeFlags::EVERYTHING) const = 0;
 
     // deprecated. Use operator() instead. These APIs sets lastError(). Kept for testing.
     virtual bool deserialize(Object* o, const std::string& xml) = 0;
