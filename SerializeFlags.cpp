@@ -45,6 +45,8 @@ VINTF_SERIALIZE_FLAGS_FIELD_DEFINE(Ssdk, 6)
 VINTF_SERIALIZE_FLAGS_FIELD_DEFINE(Fqname, 7)
 VINTF_SERIALIZE_FLAGS_FIELD_DEFINE(KernelConfigs, 8)
 VINTF_SERIALIZE_FLAGS_FIELD_DEFINE(KernelMinorRevision, 9)
+VINTF_SERIALIZE_FLAGS_FIELD_DEFINE(MetaVersion, 10)
+VINTF_SERIALIZE_FLAGS_FIELD_DEFINE(SchemaType, 11)
 
 const SerializeFlags SerializeFlags::EVERYTHING = SerializeFlags(~0);
 const SerializeFlags SerializeFlags::NO_HALS = EVERYTHING.disableHals();
@@ -59,7 +61,8 @@ const SerializeFlags SerializeFlags::NO_KERNEL_CONFIGS = EVERYTHING.disableKerne
 const SerializeFlags SerializeFlags::NO_KERNEL_MINOR_REVISION =
     EVERYTHING.disableKernelMinorRevision();
 
-const SerializeFlags SerializeFlags::NO_TAGS = SerializeFlags(0);
+const SerializeFlags SerializeFlags::NO_TAGS =
+    SerializeFlags(0).enableMetaVersion().enableSchemaType();
 const SerializeFlags SerializeFlags::HALS_ONLY =
     NO_TAGS.enableHals().enableFqname();  // <hal> with <fqname>
 const SerializeFlags SerializeFlags::XMLFILES_ONLY = NO_TAGS.enableXmlFiles();
