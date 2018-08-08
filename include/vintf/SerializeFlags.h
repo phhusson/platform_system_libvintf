@@ -22,28 +22,6 @@
 namespace android {
 namespace vintf {
 
-// legacy single SerializeFlag values. Use SerializeFlags class instead.
-enum SerializeFlag : uint32_t {
-    NO_HALS = 1 << 0,
-    NO_AVB = 1 << 1,
-    NO_SEPOLICY = 1 << 2,
-    NO_VNDK = 1 << 3,
-    NO_KERNEL = 1 << 4,
-    NO_XMLFILES = 1 << 5,
-    NO_SSDK = 1 << 6,
-    NO_FQNAME = 1 << 7,
-    NO_KERNEL_CONFIGS = 1 << 8,
-    NO_KERNEL_MINOR_REVISION = 1 << 9,
-
-    EVERYTHING = 0,
-    HALS_ONLY = ~(NO_HALS | NO_FQNAME),  // <hal> with <fqname>
-    XMLFILES_ONLY = ~NO_XMLFILES,
-    SEPOLICY_ONLY = ~NO_SEPOLICY,
-    VNDK_ONLY = ~NO_VNDK,
-    HALS_NO_FQNAME = ~NO_HALS,  // <hal> without <fqname>
-    SSDK_ONLY = ~NO_SSDK,
-};
-
 class SerializeFlags {
    public:
     SerializeFlags(const SerializeFlags& other);
@@ -66,18 +44,38 @@ class SerializeFlags {
 
 #undef VINTF_SERIALIZE_FLAGS_FIELD_DECLARE
 
+    static const SerializeFlags NO_HALS;
+    static const SerializeFlags NO_AVB;
+    static const SerializeFlags NO_SEPOLICY;
+    static const SerializeFlags NO_VNDK;
+    static const SerializeFlags NO_KERNEL;
+    static const SerializeFlags NO_XMLFILES;
+    static const SerializeFlags NO_SSDK;
+    static const SerializeFlags NO_FQNAME;
+    static const SerializeFlags NO_KERNEL_CONFIGS;
+    static const SerializeFlags NO_KERNEL_MINOR_REVISION;
+
+    static const SerializeFlags EVERYTHING;
+    static const SerializeFlags NO_TAGS;
+    static const SerializeFlags HALS_ONLY;
+    static const SerializeFlags XMLFILES_ONLY;
+    static const SerializeFlags SEPOLICY_ONLY;
+    static const SerializeFlags VNDK_ONLY;
+    static const SerializeFlags HALS_NO_FQNAME;
+    static const SerializeFlags SSDK_ONLY;
+
    private:
     uint32_t mValue;
 
-    // Legacy APIs to be compatible with old SerializeFlag usage.
+    // Legacy APIs to be compatible with old SerializeFlags usage.
    public:
-    SerializeFlags(uint32_t legacyValue);
-    SerializeFlags operator|(SerializeFlag other) const;
-    SerializeFlags operator&(SerializeFlag other) const;
-    SerializeFlags& operator|=(SerializeFlag other);
+    SerializeFlags operator|(SerializeFlags other) const;
+    SerializeFlags operator&(SerializeFlags other) const;
+    SerializeFlags& operator|=(SerializeFlags other);
     operator bool() const;
 
    private:
+    SerializeFlags(uint32_t legacyValue);
     uint32_t legacyValue() const;
 };
 
