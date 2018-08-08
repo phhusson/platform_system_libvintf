@@ -75,8 +75,7 @@ class SerializeFlags {
     operator bool() const;
 
    private:
-    SerializeFlags(uint32_t legacyValue);
-    uint32_t legacyValue() const;
+    SerializeFlags(uint32_t value);
 };
 
 }  // namespace vintf
