@@ -25,7 +25,7 @@
 
 #include <utils/Errors.h>
 
-#include "DisabledChecks.h"
+#include "CheckFlags.h"
 #include "MatrixKernel.h"
 #include "Version.h"
 
@@ -73,7 +73,7 @@ struct RuntimeInfo {
     //   not when RuntimeInfo::checkCompatibility is called.
     // - avb-vbmetaversion matches related sysprops
     bool checkCompatibility(const CompatibilityMatrix& mat, std::string* error = nullptr,
-                            DisabledChecks disabledChecks = ENABLE_ALL_CHECKS) const;
+                            CheckFlags::Type flags = CheckFlags::ENABLE_ALL_CHECKS) const;
 
     using FetchFlags = uint32_t;
     enum FetchFlag : FetchFlags {
