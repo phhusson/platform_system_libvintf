@@ -343,12 +343,15 @@ class AssembleVintfImpl : public AssembleVintf {
 
             // Check that manifestToAdd is empty.
             if (!manifestToAdd.empty()) {
-                std::cerr << "File \"" << path << "\" contains extraneous entries and attributes. "
-                          << "This is currently unsupported (b/78943004); it can only contain "
-                          << "<hal>s and attribute \"type\". Only the first input "
-                          << "file to assemble_vintf can contain other things. "
-                          << "Remaining entries and attributes are:" << std::endl
-                          << gHalManifestConverter(manifestToAdd);
+                std::cerr
+                    << "File \"" << path << "\" contains extraneous entries and attributes. "
+                    << "This is currently unsupported (b/78943004); it can only contain "
+                    << "<hal>s and attribute \"type\" and \"version\". Only the first input "
+                    << "file to assemble_vintf can contain other things. "
+                    << "Remaining entries and attributes are:" << std::endl
+                    << gHalManifestConverter(
+                           manifestToAdd,
+                           SerializeFlags::EVERYTHING.disableMetaVersion().disableSchemaType());
                 return false;
             }
         }
