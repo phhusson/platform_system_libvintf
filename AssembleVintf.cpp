@@ -668,19 +668,19 @@ class AssembleVintfImpl : public AssembleVintf {
 
     bool setHalsOnly() override {
         if (mSerializeFlags) return false;
-        mSerializeFlags |= SerializeFlag::HALS_ONLY;
+        mSerializeFlags |= SerializeFlags::HALS_ONLY;
         return true;
     }
 
     bool setNoHals() override {
         if (mSerializeFlags) return false;
-        mSerializeFlags |= SerializeFlag::NO_HALS;
+        mSerializeFlags |= SerializeFlags::NO_HALS;
         return true;
     }
 
     bool setNoKernelRequirements() override {
-        mSerializeFlags |= SerializeFlag::NO_KERNEL_CONFIGS;
-        mSerializeFlags |= SerializeFlag::NO_KERNEL_MINOR_REVISION;
+        mSerializeFlags |= SerializeFlags::NO_KERNEL_CONFIGS;
+        mSerializeFlags |= SerializeFlags::NO_KERNEL_MINOR_REVISION;
         return true;
     }
 
@@ -689,7 +689,7 @@ class AssembleVintfImpl : public AssembleVintf {
     Ostream mOutRef;
     Istream mCheckFile;
     bool mOutputMatrix = false;
-    SerializeFlags mSerializeFlags = SerializeFlag::EVERYTHING;
+    SerializeFlags mSerializeFlags = SerializeFlags::EVERYTHING;
     std::map<KernelVersion, std::vector<NamedIstream>> mKernels;
     std::map<std::string, std::string> mFakeEnv;
 };
