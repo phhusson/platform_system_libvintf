@@ -23,16 +23,16 @@ SerializeFlags::SerializeFlags(uint32_t legacyValue) : mValue(~legacyValue) {}
 
 SerializeFlags::SerializeFlags(const SerializeFlags& other) : mValue(other.mValue) {}
 
-SerializeFlags SerializeFlags::operator|(SerializeFlag other) const {
-    return SerializeFlags(legacyValue() | other);
+SerializeFlags SerializeFlags::operator|(SerializeFlags other) const {
+    return SerializeFlags(legacyValue() | other.legacyValue());
 }
 
-SerializeFlags SerializeFlags::operator&(SerializeFlag other) const {
-    return SerializeFlags(legacyValue() & other);
+SerializeFlags SerializeFlags::operator&(SerializeFlags other) const {
+    return SerializeFlags(legacyValue() & other.legacyValue());
 }
 
-SerializeFlags& SerializeFlags::operator|=(SerializeFlag other) {
-    *this = (*this | SerializeFlags(other));
+SerializeFlags& SerializeFlags::operator|=(SerializeFlags other) {
+    *this = (*this | other);
     return *this;
 }
 
@@ -67,6 +67,29 @@ VINTF_SERIALIZE_FLAGS_FIELD_DEFINE(Ssdk, 6)
 VINTF_SERIALIZE_FLAGS_FIELD_DEFINE(Fqname, 7)
 VINTF_SERIALIZE_FLAGS_FIELD_DEFINE(KernelConfigs, 8)
 VINTF_SERIALIZE_FLAGS_FIELD_DEFINE(KernelMinorRevision, 9)
+
+const SerializeFlags SerializeFlags::EVERYTHING = SerializeFlags(0);
+const SerializeFlags SerializeFlags::NO_HALS = EVERYTHING.disableHals();
+const SerializeFlags SerializeFlags::NO_AVB = EVERYTHING.disableAvb();
+const SerializeFlags SerializeFlags::NO_SEPOLICY = EVERYTHING.disableSepolicy();
+const SerializeFlags SerializeFlags::NO_VNDK = EVERYTHING.disableVndk();
+const SerializeFlags SerializeFlags::NO_KERNEL = EVERYTHING.disableKernel();
+const SerializeFlags SerializeFlags::NO_XMLFILES = EVERYTHING.disableXmlFiles();
+const SerializeFlags SerializeFlags::NO_SSDK = EVERYTHING.disableSsdk();
+const SerializeFlags SerializeFlags::NO_FQNAME = EVERYTHING.disableFqname();
+const SerializeFlags SerializeFlags::NO_KERNEL_CONFIGS = EVERYTHING.disableKernelConfigs();
+const SerializeFlags SerializeFlags::NO_KERNEL_MINOR_REVISION =
+    EVERYTHING.disableKernelMinorRevision();
+
+const SerializeFlags SerializeFlags::NO_TAGS = SerializeFlags(~0);
+const SerializeFlags SerializeFlags::HALS_ONLY =
+    NO_TAGS.enableHals().enableFqname();  // <hal> with <fqname>
+const SerializeFlags SerializeFlags::XMLFILES_ONLY = NO_TAGS.enableXmlFiles();
+const SerializeFlags SerializeFlags::SEPOLICY_ONLY = NO_TAGS.enableSepolicy();
+const SerializeFlags SerializeFlags::VNDK_ONLY = NO_TAGS.enableVndk();
+const SerializeFlags SerializeFlags::HALS_NO_FQNAME =
+    NO_TAGS.enableHals();  // <hal> without <fqname>
+const SerializeFlags SerializeFlags::SSDK_ONLY = NO_TAGS.enableSsdk();
 
 }  // namespace vintf
 }  // namespace android
