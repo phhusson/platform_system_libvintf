@@ -67,14 +67,6 @@ class SerializeFlags {
    private:
     uint32_t mValue;
 
-    // Legacy APIs to be compatible with old SerializeFlags usage.
-   public:
-    SerializeFlags operator|(SerializeFlags other) const;
-    SerializeFlags operator&(SerializeFlags other) const;
-    SerializeFlags& operator|=(SerializeFlags other);
-    operator bool() const;
-
-   private:
     SerializeFlags(uint32_t value);
 };
 
