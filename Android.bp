@@ -53,6 +53,7 @@ cc_library {
         "MatrixKernel.cpp",
         "PropertyFetcher.cpp",
         "Regex.cpp",
+        "SerializeFlags.cpp",
         "SystemSdk.cpp",
         "TransportArch.cpp",
         "VintfObject.cpp",
