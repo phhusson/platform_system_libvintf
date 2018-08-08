@@ -667,20 +667,29 @@ class AssembleVintfImpl : public AssembleVintf {
     void setOutputMatrix() override { mOutputMatrix = true; }
 
     bool setHalsOnly() override {
-        if (mSerializeFlags) return false;
-        mSerializeFlags |= SerializeFlags::HALS_ONLY;
+        if (mHasSetHalsOnlyFlag) {
+            std::cerr << "Error: Cannot set --hals-only with --no-hals." << std::endl;
+            return false;
+        }
+        // Just override it with HALS_ONLY because other flags that modify mSerializeFlags
+        // does not interfere with this (except --no-hals).
+        mSerializeFlags = SerializeFlags::HALS_ONLY;
+        mHasSetHalsOnlyFlag = true;
         return true;
     }
 
     bool setNoHals() override {
-        if (mSerializeFlags) return false;
-        mSerializeFlags |= SerializeFlags::NO_HALS;
+        if (mHasSetHalsOnlyFlag) {
+            std::cerr << "Error: Cannot set --hals-only with --no-hals." << std::endl;
+            return false;
+        }
+        mSerializeFlags = mSerializeFlags.disableHals();
+        mHasSetHalsOnlyFlag = true;
         return true;
     }
 
     bool setNoKernelRequirements() override {
-        mSerializeFlags |= SerializeFlags::NO_KERNEL_CONFIGS;
-        mSerializeFlags |= SerializeFlags::NO_KERNEL_MINOR_REVISION;
+        mSerializeFlags = mSerializeFlags.disableKernelConfigs().disableKernelMinorRevision();
         return true;
     }
 
@@ -689,6 +698,7 @@ class AssembleVintfImpl : public AssembleVintf {
     Ostream mOutRef;
     Istream mCheckFile;
     bool mOutputMatrix = false;
+    bool mHasSetHalsOnlyFlag = false;
     SerializeFlags mSerializeFlags = SerializeFlags::EVERYTHING;
     std::map<KernelVersion, std::vector<NamedIstream>> mKernels;
     std::map<std::string, std::string> mFakeEnv;
