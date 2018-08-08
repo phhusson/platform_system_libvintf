@@ -260,7 +260,7 @@ TEST_F(LibVintfTest, FutureManifestCompatible) {
 TEST_F(LibVintfTest, HalManifestConverter) {
     HalManifest vm = testDeviceManifest();
     std::string xml =
-        gHalManifestConverter(vm, SerializeFlags::HALS_NO_FQNAME & SerializeFlags::SEPOLICY_ONLY);
+        gHalManifestConverter(vm, SerializeFlags::NO_TAGS.enableHals().enableSepolicy());
     EXPECT_EQ(xml,
         "<manifest version=\"1.0\" type=\"device\">\n"
         "    <hal format=\"hidl\">\n"
@@ -297,8 +297,7 @@ TEST_F(LibVintfTest, HalManifestConverter) {
 
 TEST_F(LibVintfTest, HalManifestConverterFramework) {
     HalManifest vm = testFrameworkManfiest();
-    std::string xml =
-        gHalManifestConverter(vm, SerializeFlags::HALS_NO_FQNAME & SerializeFlags::VNDK_ONLY);
+    std::string xml = gHalManifestConverter(vm, SerializeFlags::NO_TAGS.enableHals().enableVndk());
     EXPECT_EQ(xml,
         "<manifest version=\"1.0\" type=\"framework\">\n"
         "    <hal format=\"hidl\">\n"
@@ -1285,9 +1284,8 @@ TEST_F(LibVintfTest, Compat) {
 
 TEST_F(LibVintfTest, HalManifestConverterXmlFile) {
     HalManifest vm = testDeviceManifestWithXmlFile();
-    std::string xml =
-        gHalManifestConverter(vm, SerializeFlags::HALS_NO_FQNAME & SerializeFlags::SEPOLICY_ONLY &
-                                      SerializeFlags::XMLFILES_ONLY);
+    std::string xml = gHalManifestConverter(
+        vm, SerializeFlags::NO_TAGS.enableHals().enableSepolicy().enableXmlFiles());
     EXPECT_EQ(xml,
               "<manifest version=\"1.0\" type=\"device\">\n"
               "    <hal format=\"hidl\">\n"
