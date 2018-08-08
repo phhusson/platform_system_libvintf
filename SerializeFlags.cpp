@@ -22,23 +22,6 @@ namespace vintf {
 SerializeFlags::SerializeFlags(uint32_t value) : mValue(value) {}
 SerializeFlags::SerializeFlags(const SerializeFlags& other) : mValue(other.mValue) {}
 
-SerializeFlags SerializeFlags::operator|(SerializeFlags other) const {
-    return SerializeFlags(mValue & other.mValue);
-}
-
-SerializeFlags SerializeFlags::operator&(SerializeFlags other) const {
-    return SerializeFlags(mValue | other.mValue);
-}
-
-SerializeFlags& SerializeFlags::operator|=(SerializeFlags other) {
-    *this = (*this | other);
-    return *this;
-}
-
-SerializeFlags::operator bool() const {
-    return ~mValue;
-}
-
 #define VINTF_SERIALIZE_FLAGS_FIELD_DEFINE(name, bit)      \
     SerializeFlags SerializeFlags::enable##name() const {  \
         SerializeFlags ret(*this);                         \
