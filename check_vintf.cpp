@@ -225,7 +225,8 @@ int checkAllFiles(const std::string& rootdir, const Properties& props, std::stri
     VintfObject vintfObject(std::make_unique<HostFileSystem>(rootdir),
                             nullptr /* partition mounter */, nullptr /* runtime info factory */,
                             std::move(hostPropertyFetcher));
-    return vintfObject.checkCompatibility({} /* packageInfo */, error, DISABLE_RUNTIME_INFO);
+    return vintfObject.checkCompatibility({} /* packageInfo */, error,
+                                          CheckFlags::DISABLE_RUNTIME_INFO);
 }
 
 }  // namespace details
