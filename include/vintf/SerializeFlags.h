@@ -22,56 +22,69 @@
 namespace android {
 namespace vintf {
 
-class SerializeFlags {
+namespace SerializeFlags {
+
+class Type {
    public:
-    SerializeFlags(const SerializeFlags& other);
+    explicit constexpr Type(uint32_t value) : mValue(value) {}
 
-#define VINTF_SERIALIZE_FLAGS_FIELD_DECLARE(name) \
-    SerializeFlags enable##name() const;          \
-    SerializeFlags disable##name() const;         \
-    bool is##name##Enabled() const;
+#define VINTF_SERIALIZE_FLAGS_FIELD(name, bit)                                  \
+    constexpr Type enable##name() const { return Type(mValue | (1 << bit)); }   \
+    constexpr Type disable##name() const { return Type(mValue & ~(1 << bit)); } \
+    constexpr bool is##name##Enabled() const { return mValue & (1 << bit); }
 
-    VINTF_SERIALIZE_FLAGS_FIELD_DECLARE(Hals)
-    VINTF_SERIALIZE_FLAGS_FIELD_DECLARE(Avb)
-    VINTF_SERIALIZE_FLAGS_FIELD_DECLARE(Sepolicy)
-    VINTF_SERIALIZE_FLAGS_FIELD_DECLARE(Vndk)
-    VINTF_SERIALIZE_FLAGS_FIELD_DECLARE(Kernel)
-    VINTF_SERIALIZE_FLAGS_FIELD_DECLARE(XmlFiles)
-    VINTF_SERIALIZE_FLAGS_FIELD_DECLARE(Ssdk)
-    VINTF_SERIALIZE_FLAGS_FIELD_DECLARE(Fqname)
-    VINTF_SERIALIZE_FLAGS_FIELD_DECLARE(KernelConfigs)
-    VINTF_SERIALIZE_FLAGS_FIELD_DECLARE(KernelMinorRevision)
-    VINTF_SERIALIZE_FLAGS_FIELD_DECLARE(MetaVersion)
-    VINTF_SERIALIZE_FLAGS_FIELD_DECLARE(SchemaType)
+    VINTF_SERIALIZE_FLAGS_FIELD(Hals, 0)
+    VINTF_SERIALIZE_FLAGS_FIELD(Avb, 1)
+    VINTF_SERIALIZE_FLAGS_FIELD(Sepolicy, 2)
+    VINTF_SERIALIZE_FLAGS_FIELD(Vndk, 3)
+    VINTF_SERIALIZE_FLAGS_FIELD(Kernel, 4)
+    VINTF_SERIALIZE_FLAGS_FIELD(XmlFiles, 5)
+    VINTF_SERIALIZE_FLAGS_FIELD(Ssdk, 6)
+    VINTF_SERIALIZE_FLAGS_FIELD(Fqname, 7)
+    VINTF_SERIALIZE_FLAGS_FIELD(KernelConfigs, 8)
+    VINTF_SERIALIZE_FLAGS_FIELD(KernelMinorRevision, 9)
+    VINTF_SERIALIZE_FLAGS_FIELD(MetaVersion, 10)
+    VINTF_SERIALIZE_FLAGS_FIELD(SchemaType, 11)
 
-#undef VINTF_SERIALIZE_FLAGS_FIELD_DECLARE
-
-    static const SerializeFlags NO_HALS;
-    static const SerializeFlags NO_AVB;
-    static const SerializeFlags NO_SEPOLICY;
-    static const SerializeFlags NO_VNDK;
-    static const SerializeFlags NO_KERNEL;
-    static const SerializeFlags NO_XMLFILES;
-    static const SerializeFlags NO_SSDK;
-    static const SerializeFlags NO_FQNAME;
-    static const SerializeFlags NO_KERNEL_CONFIGS;
-    static const SerializeFlags NO_KERNEL_MINOR_REVISION;
-
-    static const SerializeFlags EVERYTHING;
-    static const SerializeFlags NO_TAGS;
-    static const SerializeFlags HALS_ONLY;
-    static const SerializeFlags XMLFILES_ONLY;
-    static const SerializeFlags SEPOLICY_ONLY;
-    static const SerializeFlags VNDK_ONLY;
-    static const SerializeFlags HALS_NO_FQNAME;
-    static const SerializeFlags SSDK_ONLY;
+#undef VINTF_SERIALIZE_FLAGS_FIELD
 
    private:
     uint32_t mValue;
-
-    SerializeFlags(uint32_t value);
 };
 
+constexpr Type EVERYTHING = Type(~0);
+constexpr Type NO_HALS = EVERYTHING.disableHals();
+constexpr Type NO_AVB = EVERYTHING.disableAvb();
+constexpr Type NO_SEPOLICY = EVERYTHING.disableSepolicy();
+constexpr Type NO_VNDK = EVERYTHING.disableVndk();
+constexpr Type NO_KERNEL = EVERYTHING.disableKernel();
+constexpr Type NO_XMLFILES = EVERYTHING.disableXmlFiles();
+constexpr Type NO_SSDK = EVERYTHING.disableSsdk();
+constexpr Type NO_FQNAME = EVERYTHING.disableFqname();
+constexpr Type NO_KERNEL_CONFIGS = EVERYTHING.disableKernelConfigs();
+constexpr Type NO_KERNEL_MINOR_REVISION = EVERYTHING.disableKernelMinorRevision();
+
+constexpr Type NO_TAGS = Type(0).enableMetaVersion().enableSchemaType();
+constexpr Type HALS_ONLY = NO_TAGS.enableHals().enableFqname();  // <hal> with <fqname>
+constexpr Type XMLFILES_ONLY = NO_TAGS.enableXmlFiles();
+constexpr Type SEPOLICY_ONLY = NO_TAGS.enableSepolicy();
+constexpr Type VNDK_ONLY = NO_TAGS.enableVndk();
+constexpr Type HALS_NO_FQNAME = NO_TAGS.enableHals();  // <hal> without <fqname>
+constexpr Type SSDK_ONLY = NO_TAGS.enableSsdk();
+
+// tests
+static_assert(EVERYTHING.isHalsEnabled(), "");
+static_assert(EVERYTHING.isMetaVersionEnabled(), "");
+static_assert(!NO_HALS.isHalsEnabled(), "");
+static_assert(NO_HALS.isAvbEnabled(), "");
+static_assert(NO_HALS.isMetaVersionEnabled(), "");
+static_assert(!NO_TAGS.isHalsEnabled(), "");
+static_assert(NO_TAGS.isMetaVersionEnabled(), "");
+static_assert(HALS_ONLY.isHalsEnabled(), "");
+static_assert(!HALS_ONLY.isAvbEnabled(), "");
+static_assert(HALS_ONLY.isMetaVersionEnabled(), "");
+
+}  // namespace SerializeFlags
 }  // namespace vintf
 }  // namespace android
 
