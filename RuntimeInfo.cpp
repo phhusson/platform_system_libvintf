@@ -102,7 +102,7 @@ bool RuntimeInfo::matchKernelVersion(const KernelVersion& minLts) const {
 }
 
 bool RuntimeInfo::checkCompatibility(const CompatibilityMatrix& mat, std::string* error,
-                                     DisabledChecks disabledChecks) const {
+                                     CheckFlags::Type flags) const {
     if (mat.mType != SchemaType::FRAMEWORK) {
         if (error != nullptr) {
             *error = "Should not check runtime info against " + to_string(mat.mType)
@@ -161,7 +161,7 @@ bool RuntimeInfo::checkCompatibility(const CompatibilityMatrix& mat, std::string
         error->clear();
     }
 
-    if ((disabledChecks & DISABLE_AVB_CHECK) == 0) {
+    if (flags.isAvbEnabled()) {
         const Version& matAvb = mat.framework.mAvbMetaVersion;
         if (mBootAvbVersion.majorVer != matAvb.majorVer ||
             mBootAvbVersion.minorVer < matAvb.minorVer) {

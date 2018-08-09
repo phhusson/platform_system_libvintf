@@ -19,8 +19,8 @@
 
 #include <memory>
 
+#include "CheckFlags.h"
 #include "CompatibilityMatrix.h"
-#include "DisabledChecks.h"
 #include "FileSystem.h"
 #include "HalManifest.h"
 #include "Named.h"
@@ -141,7 +141,7 @@ class VintfObject {
      * @param packageInfo a list of XMLs of HalManifest /
      * CompatibilityMatrix objects.
      * @param error error message
-     * @param disabledChecks flags to disable certain checks. See DisabledChecks.
+     * @param flags flags to disable certain checks. See CheckFlags.
      *
      * @return = 0 if success (compatible)
      *         > 0 if incompatible
@@ -149,7 +149,7 @@ class VintfObject {
      */
     int32_t checkCompatibility(const std::vector<std::string>& packageInfo,
                                std::string* error = nullptr,
-                               DisabledChecks disabledChecks = ENABLE_ALL_CHECKS);
+                               CheckFlags::Type flags = CheckFlags::ENABLE_ALL_CHECKS);
 
     /**
      * A std::function that abstracts a list of "provided" instance names. Given package, version
@@ -212,7 +212,7 @@ class VintfObject {
     friend class testing::VintfObjectRuntimeInfoTest;
     friend class testing::VintfObjectCompatibleTest;
     int32_t checkCompatibility(const std::vector<std::string>& xmls, bool mount, std::string* error,
-                               DisabledChecks disabledChecks = ENABLE_ALL_CHECKS);
+                               CheckFlags::Type flags = CheckFlags::ENABLE_ALL_CHECKS);
     const std::unique_ptr<FileSystem>& getFileSystem();
     const std::unique_ptr<details::PartitionMounter>& getPartitionMounter();
     const std::unique_ptr<details::PropertyFetcher>& getPropertyFetcher();
@@ -276,7 +276,7 @@ class VintfObject {
      * @param packageInfo a list of XMLs of HalManifest /
      * CompatibilityMatrix objects.
      * @param error error message
-     * @param disabledChecks flags to disable certain checks. See DisabledChecks.
+     * @param flags flags to disable certain checks. See CheckFlags.
      *
      * @return = 0 if success (compatible)
      *         > 0 if incompatible
@@ -284,7 +284,7 @@ class VintfObject {
      */
     static int32_t CheckCompatibility(const std::vector<std::string>& packageInfo,
                                       std::string* error = nullptr,
-                                      DisabledChecks disabledChecks = ENABLE_ALL_CHECKS);
+                                      CheckFlags::Type flags = CheckFlags::ENABLE_ALL_CHECKS);
 
     /**
      * Check deprecation on framework matrices with a provided predicate.
