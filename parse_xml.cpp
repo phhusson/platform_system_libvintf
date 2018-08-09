@@ -141,7 +141,7 @@ struct XmlNodeConverter : public XmlConverter<Object> {
 
     // sub-types should implement these.
     virtual void mutateNode(const Object &o, NodeType *n, DocType *d) const = 0;
-    virtual void mutateNode(const Object& o, NodeType* n, DocType* d, SerializeFlags) const {
+    virtual void mutateNode(const Object& o, NodeType* n, DocType* d, SerializeFlags::Type) const {
         mutateNode(o, n, d);
     }
     virtual bool buildObject(Object* o, NodeType* n, std::string* error) const = 0;
@@ -150,12 +150,12 @@ struct XmlNodeConverter : public XmlConverter<Object> {
     // convenience methods for user
     inline const std::string& lastError() const override { return mLastError; }
     inline NodeType* serialize(const Object& o, DocType* d,
-                               SerializeFlags flags = SerializeFlags::EVERYTHING) const {
+                               SerializeFlags::Type flags = SerializeFlags::EVERYTHING) const {
         NodeType *root = createNode(this->elementName(), d);
         this->mutateNode(o, root, d, flags);
         return root;
     }
-    inline std::string serialize(const Object& o, SerializeFlags flags) const override {
+    inline std::string serialize(const Object& o, SerializeFlags::Type flags) const override {
         DocType *doc = createDocument();
         appendChild(doc, serialize(o, doc, flags));
         std::string s = printDocument(doc);
@@ -192,7 +192,7 @@ struct XmlNodeConverter : public XmlConverter<Object> {
     inline NodeType *operator()(const Object &o, DocType *d) const {
         return serialize(o, d);
     }
-    inline std::string operator()(const Object& o, SerializeFlags flags) const override {
+    inline std::string operator()(const Object& o, SerializeFlags::Type flags) const override {
         return serialize(o, flags);
     }
     inline bool operator()(Object* o, NodeType* node) { return deserialize(o, node); }
@@ -234,7 +234,7 @@ struct XmlNodeConverter : public XmlConverter<Object> {
     template <typename T, typename Array>
     inline void appendChildren(NodeType* parent, const XmlNodeConverter<T>& conv,
                                const Array& array, DocType* d,
-                               SerializeFlags flags = SerializeFlags::EVERYTHING) const {
+                               SerializeFlags::Type flags = SerializeFlags::EVERYTHING) const {
         for (const T &t : array) {
             appendChild(parent, conv.serialize(t, d, flags));
         }
@@ -605,7 +605,7 @@ struct MatrixKernelConverter : public XmlNodeConverter<MatrixKernel> {
         mutateNode(kernel, root, d, SerializeFlags::EVERYTHING);
     }
     void mutateNode(const MatrixKernel& kernel, NodeType* root, DocType* d,
-                    SerializeFlags flags) const override {
+                    SerializeFlags::Type flags) const override {
         KernelVersion kv = kernel.mMinLts;
         if (!flags.isKernelMinorRevisionEnabled()) {
             kv.minorRev = 0u;
@@ -640,7 +640,7 @@ struct ManifestHalConverter : public XmlNodeConverter<ManifestHal> {
         mutateNode(m, root, d, SerializeFlags::EVERYTHING);
     }
     void mutateNode(const ManifestHal& hal, NodeType* root, DocType* d,
-                    SerializeFlags flags) const override {
+                    SerializeFlags::Type flags) const override {
         appendAttr(root, "format", hal.format);
         appendTextElement(root, "name", hal.name, d);
         appendChild(root, transportArchConverter(hal.transportArch, d));
@@ -864,7 +864,7 @@ struct HalManifestConverter : public XmlNodeConverter<HalManifest> {
         mutateNode(m, root, d, SerializeFlags::EVERYTHING);
     }
     void mutateNode(const HalManifest& m, NodeType* root, DocType* d,
-                    SerializeFlags flags) const override {
+                    SerializeFlags::Type flags) const override {
         if (flags.isMetaVersionEnabled()) {
             appendAttr(root, "version", m.getMetaVersion());
         }
@@ -1031,7 +1031,7 @@ struct CompatibilityMatrixConverter : public XmlNodeConverter<CompatibilityMatri
         mutateNode(m, root, d, SerializeFlags::EVERYTHING);
     }
     void mutateNode(const CompatibilityMatrix& m, NodeType* root, DocType* d,
-                    SerializeFlags flags) const override {
+                    SerializeFlags::Type flags) const override {
         if (flags.isMetaVersionEnabled()) {
             appendAttr(root, "version", m.getMinimumMetaVersion());
         }

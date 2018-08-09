@@ -702,7 +702,7 @@ class AssembleVintfImpl : public AssembleVintf {
     Istream mCheckFile;
     bool mOutputMatrix = false;
     bool mHasSetHalsOnlyFlag = false;
-    SerializeFlags mSerializeFlags = SerializeFlags::EVERYTHING;
+    SerializeFlags::Type mSerializeFlags = SerializeFlags::EVERYTHING;
     std::map<KernelVersion, std::vector<NamedIstream>> mKernels;
     std::map<std::string, std::string> mFakeEnv;
 };
