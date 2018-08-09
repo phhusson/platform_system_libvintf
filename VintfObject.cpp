@@ -506,7 +506,7 @@ struct UpdatedInfo {
 // compatability info is given then the device info will be checked against
 // itself.
 int32_t VintfObject::checkCompatibility(const std::vector<std::string>& xmls, bool mount,
-                                        std::string* error, DisabledChecks disabledChecks) {
+                                        std::string* error, CheckFlags::Type flags) {
     status_t status;
     ParseStatus parseStatus;
     PackageInfo pkg; // All information from package.
@@ -576,7 +576,7 @@ int32_t VintfObject::checkCompatibility(const std::vector<std::string>& xmls, bo
         }
     }
 
-    if ((disabledChecks & DISABLE_RUNTIME_INFO) == 0) {
+    if (flags.isRuntimeInfoEnabled()) {
         updated.runtimeInfo = getRuntimeInfo(true /* skipCache */);
     }
 
@@ -598,7 +598,7 @@ int32_t VintfObject::checkCompatibility(const std::vector<std::string>& xmls, bo
         status = NO_INIT;
     }
 
-    if ((disabledChecks & DISABLE_RUNTIME_INFO) == 0) {
+    if (flags.isRuntimeInfoEnabled()) {
         if (updated.runtimeInfo == nullptr) {
             appendLine(error, "No runtime info from device");
             status = NO_INIT;
@@ -622,8 +622,8 @@ int32_t VintfObject::checkCompatibility(const std::vector<std::string>& xmls, bo
         return INCOMPATIBLE;
     }
 
-    if ((disabledChecks & DISABLE_RUNTIME_INFO) == 0) {
-        if (!updated.runtimeInfo->checkCompatibility(*updated.fwk.matrix, error, disabledChecks)) {
+    if (flags.isRuntimeInfoEnabled()) {
+        if (!updated.runtimeInfo->checkCompatibility(*updated.fwk.matrix, error, flags)) {
             if (error) {
                 error->insert(0,
                               "Runtime info and framework compatibility matrix are incompatible: ");
@@ -668,13 +668,13 @@ std::vector<std::string> dumpFileList() {
 }  // namespace details
 
 int32_t VintfObject::CheckCompatibility(const std::vector<std::string>& xmls, std::string* error,
-                                        DisabledChecks disabledChecks) {
-    return GetInstance()->checkCompatibility(xmls, error, disabledChecks);
+                                        CheckFlags::Type flags) {
+    return GetInstance()->checkCompatibility(xmls, error, flags);
 }
 
 int32_t VintfObject::checkCompatibility(const std::vector<std::string>& xmls, std::string* error,
-                                        DisabledChecks disabledChecks) {
-    return checkCompatibility(xmls, false /* mount */, error, disabledChecks);
+                                        CheckFlags::Type flags) {
+    return checkCompatibility(xmls, false /* mount */, error, flags);
 }
 
 bool VintfObject::IsHalDeprecated(const MatrixHal& oldMatrixHal,

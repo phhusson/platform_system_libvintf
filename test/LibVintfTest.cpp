@@ -932,7 +932,7 @@ TEST_F(LibVintfTest, DisableAvb) {
     std::string error;
     EXPECT_FALSE(ki.checkCompatibility(cm, &error));
     EXPECT_STREQ(error.c_str(), "AVB version 2.1 does not match framework matrix 1.0");
-    EXPECT_TRUE(ki.checkCompatibility(cm, &error, DISABLE_AVB_CHECK)) << error;
+    EXPECT_TRUE(ki.checkCompatibility(cm, &error, CheckFlags::DISABLE_AVB_CHECK)) << error;
 }
 
 // This is the test extracted from VINTF Object doc
