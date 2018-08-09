@@ -260,7 +260,7 @@ TEST_F(LibVintfTest, FutureManifestCompatible) {
 TEST_F(LibVintfTest, HalManifestConverter) {
     HalManifest vm = testDeviceManifest();
     std::string xml =
-        gHalManifestConverter(vm, SerializeFlag::HALS_NO_FQNAME & SerializeFlag::SEPOLICY_ONLY);
+        gHalManifestConverter(vm, SerializeFlags::NO_TAGS.enableHals().enableSepolicy());
     EXPECT_EQ(xml,
         "<manifest version=\"1.0\" type=\"device\">\n"
         "    <hal format=\"hidl\">\n"
@@ -297,8 +297,7 @@ TEST_F(LibVintfTest, HalManifestConverter) {
 
 TEST_F(LibVintfTest, HalManifestConverterFramework) {
     HalManifest vm = testFrameworkManfiest();
-    std::string xml =
-        gHalManifestConverter(vm, SerializeFlag::HALS_NO_FQNAME & SerializeFlag::VNDK_ONLY);
+    std::string xml = gHalManifestConverter(vm, SerializeFlags::NO_TAGS.enableHals().enableVndk());
     EXPECT_EQ(xml,
         "<manifest version=\"1.0\" type=\"framework\">\n"
         "    <hal format=\"hidl\">\n"
@@ -1285,9 +1284,8 @@ TEST_F(LibVintfTest, Compat) {
 
 TEST_F(LibVintfTest, HalManifestConverterXmlFile) {
     HalManifest vm = testDeviceManifestWithXmlFile();
-    std::string xml =
-        gHalManifestConverter(vm, SerializeFlag::HALS_NO_FQNAME & SerializeFlag::SEPOLICY_ONLY &
-                                      SerializeFlag::XMLFILES_ONLY);
+    std::string xml = gHalManifestConverter(
+        vm, SerializeFlags::NO_TAGS.enableHals().enableSepolicy().enableXmlFiles());
     EXPECT_EQ(xml,
               "<manifest version=\"1.0\" type=\"device\">\n"
               "    <hal format=\"hidl\">\n"
@@ -1329,7 +1327,7 @@ TEST_F(LibVintfTest, HalManifestConverterXmlFile) {
 TEST_F(LibVintfTest, CompatibilityMatrixConverterXmlFile) {
     CompatibilityMatrix cm;
     addXmlFile(cm, "media_profile", {1, 0});
-    std::string xml = gCompatibilityMatrixConverter(cm, SerializeFlag::XMLFILES_ONLY);
+    std::string xml = gCompatibilityMatrixConverter(cm, SerializeFlags::XMLFILES_ONLY);
     EXPECT_EQ(xml,
               "<compatibility-matrix version=\"1.0\" type=\"framework\">\n"
               "    <xmlfile format=\"dtd\" optional=\"true\">\n"
@@ -2112,7 +2110,7 @@ TEST_F(LibVintfTest, AddOptionalHal) {
         << gCompatibilityMatrixConverter.lastError();
 
     EXPECT_TRUE(addAllHalsAsOptional(&cm1, &cm2, &error)) << error;
-    xml = gCompatibilityMatrixConverter(cm1, SerializeFlag::HALS_ONLY);
+    xml = gCompatibilityMatrixConverter(cm1, SerializeFlags::HALS_ONLY);
     EXPECT_EQ(xml,
               "<compatibility-matrix version=\"1.0\" type=\"framework\" level=\"1\">\n"
               "    <hal format=\"hidl\" optional=\"true\">\n"
@@ -2161,7 +2159,7 @@ TEST_F(LibVintfTest, AddOptionalHalMinorVersion) {
         << gCompatibilityMatrixConverter.lastError();
 
     EXPECT_TRUE(addAllHalsAsOptional(&cm1, &cm2, &error)) << error;
-    xml = gCompatibilityMatrixConverter(cm1, SerializeFlag::HALS_ONLY);
+    xml = gCompatibilityMatrixConverter(cm1, SerializeFlags::HALS_ONLY);
     EXPECT_EQ(xml,
               "<compatibility-matrix version=\"1.0\" type=\"framework\" level=\"1\">\n"
               "    <hal format=\"hidl\" optional=\"false\">\n"
@@ -2211,7 +2209,7 @@ TEST_F(LibVintfTest, AddOptionalHalMajorVersion) {
         << gCompatibilityMatrixConverter.lastError();
 
     EXPECT_TRUE(addAllHalsAsOptional(&cm1, &cm2, &error)) << error;
-    xml = gCompatibilityMatrixConverter(cm1, SerializeFlag::HALS_ONLY);
+    xml = gCompatibilityMatrixConverter(cm1, SerializeFlags::HALS_ONLY);
     EXPECT_EQ(xml,
               "<compatibility-matrix version=\"1.0\" type=\"framework\" level=\"1\">\n"
               "    <hal format=\"hidl\" optional=\"false\">\n"
@@ -2261,7 +2259,7 @@ TEST_F(LibVintfTest, AddOptionalHalMinorVersionDiffInstance) {
         << gCompatibilityMatrixConverter.lastError();
 
     EXPECT_TRUE(addAllHalsAsOptional(&cm1, &cm2, &error)) << error;
-    xml = gCompatibilityMatrixConverter(cm1, SerializeFlag::HALS_ONLY);
+    xml = gCompatibilityMatrixConverter(cm1, SerializeFlags::HALS_ONLY);
     EXPECT_EQ(xml,
               "<compatibility-matrix version=\"1.0\" type=\"framework\" level=\"1\">\n"
               "    <hal format=\"hidl\" optional=\"false\">\n"
@@ -2323,7 +2321,7 @@ TEST_F(LibVintfTest, AddRequiredHalOverlapInstance) {
 
         EXPECT_TRUE(addAllHalsAsOptional(&cm1, &cm2, &error)) << error;
 
-        xml = gCompatibilityMatrixConverter(cm1, SerializeFlag::HALS_ONLY);
+        xml = gCompatibilityMatrixConverter(cm1, SerializeFlags::HALS_ONLY);
         EXPECT_EQ(xml,
                   "<compatibility-matrix version=\"1.0\" type=\"framework\" level=\"1\">\n"
                   "    <hal format=\"hidl\" optional=\"false\">\n"
@@ -2366,7 +2364,7 @@ TEST_F(LibVintfTest, AddRequiredHalOverlapInstance) {
 
         EXPECT_TRUE(addAllHalsAsOptional(&cm1, &cm2, &error)) << error;
 
-        xml = gCompatibilityMatrixConverter(cm1, SerializeFlag::HALS_ONLY);
+        xml = gCompatibilityMatrixConverter(cm1, SerializeFlags::HALS_ONLY);
         EXPECT_EQ(xml,
                   "<compatibility-matrix version=\"1.0\" type=\"framework\" level=\"1\">\n"
                   "    <hal format=\"hidl\" optional=\"false\">\n"
@@ -2449,7 +2447,7 @@ TEST_F(LibVintfTest, AddRequiredHalOverlapInstanceSplit) {
         << gCompatibilityMatrixConverter.lastError();
 
     EXPECT_TRUE(addAllHalsAsOptional(&cm1, &cm2, &error)) << error;
-    xml = gCompatibilityMatrixConverter(cm1, SerializeFlag::HALS_ONLY);
+    xml = gCompatibilityMatrixConverter(cm1, SerializeFlags::HALS_ONLY);
     EXPECT_EQ(
         "<compatibility-matrix version=\"1.0\" type=\"framework\" level=\"1\">\n"
         "    <hal format=\"hidl\" optional=\"false\">\n"
@@ -2509,7 +2507,7 @@ TEST_F(LibVintfTest, AddOptionalXmlFile) {
         << gCompatibilityMatrixConverter.lastError();
 
     EXPECT_TRUE(addAllXmlFilesAsOptional(&cm1, &cm2, &error)) << error;
-    xml = gCompatibilityMatrixConverter(cm1, SerializeFlag::XMLFILES_ONLY);
+    xml = gCompatibilityMatrixConverter(cm1, SerializeFlags::XMLFILES_ONLY);
     EXPECT_EQ(xml,
               "<compatibility-matrix version=\"1.0\" type=\"framework\" level=\"1\">\n"
               "    <xmlfile format=\"xsd\" optional=\"true\">\n"
@@ -2696,7 +2694,7 @@ TEST_F(LibVintfTest, ManifestAddOverrideHalSimple) {
     EXPECT_TRUE(gHalManifestConverter(&newManifest, xml)) << gHalManifestConverter.lastError();
 
     manifest.addAllHals(&newManifest);
-    EXPECT_EQ(xml, gHalManifestConverter(manifest, SerializeFlag::HALS_NO_FQNAME));
+    EXPECT_EQ(xml, gHalManifestConverter(manifest, SerializeFlags::HALS_NO_FQNAME));
 }
 
 TEST_F(LibVintfTest, ManifestAddOverrideHalSimpleOverride) {
@@ -2727,7 +2725,7 @@ TEST_F(LibVintfTest, ManifestAddOverrideHalSimpleOverride) {
     EXPECT_TRUE(gHalManifestConverter(&newManifest, xml)) << gHalManifestConverter.lastError();
 
     manifest.addAllHals(&newManifest);
-    EXPECT_EQ(xml, gHalManifestConverter(manifest, SerializeFlag::HALS_NO_FQNAME));
+    EXPECT_EQ(xml, gHalManifestConverter(manifest, SerializeFlags::HALS_NO_FQNAME));
 }
 
 // Existing major versions should be removed.
@@ -2797,7 +2795,7 @@ TEST_F(LibVintfTest, ManifestAddOverrideHalMultiVersion) {
         "        </interface>\n"
         "    </hal>\n"
         "</manifest>\n",
-        gHalManifestConverter(manifest, SerializeFlag::HALS_NO_FQNAME));
+        gHalManifestConverter(manifest, SerializeFlags::HALS_NO_FQNAME));
 }
 
 TEST_F(LibVintfTest, ManifestAddOverrideHalMultiVersion2) {
@@ -2834,7 +2832,7 @@ TEST_F(LibVintfTest, ManifestAddOverrideHalMultiVersion2) {
     EXPECT_TRUE(gHalManifestConverter(&newManifest, xml)) << gHalManifestConverter.lastError();
 
     manifest.addAllHals(&newManifest);
-    EXPECT_EQ(xml, gHalManifestConverter(manifest, SerializeFlag::HALS_NO_FQNAME));
+    EXPECT_EQ(xml, gHalManifestConverter(manifest, SerializeFlags::HALS_NO_FQNAME));
 }
 
 // if no <versions>, remove all existing <hal> with given <name>.
@@ -2893,7 +2891,7 @@ TEST_F(LibVintfTest, ManifestAddOverrideHalRemoveAll) {
         "        <transport>hwbinder</transport>\n"
         "    </hal>\n"
         "</manifest>\n",
-        gHalManifestConverter(manifest, SerializeFlag::HALS_ONLY));
+        gHalManifestConverter(manifest, SerializeFlags::HALS_ONLY));
 }
 
 // Make sure missing tags in old VINTF files does not cause incompatibilities.
@@ -2927,7 +2925,7 @@ TEST_F(LibVintfTest, SystemSdk) {
         "</compatibility-matrix>\n";
     EXPECT_TRUE(gCompatibilityMatrixConverter(&cm, xml))
         << gCompatibilityMatrixConverter.lastError();
-    EXPECT_EQ(xml, gCompatibilityMatrixConverter(cm, ~SerializeFlag::NO_SSDK));
+    EXPECT_EQ(xml, gCompatibilityMatrixConverter(cm, SerializeFlags::SSDK_ONLY));
 
     {
         HalManifest manifest;
@@ -2939,7 +2937,7 @@ TEST_F(LibVintfTest, SystemSdk) {
             "    </system-sdk>\n"
             "</manifest>\n";
         EXPECT_TRUE(gHalManifestConverter(&manifest, xml)) << gHalManifestConverter.lastError();
-        EXPECT_EQ(xml, gHalManifestConverter(manifest, ~SerializeFlag::NO_SSDK));
+        EXPECT_EQ(xml, gHalManifestConverter(manifest, SerializeFlags::SSDK_ONLY));
 
         EXPECT_TRUE(manifest.checkCompatibility(cm, &error)) << error;
     }

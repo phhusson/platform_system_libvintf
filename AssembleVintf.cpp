@@ -343,12 +343,15 @@ class AssembleVintfImpl : public AssembleVintf {
 
             // Check that manifestToAdd is empty.
             if (!manifestToAdd.empty()) {
-                std::cerr << "File \"" << path << "\" contains extraneous entries and attributes. "
-                          << "This is currently unsupported (b/78943004); it can only contain "
-                          << "<hal>s and attribute \"type\". Only the first input "
-                          << "file to assemble_vintf can contain other things. "
-                          << "Remaining entries and attributes are:" << std::endl
-                          << gHalManifestConverter(manifestToAdd);
+                std::cerr
+                    << "File \"" << path << "\" contains extraneous entries and attributes. "
+                    << "This is currently unsupported (b/78943004); it can only contain "
+                    << "<hal>s and attribute \"type\" and \"version\". Only the first input "
+                    << "file to assemble_vintf can contain other things. "
+                    << "Remaining entries and attributes are:" << std::endl
+                    << gHalManifestConverter(
+                           manifestToAdd,
+                           SerializeFlags::EVERYTHING.disableMetaVersion().disableSchemaType());
                 return false;
             }
         }
@@ -667,20 +670,29 @@ class AssembleVintfImpl : public AssembleVintf {
     void setOutputMatrix() override { mOutputMatrix = true; }
 
     bool setHalsOnly() override {
-        if (mSerializeFlags) return false;
-        mSerializeFlags |= SerializeFlag::HALS_ONLY;
+        if (mHasSetHalsOnlyFlag) {
+            std::cerr << "Error: Cannot set --hals-only with --no-hals." << std::endl;
+            return false;
+        }
+        // Just override it with HALS_ONLY because other flags that modify mSerializeFlags
+        // does not interfere with this (except --no-hals).
+        mSerializeFlags = SerializeFlags::HALS_ONLY;
+        mHasSetHalsOnlyFlag = true;
         return true;
     }
 
     bool setNoHals() override {
-        if (mSerializeFlags) return false;
-        mSerializeFlags |= SerializeFlag::NO_HALS;
+        if (mHasSetHalsOnlyFlag) {
+            std::cerr << "Error: Cannot set --hals-only with --no-hals." << std::endl;
+            return false;
+        }
+        mSerializeFlags = mSerializeFlags.disableHals();
+        mHasSetHalsOnlyFlag = true;
         return true;
     }
 
     bool setNoKernelRequirements() override {
-        mSerializeFlags |= SerializeFlag::NO_KERNEL_CONFIGS;
-        mSerializeFlags |= SerializeFlag::NO_KERNEL_MINOR_REVISION;
+        mSerializeFlags = mSerializeFlags.disableKernelConfigs().disableKernelMinorRevision();
         return true;
     }
 
@@ -689,7 +701,8 @@ class AssembleVintfImpl : public AssembleVintf {
     Ostream mOutRef;
     Istream mCheckFile;
     bool mOutputMatrix = false;
-    SerializeFlags mSerializeFlags = SerializeFlag::EVERYTHING;
+    bool mHasSetHalsOnlyFlag = false;
+    SerializeFlags mSerializeFlags = SerializeFlags::EVERYTHING;
     std::map<KernelVersion, std::vector<NamedIstream>> mKernels;
     std::map<std::string, std::string> mFakeEnv;
 };

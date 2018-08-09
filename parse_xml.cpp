@@ -150,7 +150,7 @@ struct XmlNodeConverter : public XmlConverter<Object> {
     // convenience methods for user
     inline const std::string& lastError() const override { return mLastError; }
     inline NodeType* serialize(const Object& o, DocType* d,
-                               SerializeFlags flags = EVERYTHING) const {
+                               SerializeFlags flags = SerializeFlags::EVERYTHING) const {
         NodeType *root = createNode(this->elementName(), d);
         this->mutateNode(o, root, d, flags);
         return root;
@@ -234,7 +234,7 @@ struct XmlNodeConverter : public XmlConverter<Object> {
     template <typename T, typename Array>
     inline void appendChildren(NodeType* parent, const XmlNodeConverter<T>& conv,
                                const Array& array, DocType* d,
-                               SerializeFlags flags = SerializeFlag::EVERYTHING) const {
+                               SerializeFlags flags = SerializeFlags::EVERYTHING) const {
         for (const T &t : array) {
             appendChild(parent, conv.serialize(t, d, flags));
         }
@@ -602,12 +602,12 @@ MatrixKernelConditionsConverter matrixKernelConditionsConverter{};
 struct MatrixKernelConverter : public XmlNodeConverter<MatrixKernel> {
     std::string elementName() const override { return "kernel"; }
     void mutateNode(const MatrixKernel& kernel, NodeType* root, DocType* d) const override {
-        mutateNode(kernel, root, d, SerializeFlag::EVERYTHING);
+        mutateNode(kernel, root, d, SerializeFlags::EVERYTHING);
     }
     void mutateNode(const MatrixKernel& kernel, NodeType* root, DocType* d,
                     SerializeFlags flags) const override {
         KernelVersion kv = kernel.mMinLts;
-        if (flags & SerializeFlag::NO_KERNEL_MINOR_REVISION) {
+        if (!flags.isKernelMinorRevisionEnabled()) {
             kv.minorRev = 0u;
         }
         appendAttr(root, "version", kv);
@@ -615,7 +615,7 @@ struct MatrixKernelConverter : public XmlNodeConverter<MatrixKernel> {
         if (!kernel.mConditions.empty()) {
             appendChild(root, matrixKernelConditionsConverter(kernel.mConditions, d));
         }
-        if (!(flags & SerializeFlag::NO_KERNEL_CONFIGS)) {
+        if (flags.isKernelConfigsEnabled()) {
             appendChildren(root, kernelConfigConverter, kernel.mConfigs, d);
         }
     }
@@ -637,7 +637,7 @@ XmlTextConverter<FqInstance> fqInstanceConverter{"fqname"};
 struct ManifestHalConverter : public XmlNodeConverter<ManifestHal> {
     std::string elementName() const override { return "hal"; }
     void mutateNode(const ManifestHal& m, NodeType* root, DocType* d) const override {
-        mutateNode(m, root, d, SerializeFlag::EVERYTHING);
+        mutateNode(m, root, d, SerializeFlags::EVERYTHING);
     }
     void mutateNode(const ManifestHal& hal, NodeType* root, DocType* d,
                     SerializeFlags flags) const override {
@@ -650,7 +650,7 @@ struct ManifestHalConverter : public XmlNodeConverter<ManifestHal> {
             appendAttr(root, "override", hal.isOverride());
         }
 
-        if (!(flags & SerializeFlag::NO_FQNAME)) {
+        if (flags.isFqnameEnabled()) {
             std::set<FqInstance> fqInstances;
             hal.forEachInstance([&fqInstances](const auto& manifestInstance) {
                 fqInstances.emplace(manifestInstance.getFqInstanceNoPackage());
@@ -861,25 +861,31 @@ ManifestXmlFileConverter manifestXmlFileConverter{};
 struct HalManifestConverter : public XmlNodeConverter<HalManifest> {
     std::string elementName() const override { return "manifest"; }
     void mutateNode(const HalManifest &m, NodeType *root, DocType *d) const override {
-        mutateNode(m, root, d, SerializeFlag::EVERYTHING);
+        mutateNode(m, root, d, SerializeFlags::EVERYTHING);
     }
     void mutateNode(const HalManifest& m, NodeType* root, DocType* d,
                     SerializeFlags flags) const override {
-        appendAttr(root, "version", m.getMetaVersion());
-        appendAttr(root, "type", m.mType);
+        if (flags.isMetaVersionEnabled()) {
+            appendAttr(root, "version", m.getMetaVersion());
+        }
+        if (flags.isSchemaTypeEnabled()) {
+            appendAttr(root, "type", m.mType);
+        }
 
-        if (!(flags & SerializeFlag::NO_HALS)) {
+        if (flags.isHalsEnabled()) {
             appendChildren(root, manifestHalConverter, m.getHals(), d, flags);
         }
         if (m.mType == SchemaType::DEVICE) {
-            if (!(flags & SerializeFlag::NO_SEPOLICY)) {
-                appendChild(root, halManifestSepolicyConverter(m.device.mSepolicyVersion, d));
+            if (flags.isSepolicyEnabled()) {
+                if (m.device.mSepolicyVersion != Version{}) {
+                    appendChild(root, halManifestSepolicyConverter(m.device.mSepolicyVersion, d));
+                }
             }
             if (m.mLevel != Level::UNSPECIFIED) {
                 this->appendAttr(root, "target-level", m.mLevel);
             }
         } else if (m.mType == SchemaType::FRAMEWORK) {
-            if (!(flags & SerializeFlag::NO_VNDK)) {
+            if (flags.isVndkEnabled()) {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
                 appendChildren(root, vndkConverter, m.framework.mVndks, d);
@@ -887,14 +893,14 @@ struct HalManifestConverter : public XmlNodeConverter<HalManifest> {
 
                 appendChildren(root, vendorNdkConverter, m.framework.mVendorNdks, d);
             }
-            if (!(flags & SerializeFlag::NO_SSDK)) {
+            if (flags.isSsdkEnabled()) {
                 if (!m.framework.mSystemSdk.empty()) {
                     appendChild(root, systemSdkConverter(m.framework.mSystemSdk, d));
                 }
             }
         }
 
-        if (!(flags & SerializeFlag::NO_XMLFILES)) {
+        if (flags.isXmlFilesEnabled()) {
             appendChildren(root, manifestXmlFileConverter, m.getXmlFiles(), d);
         }
     }
@@ -1022,26 +1028,30 @@ MatrixXmlFileConverter matrixXmlFileConverter{};
 struct CompatibilityMatrixConverter : public XmlNodeConverter<CompatibilityMatrix> {
     std::string elementName() const override { return "compatibility-matrix"; }
     void mutateNode(const CompatibilityMatrix &m, NodeType *root, DocType *d) const override {
-        mutateNode(m, root, d, SerializeFlag::EVERYTHING);
+        mutateNode(m, root, d, SerializeFlags::EVERYTHING);
     }
     void mutateNode(const CompatibilityMatrix& m, NodeType* root, DocType* d,
                     SerializeFlags flags) const override {
-        appendAttr(root, "version", m.getMinimumMetaVersion());
-        appendAttr(root, "type", m.mType);
+        if (flags.isMetaVersionEnabled()) {
+            appendAttr(root, "version", m.getMinimumMetaVersion());
+        }
+        if (flags.isSchemaTypeEnabled()) {
+            appendAttr(root, "type", m.mType);
+        }
 
-        if (!(flags & SerializeFlag::NO_HALS)) {
+        if (flags.isHalsEnabled()) {
             appendChildren(root, matrixHalConverter, iterateValues(m.mHals), d);
         }
         if (m.mType == SchemaType::FRAMEWORK) {
-            if (!(flags & SerializeFlag::NO_KERNEL)) {
+            if (flags.isKernelEnabled()) {
                 appendChildren(root, matrixKernelConverter, m.framework.mKernels, d, flags);
             }
-            if (!(flags & SerializeFlag::NO_SEPOLICY)) {
+            if (flags.isSepolicyEnabled()) {
                 if (!(m.framework.mSepolicy == Sepolicy{})) {
                     appendChild(root, sepolicyConverter(m.framework.mSepolicy, d));
                 }
             }
-            if (!(flags & SerializeFlag::NO_AVB)) {
+            if (flags.isAvbEnabled()) {
                 if (!(m.framework.mAvbMetaVersion == Version{})) {
                     appendChild(root, avbConverter(m.framework.mAvbMetaVersion, d));
                 }
@@ -1050,7 +1060,7 @@ struct CompatibilityMatrixConverter : public XmlNodeConverter<CompatibilityMatri
                 this->appendAttr(root, "level", m.mLevel);
             }
         } else if (m.mType == SchemaType::DEVICE) {
-            if (!(flags & SerializeFlag::NO_VNDK)) {
+            if (flags.isVndkEnabled()) {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
                 if (!(m.device.mVndk == Vndk{})) {
@@ -1063,14 +1073,14 @@ struct CompatibilityMatrixConverter : public XmlNodeConverter<CompatibilityMatri
                 }
             }
 
-            if (!(flags & SerializeFlag::NO_SSDK)) {
+            if (flags.isSsdkEnabled()) {
                 if (!m.device.mSystemSdk.empty()) {
                     appendChild(root, systemSdkConverter(m.device.mSystemSdk, d));
                 }
             }
         }
 
-        if (!(flags & SerializeFlag::NO_XMLFILES)) {
+        if (flags.isXmlFilesEnabled()) {
             appendChildren(root, matrixXmlFileConverter, m.getXmlFiles(), d);
         }
     }
