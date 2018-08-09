@@ -266,7 +266,7 @@ int main(int argc, char** argv) {
         std::cout << std::endl;
     }
 
-    SerializeFlags flags = SerializeFlags::EVERYTHING;
+    SerializeFlags::Type flags = SerializeFlags::EVERYTHING;
     if (!options.verbose) {
         flags = flags.disableHals().disableKernel();
     }
