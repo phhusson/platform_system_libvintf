@@ -80,7 +80,7 @@ class RecoveryPartitionMounter : public PartitionMounter {
 
 class RecoveryFileSystem : public FileSystem {
    public:
-    RecoveryFileSystem(bool systemRootImage) : mSystemRootImage(systemRootImage) {}
+    RecoveryFileSystem() = default;
 
     status_t fetch(const std::string& path, std::string* fetched, std::string* error) const {
         return getFileSystem(path).fetch(path, fetched, error);
@@ -92,13 +92,12 @@ class RecoveryFileSystem : public FileSystem {
     }
 
    private:
-    const bool mSystemRootImage = false;
     FileSystemUnderPath mSystemFileSystem{"/mnt/system"};
     FileSystemUnderPath mMntFileSystem{"/mnt"};
 
     const FileSystemUnderPath& getFileSystem(const std::string& path) const {
-        // If system_root_image, /system files are under /mnt/system/system.
-        if (StartsWith(path, "/system") && mSystemRootImage) {
+        // /system files are under /mnt/system/system because system.img contains the root dir.
+        if (StartsWith(path, "/system")) {
             return mSystemFileSystem;
         }
         return mMntFileSystem;
@@ -113,7 +112,7 @@ int32_t VintfObjectRecovery::CheckCompatibility(
     auto propertyFetcher = std::make_unique<details::PropertyFetcherImpl>();
     bool systemRootImage = propertyFetcher->getBoolProperty("ro.build.system_root_image", false);
     auto mounter = std::make_unique<details::RecoveryPartitionMounter>(systemRootImage);
-    auto fileSystem = std::make_unique<details::RecoveryFileSystem>(systemRootImage);
+    auto fileSystem = std::make_unique<details::RecoveryFileSystem>();
     auto vintfObject = std::make_unique<VintfObject>(std::move(fileSystem), std::move(mounter),
                                                      nullptr /* runtime info factory */,
                                                      std::move(propertyFetcher));
