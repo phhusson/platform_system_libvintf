@@ -196,6 +196,11 @@ bool parseKernelConfigValue(const std::string &s, KernelConfigTypedValue *kctv) 
 }
 
 bool parseKernelConfigTypedValue(const std::string& s, KernelConfigTypedValue* kctv) {
+    if (s.size() > 1 && s[0] == '"' && s.back() == '"') {
+        kctv->mType = KernelConfigType::STRING;
+        kctv->mStringValue = s.substr(1, s.size()-2);
+        return true;
+    }
     if (parseKernelConfigInt(s, &kctv->mIntegerValue)) {
         kctv->mType = KernelConfigType::INTEGER;
         return true;
@@ -205,9 +210,7 @@ bool parseKernelConfigTypedValue(const std::string& s, KernelConfigTypedValue* k
         return true;
     }
     // Do not test for KernelConfigType::RANGE.
-    kctv->mType = KernelConfigType::STRING;
-    kctv->mStringValue = s;
-    return true;
+    return false;
 }
 
 bool parse(const std::string &s, Version *ver) {
