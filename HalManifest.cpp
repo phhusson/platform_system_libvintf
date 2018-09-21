@@ -124,7 +124,7 @@ std::set<std::string> HalManifest::getHalNames() const {
 std::set<std::string> HalManifest::getHalNamesAndVersions() const {
     std::set<std::string> names{};
     forEachInstance([&names](const ManifestInstance& e) {
-        names.insert(toFQNameString(e.interface(), e.version()));
+        names.insert(toFQNameString(e.package(), e.version()));
         return true;
     });
     return names;
