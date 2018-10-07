@@ -3433,6 +3433,12 @@ TEST_F(LibVintfTest, Regex) {
     EXPECT_FALSE(regex.matches("legacy/0sss"));
 }
 
+TEST_F(LibVintfTest, ManifestGetHalNamesAndVersions) {
+    HalManifest vm = testDeviceManifest();
+    EXPECT_EQ(vm.getHalNamesAndVersions(),
+              std::set<std::string>({"android.hardware.camera@2.0", "android.hardware.nfc@1.0"}));
+}
+
 } // namespace vintf
 } // namespace android
 
