@@ -122,43 +122,45 @@ bool RuntimeInfo::checkCompatibility(const CompatibilityMatrix& mat, std::string
     // mat.mSepolicy.sepolicyVersion() is checked against static
     // HalManifest.device.mSepolicyVersion in HalManifest::checkCompatibility.
 
-    bool foundMatchedKernelVersion = false;
-    bool foundMatchedConditions = false;
-    for (const MatrixKernel& matrixKernel : mat.framework.mKernels) {
-        if (!matchKernelVersion(matrixKernel.minLts())) {
-            continue;
+    if (flags.isKernelEnabled()) {
+        bool foundMatchedKernelVersion = false;
+        bool foundMatchedConditions = false;
+        for (const MatrixKernel& matrixKernel : mat.framework.mKernels) {
+            if (!matchKernelVersion(matrixKernel.minLts())) {
+                continue;
+            }
+            foundMatchedKernelVersion = true;
+            // ignore this fragment if not all conditions are met.
+            if (!matchKernelConfigs(matrixKernel.conditions(), error)) {
+                continue;
+            }
+            foundMatchedConditions = true;
+            if (!matchKernelConfigs(matrixKernel.configs(), error)) {
+                return false;
+            }
         }
-        foundMatchedKernelVersion = true;
-        // ignore this fragment if not all conditions are met.
-        if (!matchKernelConfigs(matrixKernel.conditions(), error)) {
-            continue;
-        }
-        foundMatchedConditions = true;
-        if (!matchKernelConfigs(matrixKernel.configs(), error)) {
+        if (!foundMatchedKernelVersion) {
+            if (error != nullptr) {
+                std::stringstream ss;
+                ss << "Framework is incompatible with kernel version " << mKernelVersion
+                   << ", compatible kernel versions are";
+                for (const MatrixKernel& matrixKernel : mat.framework.mKernels)
+                    ss << " " << matrixKernel.minLts();
+                *error = ss.str();
+            }
             return false;
         }
-    }
-    if (!foundMatchedKernelVersion) {
-        if (error != nullptr) {
-            std::stringstream ss;
-            ss << "Framework is incompatible with kernel version " << mKernelVersion
-               << ", compatible kernel versions are";
-            for (const MatrixKernel& matrixKernel : mat.framework.mKernels)
-                ss << " " << matrixKernel.minLts();
-            *error = ss.str();
+        if (!foundMatchedConditions) {
+            // This should not happen because first <conditions> for each <kernel> must be
+            // empty. Reject here for inconsistency.
+            if (error != nullptr) {
+                error->insert(0, "Framework match kernel version with unmet conditions:");
+            }
+            return false;
         }
-        return false;
-    }
-    if (!foundMatchedConditions) {
-        // This should not happen because first <conditions> for each <kernel> must be
-        // empty. Reject here for inconsistency.
         if (error != nullptr) {
-            error->insert(0, "Framework match kernel version with unmet conditions:");
+            error->clear();
         }
-        return false;
-    }
-    if (error != nullptr) {
-        error->clear();
     }
 
     if (flags.isAvbEnabled()) {
