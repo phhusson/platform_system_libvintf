@@ -32,6 +32,7 @@ class Type {
 
     VINTF_CHECK_FLAGS_FIELD(Avb, 0)
     VINTF_CHECK_FLAGS_FIELD(RuntimeInfo, 1)
+    VINTF_CHECK_FLAGS_FIELD(Kernel, 2)
 #undef VINTF_CHECK_FLAGS_FIELD
 
     explicit constexpr Type(int32_t value) : mValue(value) {}
@@ -41,6 +42,7 @@ class Type {
 };
 
 constexpr Type ENABLE_ALL_CHECKS{~0};
+constexpr Type DISABLE_ALL_CHECKS{0};
 // Disable AVB version check in RuntimeInfo::checkCompatibility
 constexpr Type DISABLE_AVB_CHECK = ENABLE_ALL_CHECKS.disableAvb();
 // Disable RuntimeInfo <-> Framework Matrix check. This implies DISABLE_AVB_CHECK.
