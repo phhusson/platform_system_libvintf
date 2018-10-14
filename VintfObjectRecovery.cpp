@@ -51,9 +51,10 @@ static FstabMgr defaultFstabMgr() {
 
 class RecoveryPartitionMounter : public PartitionMounter {
    public:
-    RecoveryPartitionMounter(bool systemRootImage) : mSystemRootImage(systemRootImage) {}
+    RecoveryPartitionMounter() : fstab_(defaultFstabMgr()) {}
     status_t mountSystem() const override {
-        if (mSystemRootImage) {
+        if (!fstab_) return UNKNOWN_ERROR;
+        if (fs_mgr_get_entry_for_mount_point(fstab_.get(), "/system") == nullptr) {
             return mount("/", kSystemImageRootDir);
         } else {
             return mount("/system", kSystemImageRootDir);
@@ -67,14 +68,11 @@ class RecoveryPartitionMounter : public PartitionMounter {
     status_t umountVendor() const override { return umount(kVendorImageRootDir); }
 
    private:
-    const bool mSystemRootImage = false;
+    FstabMgr fstab_;
 
     status_t mount(const char* path, const char* mountPoint) const {
-        FstabMgr fstab = defaultFstabMgr();
-        if (fstab == NULL) {
-            return UNKNOWN_ERROR;
-        }
-        return mountAt(fstab, path, mountPoint);
+        if (!fstab_) return UNKNOWN_ERROR;
+        return mountAt(fstab_, path, mountPoint);
     }
 };
 
@@ -110,8 +108,7 @@ class RecoveryFileSystem : public FileSystem {
 int32_t VintfObjectRecovery::CheckCompatibility(
         const std::vector<std::string> &xmls, std::string *error) {
     auto propertyFetcher = std::make_unique<details::PropertyFetcherImpl>();
-    bool systemRootImage = propertyFetcher->getBoolProperty("ro.build.system_root_image", false);
-    auto mounter = std::make_unique<details::RecoveryPartitionMounter>(systemRootImage);
+    auto mounter = std::make_unique<details::RecoveryPartitionMounter>();
     auto fileSystem = std::make_unique<details::RecoveryFileSystem>();
     auto vintfObject = std::make_unique<VintfObject>(std::move(fileSystem), std::move(mounter),
                                                      nullptr /* runtime info factory */,
