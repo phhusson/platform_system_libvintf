@@ -412,6 +412,7 @@ class AssembleVintfImpl : public AssembleVintf {
         return true;
     }
 
+    // Parse --kernel arguments and write to output matrix.
     bool assembleFrameworkCompatibilityMatrixKernels(CompatibilityMatrix* matrix) {
         for (auto& pair : mKernels) {
             std::vector<ConditionedConfig> conditionedConfigs;
@@ -422,7 +423,11 @@ class AssembleVintfImpl : public AssembleVintf {
                 MatrixKernel kernel(KernelVersion{pair.first}, std::move(conditionedConfig.second));
                 if (conditionedConfig.first != nullptr)
                     kernel.mConditions.push_back(std::move(*conditionedConfig.first));
-                matrix->framework.mKernels.push_back(std::move(kernel));
+                std::string error;
+                if (!matrix->addKernel(std::move(kernel), &error)) {
+                    std::cerr << "Error:" << error << std::endl;
+                    return false;
+                };
             }
         }
         return true;
@@ -484,7 +489,24 @@ class AssembleVintfImpl : public AssembleVintf {
         std::string error;
         CompatibilityMatrix* matrix = nullptr;
         std::unique_ptr<HalManifest> checkManifest;
+        std::unique_ptr<CompatibilityMatrix> builtMatrix;
+
+        if (mCheckFile != nullptr) {
+            checkManifest = std::make_unique<HalManifest>();
+            if (!gHalManifestConverter(checkManifest.get(), read(*mCheckFile), &error)) {
+                std::cerr << "Cannot parse check file as a HAL manifest: " << error << std::endl;
+                return false;
+            }
+        }
+
         if (matrices->front().object.mType == SchemaType::DEVICE) {
+            if (matrices->size() > 1) {
+                std::cerr
+                    << "assemble_vintf does not support merging device compatibilility matrices."
+                    << std::endl;
+                return false;
+            }
+
             matrix = &matrices->front().object;
 
             auto vndkVersion = base::Trim(getEnv("REQUIRED_VNDK_VERSION"));
@@ -506,24 +528,20 @@ class AssembleVintfImpl : public AssembleVintf {
         }
 
         if (matrices->front().object.mType == SchemaType::FRAMEWORK) {
-            Level deviceLevel = Level::UNSPECIFIED;
-            if (mCheckFile != nullptr) {
-                checkManifest = std::make_unique<HalManifest>();
-                if (!gHalManifestConverter(checkManifest.get(), read(*mCheckFile), &error)) {
-                    std::cerr << "Cannot parse check file as a HAL manifest: " << error
-                              << std::endl;
-                    return false;
-                }
-                deviceLevel = checkManifest->level();
-            }
-
+            Level deviceLevel =
+                checkManifest != nullptr ? checkManifest->level() : Level::UNSPECIFIED;
             if (deviceLevel == Level::UNSPECIFIED) {
-                // For GSI build, legacy devices that do not have a HAL manifest,
-                // and devices in development, merge all compatibility matrices.
                 deviceLevel = getLowestFcmVersion(*matrices);
+                if (checkManifest != nullptr && deviceLevel != Level::UNSPECIFIED) {
+                    std::cerr << "Warning: No Target FCM Version for device. Assuming \""
+                              << to_string(deviceLevel)
+                              << "\" when building final framework compatibility matrix."
+                              << std::endl;
+                }
             }
+            builtMatrix = CompatibilityMatrix::combine(deviceLevel, matrices, &error);
+            matrix = builtMatrix.get();
 
-            matrix = CompatibilityMatrix::combine(deviceLevel, matrices, &error);
             if (matrix == nullptr) {
                 std::cerr << error << std::endl;
                 return false;
@@ -558,9 +576,9 @@ class AssembleVintfImpl : public AssembleVintf {
             }
 
             getFlagIfUnset("POLICYVERS", &matrix->framework.mSepolicy.mKernelSepolicyVersion,
-                           deviceLevel == Level::UNSPECIFIED /* log */);
+                           false /* log */);
             getFlagIfUnset("FRAMEWORK_VBMETA_VERSION", &matrix->framework.mAvbMetaVersion,
-                           deviceLevel == Level::UNSPECIFIED /* log */);
+                           false /* log */);
             // Hard-override existing AVB version
             getFlag("FRAMEWORK_VBMETA_VERSION_OVERRIDE", &matrix->framework.mAvbMetaVersion,
                     false /* log */);

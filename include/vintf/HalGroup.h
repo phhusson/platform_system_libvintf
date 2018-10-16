@@ -39,7 +39,7 @@ struct HalGroup {
         for (auto& pair : other->mHals) {
             if (!add(std::move(pair.second))) {
                 if (error) {
-                    *error = pair.first;
+                    *error = "HAL \"" + pair.first + "\" has a conflict.";
                 }
                 return false;
             }
