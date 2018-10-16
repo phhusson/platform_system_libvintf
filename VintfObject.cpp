@@ -196,8 +196,7 @@ status_t VintfObject::getCombinedFrameworkMatrix(
         return NAME_NOT_FOUND;
     }
 
-    CompatibilityMatrix* combined =
-        CompatibilityMatrix::combine(deviceLevel, &matrixFragments, error);
+    auto combined = CompatibilityMatrix::combine(deviceLevel, &matrixFragments, error);
     if (combined == nullptr) {
         return BAD_VALUE;
     }
