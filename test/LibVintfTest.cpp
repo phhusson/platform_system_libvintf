@@ -59,7 +59,10 @@ public:
         return cm.add(std::move(hal));
     }
     bool add(CompatibilityMatrix &cm, MatrixKernel &&kernel) {
-        return cm.add(std::move(kernel));
+        std::string error;
+        bool success = cm.addKernel(std::move(kernel), &error);
+        EXPECT_EQ(success, error == "") << "success: " << success << ", error: " << error;
+        return success;
     }
     bool add(HalManifest &vm, ManifestHal &&hal) {
         return vm.add(std::move(hal));

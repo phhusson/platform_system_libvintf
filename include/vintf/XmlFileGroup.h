@@ -62,7 +62,7 @@ struct XmlFileGroup {
         for (auto& pair : other->mXmlFiles) {
             if (!addXmlFile(std::move(pair.second))) {
                 if (error) {
-                    *error = pair.first;
+                    *error = "XML File \"" + pair.first + "\" has a conflict.";
                 }
                 return false;
             }
