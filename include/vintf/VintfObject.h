@@ -94,26 +94,29 @@ class VintfObject {
                 std::unique_ptr<details::PropertyFetcher>&& = nullptr);
 
     /*
-     * Return the API that access the device-side HAL manifest stored
-     * in /vendor/manifest.xml.
+     * Return the API that access the device-side HAL manifests built from component pieces on the
+     * vendor partition.
      */
     std::shared_ptr<const HalManifest> getDeviceHalManifest(bool skipCache = false);
 
     /*
-     * Return the API that access the framework-side HAL manifest stored
-     * in /system/manfiest.xml.
+     * Return the API that access the framework-side HAL manifest built from component pieces on the
+     * system partition.
      */
     std::shared_ptr<const HalManifest> getFrameworkHalManifest(bool skipCache = false);
 
     /*
-     * Return the API that access the device-side compatibility matrix stored
-     * in /vendor/compatibility_matrix.xml.
+     * Return the API that access the device-side compatibility matrix built from component pieces
+     * on the vendor partition.
      */
     std::shared_ptr<const CompatibilityMatrix> getDeviceCompatibilityMatrix(bool skipCache = false);
 
     /*
-     * Return the API that access the framework-side compatibility matrix stored
-     * in /system/compatibility_matrix.xml.
+     * Return the API that access the framework-side compatibility matrix built from component
+     * pieces on the system partition.
+     *
+     * This automatically selects the right compatibility matrix according to the target-level
+     * specified by the device.
      */
     std::shared_ptr<const CompatibilityMatrix> getFrameworkCompatibilityMatrix(
         bool skipCache = false);
@@ -228,27 +231,27 @@ class VintfObject {
     // Static variants of member functions.
 
     /*
-     * Return the API that access the device-side HAL manifest stored
-     * in /vendor/manifest.xml.
+     * Return the API that access the device-side HAL manifest built from component pieces on the
+     * vendor partition.
      */
     static std::shared_ptr<const HalManifest> GetDeviceHalManifest(bool skipCache = false);
 
     /*
-     * Return the API that access the framework-side HAL manifest stored
-     * in /system/manfiest.xml.
+     * Return the API that access the framework-side HAL manifest built from component pieces on the
+     * system partition.
      */
     static std::shared_ptr<const HalManifest> GetFrameworkHalManifest(bool skipCache = false);
 
     /*
-     * Return the API that access the device-side compatibility matrix stored
-     * in /vendor/compatibility_matrix.xml.
+     * Return the API that access the device-side compatibility matrix built from component pieces
+     * on the vendor partition.
      */
     static std::shared_ptr<const CompatibilityMatrix> GetDeviceCompatibilityMatrix(
         bool skipCache = false);
 
     /*
-     * Return the API that access the framework-side compatibility matrix stored
-     * in /system/compatibility_matrix.xml.
+     * Return the API that access the framework-side compatibility matrix built from component
+     * pieces on the system partition.
      */
     static std::shared_ptr<const CompatibilityMatrix> GetFrameworkCompatibilityMatrix(
         bool skipCache = false);
