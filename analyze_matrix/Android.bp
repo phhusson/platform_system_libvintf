@@ -26,18 +26,3 @@ cc_binary_host {
         "analyze_matrix.cpp",
     ],
 }
-
-python_binary_host {
-    name: "dump_hals_for_release",
-    srcs: [
-        "dump_hals_for_release.py",
-    ],
-    version: {
-        py2: {
-          enabled: true,
-        },
-        py3: {
-          enabled: false,
-        },
-    },
-}
