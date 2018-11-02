@@ -232,7 +232,8 @@ status_t VintfObject::addDirectoryManifests(const std::string& directory, HalMan
 // 3. ODM manifest (optional) + odm fragments
 // 4. /vendor/manifest.xml (legacy, no fragments)
 // where:
-// A + B means adding <hal> tags from B to A (so that <hal>s from B can override A)
+// A + B means unioning <hal> tags from A and B. If B declares an override, then this takes priority
+// over A.
 status_t VintfObject::fetchDeviceHalManifest(HalManifest* out, std::string* error) {
     status_t vendorStatus = fetchOneHalManifest(kVendorManifest, out, error);
     if (vendorStatus != OK && vendorStatus != NAME_NOT_FOUND) {
