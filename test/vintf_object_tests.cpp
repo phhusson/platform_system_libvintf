@@ -281,6 +281,52 @@ const static std::vector<std::string> systemMatrixRegexXmls = {
     "    </hal>\n"
     "</compatibility-matrix>\n"};
 
+//
+// Set of metadata at different FCM version that has requirements
+//
+
+const std::vector<std::string> systemMatrixRequire = {
+    // 1.xml
+    "<compatibility-matrix version=\"1.0\" type=\"framework\" level=\"1\">\n"
+    "    <hal format=\"hidl\" optional=\"false\">\n"
+    "        <name>android.hardware.foo</name>\n"
+    "        <version>1.0</version>\n"
+    "        <interface>\n"
+    "            <name>IFoo</name>\n"
+    "            <instance>default</instance>\n"
+    "        </interface>\n"
+    "    </hal>\n"
+    "</compatibility-matrix>\n",
+    // 2.xml
+    "<compatibility-matrix version=\"1.0\" type=\"framework\" level=\"2\">\n"
+    "    <hal format=\"hidl\" optional=\"false\">\n"
+    "        <name>android.hardware.bar</name>\n"
+    "        <version>1.0</version>\n"
+    "        <interface>\n"
+    "            <name>IBar</name>\n"
+    "            <instance>default</instance>\n"
+    "        </interface>\n"
+    "    </hal>\n"
+    "</compatibility-matrix>\n"};
+
+const std::string vendorManifestRequire1 =
+    "<manifest version=\"1.0\" type=\"device\" target-level=\"1\">\n"
+    "    <hal format=\"hidl\">\n"
+    "        <name>android.hardware.foo</name>\n"
+    "        <transport>hwbinder</transport>\n"
+    "        <fqname>@1.0::IFoo/default</fqname>\n"
+    "    </hal>\n"
+    "</manifest>\n";
+
+const std::string vendorManifestRequire2 =
+    "<manifest version=\"1.0\" type=\"device\" target-level=\"2\">\n"
+    "    <hal format=\"hidl\">\n"
+    "        <name>android.hardware.bar</name>\n"
+    "        <transport>hwbinder</transport>\n"
+    "        <fqname>@1.0::IBar/default</fqname>\n"
+    "    </hal>\n"
+    "</manifest>\n";
+
 class VintfObjectTestBase : public ::testing::Test {
    protected:
     MockFileSystem& fetcher() {
@@ -979,6 +1025,9 @@ class MultiMatrixTest : public VintfObjectTestBase {
         return "compatibility_matrix." + std::to_string(static_cast<Level>(i)) + ".xml";
     }
     void SetUpMockSystemMatrices(const std::vector<std::string>& xmls) {
+        EXPECT_CALL(fetcher(), listFiles(_, _, _))
+            .Times(AnyNumber())
+            .WillRepeatedly(Return(::android::OK));
         EXPECT_CALL(fetcher(), listFiles(StrEq(kSystemVintfDir), _, _))
             .WillRepeatedly(Invoke([=](const auto&, auto* out, auto*) {
                 size_t i = 1;
@@ -989,10 +1038,6 @@ class MultiMatrixTest : public VintfObjectTestBase {
                 }
                 return ::android::OK;
             }));
-        EXPECT_CALL(fetcher(), listFiles(StrEq(kVendorManifestFragmentDir), _, _))
-            .WillOnce(Return(::android::OK));
-        EXPECT_CALL(fetcher(), listFiles(StrEq(kOdmManifestFragmentDir), _, _))
-            .WillOnce(Return(::android::OK));
         size_t i = 1;
         for (const auto& content : xmls) {
             expectFetchRepeatedly(kSystemVintfDir + getFileName(i), content);
@@ -1249,6 +1294,40 @@ TEST_F(KernelTest, Level1AndMore) {
 
     EXPECT_NOT_IN(FAKE_KERNEL("2.0.0", "B2"), xml) << "\nOld requirements must not change";
     EXPECT_NOT_IN(FAKE_KERNEL("4.0.0", "D3"), xml) << "\nOld requirements must not change";
+}
+
+class VintfObjectPartialUpdateTest : public MultiMatrixTest {
+   protected:
+    void SetUp() override {
+        MultiMatrixTest::SetUp();
+        setFakeProperties();
+    }
+};
+
+TEST_F(VintfObjectPartialUpdateTest, DeviceCompatibility) {
+    setupMockFetcher(vendorManifestRequire1, "", systemManifestXml1, vendorMatrixXml1,
+                     productModel);
+    SetUpMockSystemMatrices(systemMatrixRequire);
+
+    expectSystemManifest();
+    expectVendorMatrix();
+    expectVendorManifest();
+
+    std::string error;
+    EXPECT_TRUE(checkCompatibility({}, &error)) << error;
+}
+
+TEST_F(VintfObjectPartialUpdateTest, VendorOnlyCompatible) {
+    setupMockFetcher("", "", systemManifestXml1, vendorMatrixXml1, productModel);
+    SetUpMockSystemMatrices(systemMatrixRequire);
+
+    expectSystemManifest();
+    expectVendorMatrix();
+    // Should not load vendor manifest from device
+    expectVendorManifest(0);
+
+    std::string error;
+    EXPECT_TRUE(checkCompatibility({vendorManifestRequire2}, &error)) << error;
 }
 
 }  // namespace testing
