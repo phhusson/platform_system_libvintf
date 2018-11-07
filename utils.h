@@ -29,15 +29,6 @@ namespace android {
 namespace vintf {
 namespace details {
 
-class PartitionMounter {
-   public:
-    virtual ~PartitionMounter() {}
-    virtual status_t mountSystem() const { return OK; }
-    virtual status_t mountVendor() const { return OK; }
-    virtual status_t umountSystem() const { return OK; }
-    virtual status_t umountVendor() const { return OK; }
-};
-
 template <typename T>
 status_t fetchAllInformation(const FileSystem* fileSystem, const std::string& path,
                              const XmlConverter<T>& converter, T* outObject, std::string* error) {

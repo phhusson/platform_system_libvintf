@@ -82,12 +82,9 @@ static std::unique_ptr<PropertyFetcher> createDefaultPropertyFetcher() {
 }
 
 VintfObject::VintfObject(std::unique_ptr<FileSystem>&& fileSystem,
-                         std::unique_ptr<details::PartitionMounter>&& partitionMounter,
                          std::unique_ptr<details::ObjectFactory<RuntimeInfo>>&& runtimeInfoFactory,
                          std::unique_ptr<details::PropertyFetcher>&& propertyFetcher)
     : mFileSystem(fileSystem ? std::move(fileSystem) : createDefaultFileSystem()),
-      mPartitionMounter(partitionMounter ? std::move(partitionMounter)
-                                         : std::make_unique<details::PartitionMounter>()),
       mRuntimeInfoFactory(runtimeInfoFactory
                               ? std::move(runtimeInfoFactory)
                               : std::make_unique<details::ObjectFactory<RuntimeInfo>>()),
@@ -460,19 +457,11 @@ static ParseStatus tryParse(const std::string &xml, const XmlConverter<T> &parse
 }
 
 template <typename T, typename GetFunction>
-static status_t getMissing(const std::string& msg, const std::shared_ptr<T>& pkg, bool mount,
-                           std::function<status_t(void)> mountFunction,
-                           std::shared_ptr<const T>* updated, GetFunction getFunction,
-                           std::string* error) {
+static status_t getMissing(const std::shared_ptr<T>& pkg, std::shared_ptr<const T>* updated,
+                           GetFunction getFunction) {
     if (pkg != nullptr) {
         *updated = pkg;
     } else {
-        if (mount) {
-            status_t mountStatus = mountFunction();
-            if (mountStatus != OK) {
-                appendLine(error, "warning: mount " + msg + " failed: " + strerror(-mountStatus));
-            }
-        }
         *updated = getFunction();
     }
     return OK;
@@ -502,8 +491,8 @@ struct UpdatedInfo {
 // Checks given compatibility info against info on the device. If no
 // compatability info is given then the device info will be checked against
 // itself.
-int32_t VintfObject::checkCompatibility(const std::vector<std::string>& xmls, bool mount,
-                                        std::string* error, CheckFlags::Type flags) {
+int32_t VintfObject::checkCompatibility(const std::vector<std::string>& xmls, std::string* error,
+                                        CheckFlags::Type flags) {
     status_t status;
     ParseStatus parseStatus;
     PackageInfo pkg; // All information from package.
@@ -532,45 +521,25 @@ int32_t VintfObject::checkCompatibility(const std::vector<std::string>& xmls, bo
     }
 
     // get missing info from device
-    // use functions instead of std::bind because std::bind doesn't work well with mock objects
-    auto mountSystem = [this] { return this->mPartitionMounter->mountSystem(); };
-    auto mountVendor = [this] { return this->mPartitionMounter->mountVendor(); };
     if ((status = getMissing(
-             "system", pkg.fwk.manifest, mount, mountSystem, &updated.fwk.manifest,
-             std::bind(&VintfObject::getFrameworkHalManifest, this, true /* skipCache */),
-             error)) != OK) {
-        return status;
-    }
-    if ((status =
-             getMissing("vendor", pkg.dev.manifest, mount, mountVendor, &updated.dev.manifest,
-                        std::bind(&VintfObject::getDeviceHalManifest, this, true /* skipCache */),
-                        error)) != OK) {
+             pkg.fwk.manifest, &updated.fwk.manifest,
+             std::bind(&VintfObject::getFrameworkHalManifest, this, true /* skipCache */))) != OK) {
         return status;
     }
     if ((status = getMissing(
-             "system", pkg.fwk.matrix, mount, mountSystem, &updated.fwk.matrix,
-             std::bind(&VintfObject::getFrameworkCompatibilityMatrix, this, true /* skipCache */),
-             error)) != OK) {
+             pkg.dev.manifest, &updated.dev.manifest,
+             std::bind(&VintfObject::getDeviceHalManifest, this, true /* skipCache */))) != OK) {
         return status;
     }
-    if ((status = getMissing(
-             "vendor", pkg.dev.matrix, mount, mountVendor, &updated.dev.matrix,
-             std::bind(&VintfObject::getDeviceCompatibilityMatrix, this, true /* skipCache */),
-             error)) != OK) {
+    if ((status = getMissing(pkg.fwk.matrix, &updated.fwk.matrix,
+                             std::bind(&VintfObject::getFrameworkCompatibilityMatrix, this,
+                                       true /* skipCache */))) != OK) {
         return status;
     }
-
-    if (mount) {
-        status_t umountStatus = mPartitionMounter->umountSystem();
-        if (umountStatus != OK) {
-            appendLine(error,
-                       std::string{"warning: umount system failed: "} + strerror(-umountStatus));
-        }
-        umountStatus = mPartitionMounter->umountVendor();
-        if (umountStatus != OK) {
-            appendLine(error,
-                       std::string{"warning: umount vendor failed: "} + strerror(-umountStatus));
-        }
+    if ((status = getMissing(pkg.dev.matrix, &updated.dev.matrix,
+                             std::bind(&VintfObject::getDeviceCompatibilityMatrix, this,
+                                       true /* skipCache */))) != OK) {
+        return status;
     }
 
     if (flags.isRuntimeInfoEnabled()) {
@@ -667,11 +636,6 @@ std::vector<std::string> dumpFileList() {
 int32_t VintfObject::CheckCompatibility(const std::vector<std::string>& xmls, std::string* error,
                                         CheckFlags::Type flags) {
     return GetInstance()->checkCompatibility(xmls, error, flags);
-}
-
-int32_t VintfObject::checkCompatibility(const std::vector<std::string>& xmls, std::string* error,
-                                        CheckFlags::Type flags) {
-    return checkCompatibility(xmls, false /* mount */, error, flags);
 }
 
 bool VintfObject::IsHalDeprecated(const MatrixHal& oldMatrixHal,
@@ -825,10 +789,6 @@ int32_t VintfObject::checkDeprecation(std::string* error) {
 
 const std::unique_ptr<FileSystem>& VintfObject::getFileSystem() {
     return mFileSystem;
-}
-
-const std::unique_ptr<PartitionMounter>& VintfObject::getPartitionMounter() {
-    return mPartitionMounter;
 }
 
 const std::unique_ptr<PropertyFetcher>& VintfObject::getPropertyFetcher() {
