@@ -36,7 +36,6 @@ using FstabMgr = std::unique_ptr<struct fstab, decltype(&fs_mgr_free_fstab)>;
 
 static const char* const kMountImageRootDir = "/mnt";
 static const char* const kSystemImageRootDir = "/mnt/system";
-static const char* const kVendorImageRootDir = "/mnt/vendor";
 
 static status_t mountAt(const FstabMgr& fstab, const char* path, const char* mountPoint) {
     mkdir(mountPoint, 0755);  // in case it doesn't already exist
@@ -76,10 +75,7 @@ class RecoveryPartitionMounter {
                 return mount("/system", kSystemImageRootDir);
             }
         }
-        if (path == "/vendor") {
-            return mount(path, kVendorImageRootDir);
-        }
-        return BAD_VALUE;
+        return mount(path, kMountImageRootDir + path);
     }
 
    private:
