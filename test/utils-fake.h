@@ -43,44 +43,6 @@ class MockFileSystem : public FileSystem {
     FileSystemImpl mImpl;
 };
 
-class MockPartitionMounter : public PartitionMounter {
-   public:
-    MockPartitionMounter() {
-        ON_CALL(*this, mountSystem()).WillByDefault(Invoke([&] {
-            systemMounted_ = true;
-            return OK;
-        }));
-        ON_CALL(*this, umountSystem()).WillByDefault(Invoke([&] {
-            systemMounted_ = false;
-            return OK;
-        }));
-        ON_CALL(*this, mountVendor()).WillByDefault(Invoke([&] {
-            vendorMounted_ = true;
-            return OK;
-        }));
-        ON_CALL(*this, umountVendor()).WillByDefault(Invoke([&] {
-            vendorMounted_ = false;
-            return OK;
-        }));
-    }
-    MOCK_CONST_METHOD0(mountSystem, status_t());
-    MOCK_CONST_METHOD0(umountSystem, status_t());
-    MOCK_CONST_METHOD0(mountVendor, status_t());
-    MOCK_CONST_METHOD0(umountVendor, status_t());
-
-    bool systemMounted() const { return systemMounted_; }
-    bool vendorMounted() const { return vendorMounted_; }
-
-    void reset() {
-        systemMounted_ = false;
-        vendorMounted_ = false;
-    }
-
-   private:
-    bool systemMounted_;
-    bool vendorMounted_;
-};
-
 class MockRuntimeInfo : public RuntimeInfo {
    public:
     MockRuntimeInfo() {
