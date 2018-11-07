@@ -343,6 +343,13 @@ status_t VintfObject::fetchFrameworkHalManifest(HalManifest* out, std::string* e
     return out->fetchAllInformation(mFileSystem.get(), kSystemLegacyManifest, error);
 }
 
+static void appendLine(std::string* error, const std::string& message) {
+    if (error != nullptr) {
+        if (!error->empty()) *error += "\n";
+        *error += message;
+    }
+}
+
 std::vector<Named<CompatibilityMatrix>> VintfObject::getAllFrameworkMatrixLevels(
     std::string* error) {
     std::vector<std::string> fileNames;
@@ -358,17 +365,14 @@ std::vector<Named<CompatibilityMatrix>> VintfObject::getAllFrameworkMatrixLevels
         std::string fetchError;
         status_t status = mFileSystem->fetch(path, &content, &fetchError);
         if (status != OK) {
-            if (error) {
-                *error += "Framework Matrix: Ignore file " + path + ": " + fetchError + "\n";
-            }
+            appendLine(error, "Framework Matrix: Ignore file " + path + ": " + fetchError);
             continue;
         }
 
         auto it = results.emplace(results.end());
-        if (!gCompatibilityMatrixConverter(&it->object, content, error)) {
-            if (error) {
-                *error += "Framework Matrix: Ignore file " + path + ": " + *error + "\n";
-            }
+        std::string parseError;
+        if (!gCompatibilityMatrixConverter(&it->object, content, &parseError)) {
+            appendLine(error, "Framework Matrix: Ignore file " + path + ": " + parseError);
             results.erase(it);
             continue;
         }
@@ -376,8 +380,8 @@ std::vector<Named<CompatibilityMatrix>> VintfObject::getAllFrameworkMatrixLevels
 
     if (results.empty()) {
         if (error) {
-            *error = "No framework matrices under " + kSystemVintfDir +
-                     " can be fetched or parsed.\n" + *error;
+            error->insert(0, "No framework matrices under " + kSystemVintfDir +
+                                 " can be fetched or parsed.\n");
         }
     } else {
         if (error && !error->empty()) {
@@ -453,13 +457,6 @@ static ParseStatus tryParse(const std::string &xml, const XmlConverter<T> &parse
         *dev = std::move(ret);
     }
     return ParseStatus::OK;
-}
-
-static void appendLine(std::string* error, const std::string& message) {
-    if (error != nullptr) {
-        if (!error->empty()) *error += "\n";
-        *error += message;
-    }
 }
 
 template <typename T, typename GetFunction>
@@ -748,11 +745,9 @@ bool VintfObject::IsInstanceDeprecated(const MatrixInstance& oldMatrixInstance,
         }
 
         if (!targetVersionServed) {
-            if (error) {
-                *error += toFQNameString(package, servedVersion, interface, servedInstance) +
-                          " is deprecated; requires at least " + to_string(targetMatrixMinVer) +
-                          "\n";
-            }
+            appendLine(error, toFQNameString(package, servedVersion, interface, servedInstance) +
+                                  " is deprecated; requires at least " +
+                                  to_string(targetMatrixMinVer));
             return true;
         }
     }
