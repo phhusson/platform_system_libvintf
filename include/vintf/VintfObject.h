@@ -30,7 +30,6 @@ namespace android {
 namespace vintf {
 
 namespace details {
-class PartitionMounter;
 template <typename T>
 class ObjectFactory;
 class PropertyFetcher;
@@ -84,12 +83,10 @@ class VintfObject {
      * Dependencies can be injected via arguments. If nullptr is provided, the default behavior
      * is used.
      * - FileSystem fetch from "/" for target and fetch no files for host
-     * - PartitionMounter does nothing for both target and host
      * - ObjectFactory<RuntimeInfo> fetches default RuntimeInfo for target and nothing for host
      * - PropertyFetcher fetches properties for target and nothing for host
      */
     VintfObject(std::unique_ptr<FileSystem>&& = nullptr,
-                std::unique_ptr<details::PartitionMounter>&& = nullptr,
                 std::unique_ptr<details::ObjectFactory<RuntimeInfo>>&& = nullptr,
                 std::unique_ptr<details::PropertyFetcher>&& = nullptr);
 
@@ -193,7 +190,6 @@ class VintfObject {
 
    private:
     const std::unique_ptr<FileSystem> mFileSystem;
-    const std::unique_ptr<details::PartitionMounter> mPartitionMounter;
     const std::unique_ptr<details::ObjectFactory<RuntimeInfo>> mRuntimeInfoFactory;
     const std::unique_ptr<details::PropertyFetcher> mPropertyFetcher;
 
@@ -214,10 +210,7 @@ class VintfObject {
     friend class testing::VintfObjectTestBase;
     friend class testing::VintfObjectRuntimeInfoTest;
     friend class testing::VintfObjectCompatibleTest;
-    int32_t checkCompatibility(const std::vector<std::string>& xmls, bool mount, std::string* error,
-                               CheckFlags::Type flags = CheckFlags::ENABLE_ALL_CHECKS);
     const std::unique_ptr<FileSystem>& getFileSystem();
-    const std::unique_ptr<details::PartitionMounter>& getPartitionMounter();
     const std::unique_ptr<details::PropertyFetcher>& getPropertyFetcher();
     const std::unique_ptr<details::ObjectFactory<RuntimeInfo>>& getRuntimeInfoFactory();
 
