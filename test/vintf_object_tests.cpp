@@ -281,11 +281,54 @@ const static std::vector<std::string> systemMatrixRegexXmls = {
     "    </hal>\n"
     "</compatibility-matrix>\n"};
 
+//
+// Set of metadata at different FCM version that has requirements
+//
+
+const std::vector<std::string> systemMatrixRequire = {
+    // 1.xml
+    "<compatibility-matrix version=\"1.0\" type=\"framework\" level=\"1\">\n"
+    "    <hal format=\"hidl\" optional=\"false\">\n"
+    "        <name>android.hardware.foo</name>\n"
+    "        <version>1.0</version>\n"
+    "        <interface>\n"
+    "            <name>IFoo</name>\n"
+    "            <instance>default</instance>\n"
+    "        </interface>\n"
+    "    </hal>\n"
+    "</compatibility-matrix>\n",
+    // 2.xml
+    "<compatibility-matrix version=\"1.0\" type=\"framework\" level=\"2\">\n"
+    "    <hal format=\"hidl\" optional=\"false\">\n"
+    "        <name>android.hardware.bar</name>\n"
+    "        <version>1.0</version>\n"
+    "        <interface>\n"
+    "            <name>IBar</name>\n"
+    "            <instance>default</instance>\n"
+    "        </interface>\n"
+    "    </hal>\n"
+    "</compatibility-matrix>\n"};
+
+const std::string vendorManifestRequire1 =
+    "<manifest version=\"1.0\" type=\"device\" target-level=\"1\">\n"
+    "    <hal format=\"hidl\">\n"
+    "        <name>android.hardware.foo</name>\n"
+    "        <transport>hwbinder</transport>\n"
+    "        <fqname>@1.0::IFoo/default</fqname>\n"
+    "    </hal>\n"
+    "</manifest>\n";
+
+const std::string vendorManifestRequire2 =
+    "<manifest version=\"1.0\" type=\"device\" target-level=\"2\">\n"
+    "    <hal format=\"hidl\">\n"
+    "        <name>android.hardware.bar</name>\n"
+    "        <transport>hwbinder</transport>\n"
+    "        <fqname>@1.0::IBar/default</fqname>\n"
+    "    </hal>\n"
+    "</manifest>\n";
+
 class VintfObjectTestBase : public ::testing::Test {
    protected:
-    MockPartitionMounter& mounter() {
-        return static_cast<MockPartitionMounter&>(*vintfObject->getPartitionMounter());
-    }
     MockFileSystem& fetcher() {
         return static_cast<MockFileSystem&>(*vintfObject->getFileSystem());
     }
@@ -360,13 +403,11 @@ class VintfObjectTestBase : public ::testing::Test {
     virtual void SetUp() {
         vintfObject =
             std::make_unique<VintfObject>(std::make_unique<NiceMock<MockFileSystem>>(),
-                                          std::make_unique<NiceMock<MockPartitionMounter>>(),
                                           std::make_unique<NiceMock<MockRuntimeInfoFactory>>(
                                               std::make_shared<NiceMock<MockRuntimeInfo>>()),
                                           std::make_unique<NiceMock<MockPropertyFetcher>>());
     }
     virtual void TearDown() {
-        Mock::VerifyAndClear(&mounter());
         Mock::VerifyAndClear(&fetcher());
     }
 
@@ -430,6 +471,11 @@ class VintfObjectTestBase : public ::testing::Test {
             .WillRepeatedly(Return(::android::NAME_NOT_FOUND));
     }
 
+    // Access to private method.
+    int checkCompatibility(const std::vector<std::string>& xmls, std::string* error) {
+        return vintfObject->checkCompatibility(xmls, error);
+    }
+
     std::string productModel;
     std::unique_ptr<VintfObject> vintfObject;
 };
@@ -440,14 +486,8 @@ class VintfObjectCompatibleTest : public VintfObjectTestBase {
     virtual void SetUp() {
         VintfObjectTestBase::SetUp();
         setFakeProperties();
-        mounter().reset();
         setupMockFetcher(vendorManifestXml1, systemMatrixXml1, systemManifestXml1, vendorMatrixXml1,
                          productModel);
-    }
-
-    // Access to private method for force mounting.
-    int checkCompatibility(const std::vector<std::string>& xmls, bool mount, std::string* error) {
-        return vintfObject->checkCompatibility(xmls, mount, error);
     }
 };
 
@@ -460,34 +500,12 @@ TEST_F(VintfObjectCompatibleTest, TestDeviceCompatibility) {
     expectSystemManifest();
     expectVendorMatrix();
     expectSystemMatrix();
-    EXPECT_CALL(mounter(), mountSystem()).Times(0);
-    EXPECT_CALL(mounter(), umountSystem()).Times(0);
-    EXPECT_CALL(mounter(), mountVendor()).Times(0);
-    EXPECT_CALL(mounter(), umountVendor()).Times(0);
 
-    int result = vintfObject->checkCompatibility(packageInfo, &error);
+    int result = checkCompatibility(packageInfo, &error);
 
     ASSERT_EQ(result, 0) << "Fail message:" << error.c_str();
     // Check that nothing was ignored.
     ASSERT_STREQ(error.c_str(), "");
-    EXPECT_FALSE(mounter().systemMounted());
-    EXPECT_FALSE(mounter().vendorMounted());
-}
-
-TEST_F(VintfObjectCompatibleTest, TestDeviceCompatibilityMount) {
-    std::string error;
-    std::vector<std::string> packageInfo;
-
-    EXPECT_CALL(mounter(), mountSystem()).Times(2);
-    EXPECT_CALL(mounter(), umountSystem()).Times(1); // Should only umount once
-    EXPECT_CALL(mounter(), mountVendor()).Times(2);
-    EXPECT_CALL(mounter(), umountVendor()).Times(1);
-
-    int result = checkCompatibility(packageInfo, true /* mount */, &error);
-
-    ASSERT_EQ(result, 0) << "Fail message:" << error.c_str();
-    EXPECT_FALSE(mounter().systemMounted());
-    EXPECT_FALSE(mounter().vendorMounted());
 }
 
 // Tests that input info is checked against device and passes.
@@ -499,33 +517,11 @@ TEST_F(VintfObjectCompatibleTest, TestInputVsDeviceSuccess) {
     expectSystemManifest();
     expectVendorMatrix();
     expectSystemMatrix(0);
-    EXPECT_CALL(mounter(), mountSystem()).Times(0);
-    EXPECT_CALL(mounter(), umountSystem()).Times(0);
-    EXPECT_CALL(mounter(), mountVendor()).Times(0);
-    EXPECT_CALL(mounter(), umountVendor()).Times(0);
 
-    int result = vintfObject->checkCompatibility(packageInfo, &error);
+    int result = checkCompatibility(packageInfo, &error);
 
     ASSERT_EQ(result, 0) << "Fail message:" << error.c_str();
     ASSERT_STREQ(error.c_str(), "");
-    EXPECT_FALSE(mounter().systemMounted());
-    EXPECT_FALSE(mounter().vendorMounted());
-}
-
-TEST_F(VintfObjectCompatibleTest, TestInputVsDeviceSuccessMount) {
-    std::string error;
-    std::vector<std::string> packageInfo = {systemMatrixXml1};
-
-    EXPECT_CALL(mounter(), mountSystem()).Times(1); // Should only mount once for manifest
-    EXPECT_CALL(mounter(), umountSystem()).Times(1);
-    EXPECT_CALL(mounter(), mountVendor()).Times(2);
-    EXPECT_CALL(mounter(), umountVendor()).Times(1);
-
-    int result = checkCompatibility(packageInfo, true /* mount */, &error);
-
-    ASSERT_EQ(result, 0) << "Fail message:" << error.c_str();
-    EXPECT_FALSE(mounter().systemMounted());
-    EXPECT_FALSE(mounter().vendorMounted());
 }
 
 // Tests that input info is checked against device and fails.
@@ -533,7 +529,7 @@ TEST_F(VintfObjectCompatibleTest, TestInputVsDeviceFail) {
     std::string error;
     std::vector<std::string> packageInfo = {systemMatrixXml2};
 
-    int result = vintfObject->checkCompatibility(packageInfo, &error);
+    int result = checkCompatibility(packageInfo, &error);
 
     ASSERT_EQ(result, 1) << "Should have failed:" << error.c_str();
     EXPECT_IN(
@@ -548,7 +544,7 @@ TEST_F(VintfObjectCompatibleTest, TestInputSuccess) {
     std::string error;
     std::vector<std::string> packageInfo = {systemMatrixXml2, vendorManifestXml2};
 
-    int result = vintfObject->checkCompatibility(packageInfo, &error);
+    int result = checkCompatibility(packageInfo, &error);
 
     ASSERT_EQ(result, 0) << "Failed message:" << error.c_str();
     ASSERT_STREQ(error.c_str(), "");
@@ -562,33 +558,11 @@ TEST_F(VintfObjectCompatibleTest, TestFrameworkOnlyOta) {
     expectSystemManifest(0);
     expectVendorMatrix();
     expectSystemMatrix(0);
-    EXPECT_CALL(mounter(), mountSystem()).Times(0);
-    EXPECT_CALL(mounter(), umountSystem()).Times(0);
-    EXPECT_CALL(mounter(), mountVendor()).Times(0);
-    EXPECT_CALL(mounter(), umountVendor()).Times(0);
 
-    int result = vintfObject->checkCompatibility(packageInfo, &error);
+    int result = checkCompatibility(packageInfo, &error);
 
     ASSERT_EQ(result, 0) << "Fail message:" << error.c_str();
     ASSERT_STREQ(error.c_str(), "");
-    EXPECT_FALSE(mounter().systemMounted());
-    EXPECT_FALSE(mounter().vendorMounted());
-}
-
-TEST_F(VintfObjectCompatibleTest, TestFrameworkOnlyOtaMount) {
-    std::string error;
-    std::vector<std::string> packageInfo = {systemMatrixXml1, systemManifestXml1};
-
-    EXPECT_CALL(mounter(), mountSystem()).Times(0);
-    EXPECT_CALL(mounter(), umountSystem()).Times(1);
-    EXPECT_CALL(mounter(), mountVendor()).Times(2);
-    EXPECT_CALL(mounter(), umountVendor()).Times(1);
-
-    int result = checkCompatibility(packageInfo, true /* mount */, &error);
-
-    ASSERT_EQ(result, 0) << "Fail message:" << error.c_str();
-    EXPECT_FALSE(mounter().systemMounted());
-    EXPECT_FALSE(mounter().vendorMounted());
 }
 
 TEST_F(VintfObjectCompatibleTest, TestFullOta) {
@@ -600,34 +574,11 @@ TEST_F(VintfObjectCompatibleTest, TestFullOta) {
     expectSystemManifest(0);
     expectVendorMatrix(0);
     expectSystemMatrix(0);
-    EXPECT_CALL(mounter(), mountSystem()).Times(0);
-    EXPECT_CALL(mounter(), umountSystem()).Times(0);
-    EXPECT_CALL(mounter(), mountVendor()).Times(0);
-    EXPECT_CALL(mounter(), umountVendor()).Times(0);
 
-    int result = vintfObject->checkCompatibility(packageInfo, &error);
+    int result = checkCompatibility(packageInfo, &error);
 
     ASSERT_EQ(result, 0) << "Fail message:" << error.c_str();
     ASSERT_STREQ(error.c_str(), "");
-    EXPECT_FALSE(mounter().systemMounted());
-    EXPECT_FALSE(mounter().vendorMounted());
-}
-
-TEST_F(VintfObjectCompatibleTest, TestFullOnlyOtaMount) {
-    std::string error;
-    std::vector<std::string> packageInfo = {systemMatrixXml1, systemManifestXml1,
-            vendorMatrixXml1, vendorManifestXml1};
-
-    EXPECT_CALL(mounter(), mountSystem()).Times(0);
-    EXPECT_CALL(mounter(), umountSystem()).Times(1);
-    EXPECT_CALL(mounter(), mountVendor()).Times(0);
-    EXPECT_CALL(mounter(), umountVendor()).Times(1);
-
-    int result = checkCompatibility(packageInfo, true /* mount */, &error);
-
-    ASSERT_EQ(result, 0) << "Fail message:" << error.c_str();
-    EXPECT_FALSE(mounter().systemMounted());
-    EXPECT_FALSE(mounter().vendorMounted());
 }
 
 // Test fixture that provides incompatible metadata from the mock device.
@@ -636,7 +587,6 @@ class VintfObjectIncompatibleTest : public VintfObjectTestBase {
     virtual void SetUp() {
         VintfObjectTestBase::SetUp();
         setFakeProperties();
-        mounter().reset();
         setupMockFetcher(vendorManifestXml1, systemMatrixXml2, systemManifestXml1, vendorMatrixXml1,
                          productModel);
     }
@@ -652,7 +602,7 @@ TEST_F(VintfObjectIncompatibleTest, TestDeviceCompatibility) {
     expectVendorMatrix();
     expectSystemMatrix();
 
-    int result = vintfObject->checkCompatibility(packageInfo, &error);
+    int result = checkCompatibility(packageInfo, &error);
 
     ASSERT_EQ(result, 1) << "Should have failed:" << error.c_str();
 }
@@ -667,7 +617,7 @@ TEST_F(VintfObjectIncompatibleTest, TestInputVsDeviceSuccess) {
     expectVendorMatrix();
     expectSystemMatrix(0);
 
-    int result = vintfObject->checkCompatibility(packageInfo, &error);
+    int result = checkCompatibility(packageInfo, &error);
 
     ASSERT_EQ(result, 0) << "Failed message:" << error.c_str();
     ASSERT_STREQ(error.c_str(), "");
@@ -1075,6 +1025,9 @@ class MultiMatrixTest : public VintfObjectTestBase {
         return "compatibility_matrix." + std::to_string(static_cast<Level>(i)) + ".xml";
     }
     void SetUpMockSystemMatrices(const std::vector<std::string>& xmls) {
+        EXPECT_CALL(fetcher(), listFiles(_, _, _))
+            .Times(AnyNumber())
+            .WillRepeatedly(Return(::android::OK));
         EXPECT_CALL(fetcher(), listFiles(StrEq(kSystemVintfDir), _, _))
             .WillRepeatedly(Invoke([=](const auto&, auto* out, auto*) {
                 size_t i = 1;
@@ -1085,10 +1038,6 @@ class MultiMatrixTest : public VintfObjectTestBase {
                 }
                 return ::android::OK;
             }));
-        EXPECT_CALL(fetcher(), listFiles(StrEq(kVendorManifestFragmentDir), _, _))
-            .WillOnce(Return(::android::OK));
-        EXPECT_CALL(fetcher(), listFiles(StrEq(kOdmManifestFragmentDir), _, _))
-            .WillOnce(Return(::android::OK));
         size_t i = 1;
         for (const auto& content : xmls) {
             expectFetchRepeatedly(kSystemVintfDir + getFileName(i), content);
@@ -1345,6 +1294,40 @@ TEST_F(KernelTest, Level1AndMore) {
 
     EXPECT_NOT_IN(FAKE_KERNEL("2.0.0", "B2"), xml) << "\nOld requirements must not change";
     EXPECT_NOT_IN(FAKE_KERNEL("4.0.0", "D3"), xml) << "\nOld requirements must not change";
+}
+
+class VintfObjectPartialUpdateTest : public MultiMatrixTest {
+   protected:
+    void SetUp() override {
+        MultiMatrixTest::SetUp();
+        setFakeProperties();
+    }
+};
+
+TEST_F(VintfObjectPartialUpdateTest, DeviceCompatibility) {
+    setupMockFetcher(vendorManifestRequire1, "", systemManifestXml1, vendorMatrixXml1,
+                     productModel);
+    SetUpMockSystemMatrices(systemMatrixRequire);
+
+    expectSystemManifest();
+    expectVendorMatrix();
+    expectVendorManifest();
+
+    std::string error;
+    EXPECT_TRUE(checkCompatibility({}, &error)) << error;
+}
+
+TEST_F(VintfObjectPartialUpdateTest, VendorOnlyCompatible) {
+    setupMockFetcher("", "", systemManifestXml1, vendorMatrixXml1, productModel);
+    SetUpMockSystemMatrices(systemMatrixRequire);
+
+    expectSystemManifest();
+    expectVendorMatrix();
+    // Should not load vendor manifest from device
+    expectVendorManifest(0);
+
+    std::string error;
+    EXPECT_TRUE(checkCompatibility({vendorManifestRequire2}, &error)) << error;
 }
 
 }  // namespace testing

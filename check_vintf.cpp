@@ -223,10 +223,8 @@ int checkAllFiles(const std::string& rootdir, const Properties& props, std::stri
     auto hostPropertyFetcher = std::make_unique<PresetPropertyFetcher>();
     hostPropertyFetcher->setProperties(props);
     VintfObject vintfObject(std::make_unique<HostFileSystem>(rootdir),
-                            nullptr /* partition mounter */, nullptr /* runtime info factory */,
-                            std::move(hostPropertyFetcher));
-    return vintfObject.checkCompatibility({} /* packageInfo */, error,
-                                          CheckFlags::DISABLE_RUNTIME_INFO);
+                            nullptr /* runtime info factory */, std::move(hostPropertyFetcher));
+    return vintfObject.checkCompatibility(error, CheckFlags::DISABLE_RUNTIME_INFO);
 }
 
 }  // namespace details

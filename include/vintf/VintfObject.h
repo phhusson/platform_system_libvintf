@@ -30,10 +30,10 @@ namespace android {
 namespace vintf {
 
 namespace details {
-class PartitionMounter;
 template <typename T>
 class ObjectFactory;
 class PropertyFetcher;
+class VintfObjectAfterUpdate;
 
 template <typename T>
 struct LockedSharedPtr {
@@ -84,32 +84,32 @@ class VintfObject {
      * Dependencies can be injected via arguments. If nullptr is provided, the default behavior
      * is used.
      * - FileSystem fetch from "/" for target and fetch no files for host
-     * - PartitionMounter does nothing for both target and host
      * - ObjectFactory<RuntimeInfo> fetches default RuntimeInfo for target and nothing for host
      * - PropertyFetcher fetches properties for target and nothing for host
      */
     VintfObject(std::unique_ptr<FileSystem>&& = nullptr,
-                std::unique_ptr<details::PartitionMounter>&& = nullptr,
                 std::unique_ptr<details::ObjectFactory<RuntimeInfo>>&& = nullptr,
                 std::unique_ptr<details::PropertyFetcher>&& = nullptr);
+    virtual ~VintfObject() = default;
 
     /*
      * Return the API that access the device-side HAL manifests built from component pieces on the
      * vendor partition.
      */
-    std::shared_ptr<const HalManifest> getDeviceHalManifest(bool skipCache = false);
+    virtual std::shared_ptr<const HalManifest> getDeviceHalManifest(bool skipCache = false);
 
     /*
      * Return the API that access the framework-side HAL manifest built from component pieces on the
      * system partition.
      */
-    std::shared_ptr<const HalManifest> getFrameworkHalManifest(bool skipCache = false);
+    virtual std::shared_ptr<const HalManifest> getFrameworkHalManifest(bool skipCache = false);
 
     /*
      * Return the API that access the device-side compatibility matrix built from component pieces
      * on the vendor partition.
      */
-    std::shared_ptr<const CompatibilityMatrix> getDeviceCompatibilityMatrix(bool skipCache = false);
+    virtual std::shared_ptr<const CompatibilityMatrix> getDeviceCompatibilityMatrix(
+        bool skipCache = false);
 
     /*
      * Return the API that access the framework-side compatibility matrix built from component
@@ -118,7 +118,7 @@ class VintfObject {
      * This automatically selects the right compatibility matrix according to the target-level
      * specified by the device.
      */
-    std::shared_ptr<const CompatibilityMatrix> getFrameworkCompatibilityMatrix(
+    virtual std::shared_ptr<const CompatibilityMatrix> getFrameworkCompatibilityMatrix(
         bool skipCache = false);
 
     /*
@@ -141,8 +141,6 @@ class VintfObject {
      * Check compatibility, given a set of manifests / matrices in packageInfo.
      * They will be checked against the manifests / matrices on the device.
      *
-     * @param packageInfo a list of XMLs of HalManifest /
-     * CompatibilityMatrix objects.
      * @param error error message
      * @param flags flags to disable certain checks. See CheckFlags.
      *
@@ -150,8 +148,7 @@ class VintfObject {
      *         > 0 if incompatible
      *         < 0 if any error (mount partition fails, illformed XML, etc.)
      */
-    int32_t checkCompatibility(const std::vector<std::string>& packageInfo,
-                               std::string* error = nullptr,
+    int32_t checkCompatibility(std::string* error = nullptr,
                                CheckFlags::Type flags = CheckFlags::ENABLE_ALL_CHECKS);
 
     /**
@@ -193,7 +190,6 @@ class VintfObject {
 
    private:
     const std::unique_ptr<FileSystem> mFileSystem;
-    const std::unique_ptr<details::PartitionMounter> mPartitionMounter;
     const std::unique_ptr<details::ObjectFactory<RuntimeInfo>> mRuntimeInfoFactory;
     const std::unique_ptr<details::PropertyFetcher> mPropertyFetcher;
 
@@ -214,12 +210,14 @@ class VintfObject {
     friend class testing::VintfObjectTestBase;
     friend class testing::VintfObjectRuntimeInfoTest;
     friend class testing::VintfObjectCompatibleTest;
-    int32_t checkCompatibility(const std::vector<std::string>& xmls, bool mount, std::string* error,
-                               CheckFlags::Type flags = CheckFlags::ENABLE_ALL_CHECKS);
-    const std::unique_ptr<FileSystem>& getFileSystem();
-    const std::unique_ptr<details::PartitionMounter>& getPartitionMounter();
-    const std::unique_ptr<details::PropertyFetcher>& getPropertyFetcher();
-    const std::unique_ptr<details::ObjectFactory<RuntimeInfo>>& getRuntimeInfoFactory();
+
+    // Expose functions to simulate dependency injection.
+    friend class details::VintfObjectAfterUpdate;
+
+   protected:
+    virtual const std::unique_ptr<FileSystem>& getFileSystem();
+    virtual const std::unique_ptr<details::PropertyFetcher>& getPropertyFetcher();
+    virtual const std::unique_ptr<details::ObjectFactory<RuntimeInfo>>& getRuntimeInfoFactory();
 
    public:
     /*
@@ -329,6 +327,10 @@ class VintfObject {
     status_t fetchOneHalManifest(const std::string& path, HalManifest* out,
                                  std::string* error = nullptr);
     status_t fetchFrameworkHalManifest(HalManifest* out, std::string* error = nullptr);
+    // Helper to CheckCompatibility with dependency injection.
+    int32_t checkCompatibility(const std::vector<std::string>& packageInfo,
+                               std::string* error = nullptr,
+                               CheckFlags::Type flags = CheckFlags::ENABLE_ALL_CHECKS);
 
     static bool IsHalDeprecated(const MatrixHal& oldMatrixHal,
                                 const CompatibilityMatrix& targetMatrix,
