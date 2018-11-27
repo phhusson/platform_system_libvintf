@@ -16,6 +16,8 @@
 
 #include <gmock/gmock.h>
 
+#include <vintf/ObjectFactory.h>
+#include <vintf/PropertyFetcher.h>
 #include "utils.h"
 
 using ::testing::_;
