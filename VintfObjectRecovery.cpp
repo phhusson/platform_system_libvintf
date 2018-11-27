@@ -158,15 +158,13 @@ class RecoveryFileSystem : public FileSystem {
 } // namespace details
 
 // static
-int32_t VintfObjectRecovery::CheckCompatibility(
-        const std::vector<std::string> &xmls, std::string *error) {
-    auto propertyFetcher = std::make_unique<details::PropertyFetcherImpl>();
-    auto fileSystem = std::make_unique<details::RecoveryFileSystem>();
-    auto vintfObject = std::make_unique<VintfObject>(
-        std::move(fileSystem), nullptr /* runtime info factory */, std::move(propertyFetcher));
+int32_t VintfObjectRecovery::CheckCompatibility(const std::vector<std::string>& xmls,
+                                                std::string* error) {
+    auto vintfObject = VintfObject::Builder()
+                           .setFileSystem(std::make_unique<details::RecoveryFileSystem>())
+                           .build();
     return vintfObject->checkCompatibility(xmls, error);
 }
-
 
 } // namespace vintf
 } // namespace android
