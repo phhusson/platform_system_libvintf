@@ -469,10 +469,10 @@ std::string dump(const RuntimeInfo& ki, bool verbose) {
         oss << "\n\ncpu info:\n" << ki.cpuInfo();
     }
 
-    oss << "\n#CONFIG's loaded = " << ki.mKernelConfigs.size() << ";\n";
+    oss << "\n#CONFIG's loaded = " << ki.kernelConfigs().size() << ";\n";
 
     if (verbose) {
-        for (const auto& pair : ki.mKernelConfigs) {
+        for (const auto& pair : ki.kernelConfigs()) {
             oss << pair.first << "=" << pair.second << "\n";
         }
     }
