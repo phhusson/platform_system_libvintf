@@ -331,6 +331,18 @@ struct XmlNodeConverter : public XmlConverter<Object> {
     }
 
     template <typename T>
+    inline bool parseOptionalChild(NodeType* root, const XmlNodeConverter<T>& conv,
+                                   std::optional<T>* t, std::string* error) const {
+        NodeType* child = getChild(root, conv.elementName());
+        if (child == nullptr) {
+            *t = std::nullopt;
+            return true;
+        }
+        *t = std::make_optional<T>();
+        return conv.deserialize(&**t, child, error);
+    }
+
+    template <typename T>
     inline bool parseChildren(NodeType* root, const XmlNodeConverter<T>& conv, std::vector<T>* v,
                               std::string* error) const {
         auto nodes = getChildren(root, conv.elementName());
@@ -928,6 +940,12 @@ struct HalManifestConverter : public XmlNodeConverter<HalManifest> {
             if (m.mLevel != Level::UNSPECIFIED) {
                 this->appendAttr(root, "target-level", m.mLevel);
             }
+
+            if (flags.isKernelEnabled()) {
+                if (!!m.kernel()) {
+                    appendChild(root, kernelInfoConverter.serialize(*m.kernel(), d, flags));
+                }
+            }
         } else if (m.mType == SchemaType::FRAMEWORK) {
             if (flags.isVndkEnabled()) {
 #pragma clang diagnostic push
@@ -971,6 +989,10 @@ struct HalManifestConverter : public XmlNodeConverter<HalManifest> {
 
             if (!parseOptionalAttr(root, "target-level", Level::UNSPECIFIED, &object->mLevel,
                                    error)) {
+                return false;
+            }
+
+            if (!parseOptionalChild(root, kernelInfoConverter, &object->device.mKernel, error)) {
                 return false;
             }
         } else if (object->mType == SchemaType::FRAMEWORK) {
