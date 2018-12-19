@@ -774,6 +774,10 @@ bool containsOdmProductManifest(const std::shared_ptr<const HalManifest>& p) {
 
 class DeviceManifestTest : public VintfObjectTestBase {
    protected:
+    virtual void SetUp() {
+        VintfObjectTestBase::SetUp();
+        setFakeProperties();
+    }
 
     // Expect that /vendor/etc/vintf/manifest.xml is fetched.
     void expectVendorManifest() { expectFetch(kVendorManifest, vendorEtcManifest); }
