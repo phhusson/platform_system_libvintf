@@ -14,13 +14,28 @@
  * limitations under the License.
  */
 
-#include <gtest/gtest.h>
+#include <dirent.h>
+
+#include <memory>
 
 #include <android-base/logging.h>
+#include <gtest/gtest.h>
 #include <vintf/VintfObjectRecovery.h>
 
 namespace android {
 namespace vintf {
+
+bool directoryEmpty(const char* path) {
+    auto dir = std::unique_ptr<DIR, decltype(&closedir)>(opendir(path), &closedir);
+    if (!dir) return true;
+    for (struct dirent* dirent; (dirent = readdir(dir.get())) != nullptr;) {
+        if (strcmp(dirent->d_name, ".") == 0) continue;
+        if (strcmp(dirent->d_name, "..") == 0) continue;
+        LOG(ERROR) << "Seen: " << path << "/" << dirent->d_name;
+        return false;
+    }
+    return true;
+}
 
 struct VintfObjectRecoveryTest : public ::testing::Test {};
 
@@ -28,9 +43,17 @@ TEST_F(VintfObjectRecoveryTest, LoadAllVintf) {
     std::string error;
     ASSERT_EQ(COMPATIBLE, VintfObjectRecovery::CheckCompatibility({}, &error)) << error;
 
+    EXPECT_TRUE(directoryEmpty("/mnt/system"));
+    EXPECT_TRUE(directoryEmpty("/mnt/vendor"));
+    EXPECT_TRUE(directoryEmpty("/mnt/odm"));
+
     ASSERT_EQ(COMPATIBLE, VintfObjectRecovery::CheckCompatibility({}, &error))
         << "Second CheckCompatibility call should still be successful because all "
-        << "partitions should already be mounted, but error: " << error;
+        << "partitions should already be unmounted, but error: " << error;
+
+    EXPECT_TRUE(directoryEmpty("/mnt/system"));
+    EXPECT_TRUE(directoryEmpty("/mnt/vendor"));
+    EXPECT_TRUE(directoryEmpty("/mnt/odm"));
 }
 
 }  // namespace vintf
