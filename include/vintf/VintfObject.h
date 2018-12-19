@@ -24,15 +24,14 @@
 #include "FileSystem.h"
 #include "HalManifest.h"
 #include "Named.h"
+#include "ObjectFactory.h"
+#include "PropertyFetcher.h"
 #include "RuntimeInfo.h"
 
 namespace android {
 namespace vintf {
 
 namespace details {
-template <typename T>
-class ObjectFactory;
-class PropertyFetcher;
 class VintfObjectAfterUpdate;
 
 template <typename T>
@@ -88,8 +87,8 @@ class VintfObject {
      * - PropertyFetcher fetches properties for target and nothing for host
      */
     VintfObject(std::unique_ptr<FileSystem>&& = nullptr,
-                std::unique_ptr<details::ObjectFactory<RuntimeInfo>>&& = nullptr,
-                std::unique_ptr<details::PropertyFetcher>&& = nullptr);
+                std::unique_ptr<ObjectFactory<RuntimeInfo>>&& = nullptr,
+                std::unique_ptr<PropertyFetcher>&& = nullptr);
     virtual ~VintfObject() = default;
 
     /*
@@ -190,8 +189,8 @@ class VintfObject {
 
    private:
     const std::unique_ptr<FileSystem> mFileSystem;
-    const std::unique_ptr<details::ObjectFactory<RuntimeInfo>> mRuntimeInfoFactory;
-    const std::unique_ptr<details::PropertyFetcher> mPropertyFetcher;
+    const std::unique_ptr<ObjectFactory<RuntimeInfo>> mRuntimeInfoFactory;
+    const std::unique_ptr<PropertyFetcher> mPropertyFetcher;
 
     details::LockedSharedPtr<HalManifest> mDeviceManifest;
     details::LockedSharedPtr<HalManifest> mFrameworkManifest;
@@ -216,8 +215,8 @@ class VintfObject {
 
    protected:
     virtual const std::unique_ptr<FileSystem>& getFileSystem();
-    virtual const std::unique_ptr<details::PropertyFetcher>& getPropertyFetcher();
-    virtual const std::unique_ptr<details::ObjectFactory<RuntimeInfo>>& getRuntimeInfoFactory();
+    virtual const std::unique_ptr<PropertyFetcher>& getPropertyFetcher();
+    virtual const std::unique_ptr<ObjectFactory<RuntimeInfo>>& getRuntimeInfoFactory();
 
    public:
     /*

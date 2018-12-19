@@ -62,11 +62,11 @@ class VintfObjectAfterUpdate : public VintfObject {
         return mDependency->getFileSystem();
     }
 
-    const std::unique_ptr<details::PropertyFetcher>& getPropertyFetcher() override {
+    const std::unique_ptr<PropertyFetcher>& getPropertyFetcher() override {
         return mDependency->getPropertyFetcher();
     }
 
-    const std::unique_ptr<details::ObjectFactory<RuntimeInfo>>& getRuntimeInfoFactory() override {
+    const std::unique_ptr<ObjectFactory<RuntimeInfo>>& getRuntimeInfoFactory() override {
         return mDependency->getRuntimeInfoFactory();
     }
 

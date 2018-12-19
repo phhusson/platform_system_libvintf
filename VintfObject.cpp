@@ -83,12 +83,11 @@ static std::unique_ptr<PropertyFetcher> createDefaultPropertyFetcher() {
 }
 
 VintfObject::VintfObject(std::unique_ptr<FileSystem>&& fileSystem,
-                         std::unique_ptr<details::ObjectFactory<RuntimeInfo>>&& runtimeInfoFactory,
-                         std::unique_ptr<details::PropertyFetcher>&& propertyFetcher)
+                         std::unique_ptr<ObjectFactory<RuntimeInfo>>&& runtimeInfoFactory,
+                         std::unique_ptr<PropertyFetcher>&& propertyFetcher)
     : mFileSystem(fileSystem ? std::move(fileSystem) : createDefaultFileSystem()),
-      mRuntimeInfoFactory(runtimeInfoFactory
-                              ? std::move(runtimeInfoFactory)
-                              : std::make_unique<details::ObjectFactory<RuntimeInfo>>()),
+      mRuntimeInfoFactory(runtimeInfoFactory ? std::move(runtimeInfoFactory)
+                                             : std::make_unique<ObjectFactory<RuntimeInfo>>()),
       mPropertyFetcher(propertyFetcher ? std::move(propertyFetcher)
                                        : createDefaultPropertyFetcher()) {}
 
@@ -740,7 +739,7 @@ const std::unique_ptr<PropertyFetcher>& VintfObject::getPropertyFetcher() {
     return mPropertyFetcher;
 }
 
-const std::unique_ptr<details::ObjectFactory<RuntimeInfo>>& VintfObject::getRuntimeInfoFactory() {
+const std::unique_ptr<ObjectFactory<RuntimeInfo>>& VintfObject::getRuntimeInfoFactory() {
     return mRuntimeInfoFactory;
 }
 
