@@ -53,7 +53,6 @@ cc_test {
     native_coverage: true,
     srcs: [
         "RuntimeInfo-fake.cpp",
-        "utils-fake.cpp",
         "vintf_object_tests.cpp",
     ],
     shared_libs: [
