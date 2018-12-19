@@ -222,9 +222,11 @@ int usage(const char* me) {
 int checkAllFiles(const std::string& rootdir, const Properties& props, std::string* error) {
     auto hostPropertyFetcher = std::make_unique<PresetPropertyFetcher>();
     hostPropertyFetcher->setProperties(props);
-    VintfObject vintfObject(std::make_unique<HostFileSystem>(rootdir),
-                            nullptr /* runtime info factory */, std::move(hostPropertyFetcher));
-    return vintfObject.checkCompatibility(error, CheckFlags::DISABLE_RUNTIME_INFO);
+    auto vintfObject = VintfObject::Builder()
+                           .setFileSystem(std::make_unique<HostFileSystem>(rootdir))
+                           .setPropertyFetcher(std::move(hostPropertyFetcher))
+                           .build();
+    return vintfObject->checkCompatibility(error, CheckFlags::DISABLE_RUNTIME_INFO);
 }
 
 }  // namespace details
