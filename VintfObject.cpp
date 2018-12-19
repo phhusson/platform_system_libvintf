@@ -82,20 +82,11 @@ static std::unique_ptr<PropertyFetcher> createDefaultPropertyFetcher() {
     return propertyFetcher;
 }
 
-VintfObject::VintfObject(std::unique_ptr<FileSystem>&& fileSystem,
-                         std::unique_ptr<ObjectFactory<RuntimeInfo>>&& runtimeInfoFactory,
-                         std::unique_ptr<PropertyFetcher>&& propertyFetcher)
-    : mFileSystem(fileSystem ? std::move(fileSystem) : createDefaultFileSystem()),
-      mRuntimeInfoFactory(runtimeInfoFactory ? std::move(runtimeInfoFactory)
-                                             : std::make_unique<ObjectFactory<RuntimeInfo>>()),
-      mPropertyFetcher(propertyFetcher ? std::move(propertyFetcher)
-                                       : createDefaultPropertyFetcher()) {}
-
 details::LockedSharedPtr<VintfObject> VintfObject::sInstance{};
 std::shared_ptr<VintfObject> VintfObject::GetInstance() {
     std::unique_lock<std::mutex> lock(sInstance.mutex);
     if (sInstance.object == nullptr) {
-        sInstance.object = std::make_shared<VintfObject>();
+        sInstance.object = std::shared_ptr<VintfObject>(VintfObject::Builder().build().release());
     }
     return sInstance.object;
 }
@@ -741,6 +732,34 @@ const std::unique_ptr<PropertyFetcher>& VintfObject::getPropertyFetcher() {
 
 const std::unique_ptr<ObjectFactory<RuntimeInfo>>& VintfObject::getRuntimeInfoFactory() {
     return mRuntimeInfoFactory;
+}
+
+// make_unique does not work because VintfObject constructor is private.
+VintfObject::Builder::Builder() : mObject(std::unique_ptr<VintfObject>(new VintfObject())) {}
+
+VintfObject::Builder& VintfObject::Builder::setFileSystem(std::unique_ptr<FileSystem>&& e) {
+    mObject->mFileSystem = std::move(e);
+    return *this;
+}
+
+VintfObject::Builder& VintfObject::Builder::setRuntimeInfoFactory(
+    std::unique_ptr<ObjectFactory<RuntimeInfo>>&& e) {
+    mObject->mRuntimeInfoFactory = std::move(e);
+    return *this;
+}
+
+VintfObject::Builder& VintfObject::Builder::setPropertyFetcher(
+    std::unique_ptr<PropertyFetcher>&& e) {
+    mObject->mPropertyFetcher = std::move(e);
+    return *this;
+}
+
+std::unique_ptr<VintfObject> VintfObject::Builder::build() {
+    if (!mObject->mFileSystem) mObject->mFileSystem = createDefaultFileSystem();
+    if (!mObject->mRuntimeInfoFactory)
+        mObject->mRuntimeInfoFactory = std::make_unique<ObjectFactory<RuntimeInfo>>();
+    if (!mObject->mPropertyFetcher) mObject->mPropertyFetcher = createDefaultPropertyFetcher();
+    return std::move(mObject);
 }
 
 } // namespace vintf
