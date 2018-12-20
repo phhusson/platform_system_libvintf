@@ -42,6 +42,7 @@ cc_test {
     target: {
         android: {
             cflags: ["-DLIBVINTF_TARGET"],
+            test_config: "libvintf_test.xml",
         },
     },
 
@@ -82,6 +83,7 @@ cc_test {
     target: {
         android: {
             cflags: ["-DLIBVINTF_TARGET"],
+            test_config: "vintf_object_test.xml",
         },
     },
 
