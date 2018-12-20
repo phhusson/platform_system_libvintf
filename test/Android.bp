@@ -43,7 +43,11 @@ cc_test {
         android: {
             cflags: ["-DLIBVINTF_TARGET"],
         },
-    }
+    },
+
+    test_suites: [
+        "general-tests",
+    ],
 }
 
 cc_test {
@@ -79,7 +83,11 @@ cc_test {
         android: {
             cflags: ["-DLIBVINTF_TARGET"],
         },
-    }
+    },
+
+    test_suites: [
+        "general-tests",
+    ],
 }
 
 // run this with: ./vintf_object_recovery_test.sh
