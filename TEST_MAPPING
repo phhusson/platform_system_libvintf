@@ -1,0 +1,20 @@
+{
+  "presubmit": [
+    {
+      "name": "libvintf_test",
+      "host": false
+    },
+    {
+      "name": "libvintf_test",
+      "host": true
+    },
+    {
+      "name": "vintf_object_test",
+      "host": false
+    },
+    {
+      "name": "vintf_object_test",
+      "host": true
+    }
+  ]
+}
