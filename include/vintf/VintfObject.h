@@ -24,15 +24,14 @@
 #include "FileSystem.h"
 #include "HalManifest.h"
 #include "Named.h"
+#include "ObjectFactory.h"
+#include "PropertyFetcher.h"
 #include "RuntimeInfo.h"
 
 namespace android {
 namespace vintf {
 
 namespace details {
-template <typename T>
-class ObjectFactory;
-class PropertyFetcher;
 class VintfObjectAfterUpdate;
 
 template <typename T>
@@ -79,17 +78,6 @@ class VintfObjectCompatibleTest;
  */
 class VintfObject {
    public:
-    /**
-     * A VintfObject that fetches from root and cache results, unless skipCache is specified.
-     * Dependencies can be injected via arguments. If nullptr is provided, the default behavior
-     * is used.
-     * - FileSystem fetch from "/" for target and fetch no files for host
-     * - ObjectFactory<RuntimeInfo> fetches default RuntimeInfo for target and nothing for host
-     * - PropertyFetcher fetches properties for target and nothing for host
-     */
-    VintfObject(std::unique_ptr<FileSystem>&& = nullptr,
-                std::unique_ptr<details::ObjectFactory<RuntimeInfo>>&& = nullptr,
-                std::unique_ptr<details::PropertyFetcher>&& = nullptr);
     virtual ~VintfObject() = default;
 
     /*
@@ -189,9 +177,9 @@ class VintfObject {
     int32_t checkDeprecation(std::string* error = nullptr);
 
    private:
-    const std::unique_ptr<FileSystem> mFileSystem;
-    const std::unique_ptr<details::ObjectFactory<RuntimeInfo>> mRuntimeInfoFactory;
-    const std::unique_ptr<details::PropertyFetcher> mPropertyFetcher;
+    std::unique_ptr<FileSystem> mFileSystem;
+    std::unique_ptr<ObjectFactory<RuntimeInfo>> mRuntimeInfoFactory;
+    std::unique_ptr<PropertyFetcher> mPropertyFetcher;
 
     details::LockedSharedPtr<HalManifest> mDeviceManifest;
     details::LockedSharedPtr<HalManifest> mFrameworkManifest;
@@ -216,8 +204,8 @@ class VintfObject {
 
    protected:
     virtual const std::unique_ptr<FileSystem>& getFileSystem();
-    virtual const std::unique_ptr<details::PropertyFetcher>& getPropertyFetcher();
-    virtual const std::unique_ptr<details::ObjectFactory<RuntimeInfo>>& getRuntimeInfoFactory();
+    virtual const std::unique_ptr<PropertyFetcher>& getPropertyFetcher();
+    virtual const std::unique_ptr<ObjectFactory<RuntimeInfo>>& getRuntimeInfoFactory();
 
    public:
     /*
@@ -338,6 +326,29 @@ class VintfObject {
     static bool IsInstanceDeprecated(const MatrixInstance& oldMatrixInstance,
                                      const CompatibilityMatrix& targetMatrix,
                                      const ListInstances& listInstances, std::string* error);
+
+   public:
+    /**
+     * Builder of VintfObject. If a dependency is not specified, the default behavior is used.
+     * - FileSystem fetch from "/" for target and fetch no files for host
+     * - ObjectFactory<RuntimeInfo> fetches default RuntimeInfo for target and nothing for host
+     * - PropertyFetcher fetches properties for target and nothing for host
+     */
+    class Builder {
+       public:
+        Builder();
+        Builder& setFileSystem(std::unique_ptr<FileSystem>&&);
+        Builder& setRuntimeInfoFactory(std::unique_ptr<ObjectFactory<RuntimeInfo>>&&);
+        Builder& setPropertyFetcher(std::unique_ptr<PropertyFetcher>&&);
+        std::unique_ptr<VintfObject> build();
+
+       private:
+        std::unique_ptr<VintfObject> mObject;
+    };
+
+   private:
+    /* Empty VintfObject without any dependencies. Used by Builder. */
+    VintfObject() = default;
 };
 
 enum : int32_t {

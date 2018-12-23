@@ -42,8 +42,13 @@ cc_test {
     target: {
         android: {
             cflags: ["-DLIBVINTF_TARGET"],
+            test_config: "libvintf_test.xml",
         },
-    }
+    },
+
+    test_suites: [
+        "general-tests",
+    ],
 }
 
 cc_test {
@@ -78,8 +83,13 @@ cc_test {
     target: {
         android: {
             cflags: ["-DLIBVINTF_TARGET"],
+            test_config: "vintf_object_test.xml",
         },
-    }
+    },
+
+    test_suites: [
+        "general-tests",
+    ],
 }
 
 // run this with: ./vintf_object_recovery_test.sh
@@ -92,6 +102,11 @@ cc_test {
         "libvintf",
         "libhidl-gen-utils",
         "libfs_mgr",
+        "liblp",
+        "libcrypto",
+        "libcrypto_utils",
+        "libext4_utils",
+        "libcutils",
         "libgtest",
         "libbase",
         "liblog",

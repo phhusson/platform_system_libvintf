@@ -22,6 +22,7 @@
 
 #include <utils/Errors.h>
 #include <vintf/FileSystem.h>
+#include <vintf/PropertyFetcher.h>
 #include <vintf/RuntimeInfo.h>
 #include <vintf/parse_xml.h>
 
@@ -49,13 +50,6 @@ status_t fetchAllInformation(const FileSystem* fileSystem, const std::string& pa
     return OK;
 }
 
-template <typename T>
-class ObjectFactory {
-   public:
-    virtual ~ObjectFactory() = default;
-    virtual std::shared_ptr<T> make_shared() const { return std::make_shared<T>(); }
-};
-
 // TODO(b/70628538): Do not infer from Shipping API level.
 inline Level convertFromApiLevel(size_t apiLevel) {
     if (apiLevel < 26) {
@@ -68,16 +62,6 @@ inline Level convertFromApiLevel(size_t apiLevel) {
         return Level::UNSPECIFIED;
     }
 }
-
-class PropertyFetcher {
-   public:
-    virtual ~PropertyFetcher() = default;
-    virtual std::string getProperty(const std::string& key,
-                                    const std::string& defaultValue = "") const = 0;
-    virtual uint64_t getUintProperty(const std::string& key, uint64_t defaultValue,
-                                     uint64_t max = UINT64_MAX) const = 0;
-    virtual bool getBoolProperty(const std::string& key, bool defaultValue) const = 0;
-};
 
 class PropertyFetcherImpl : public PropertyFetcher {
    public:

@@ -17,69 +17,43 @@
 #include "VintfObjectRecovery.h"
 
 #include <sys/mount.h>
-#include <sys/stat.h>
 
 #include <set>
 
 #include <android-base/logging.h>
 #include <android-base/strings.h>
 #include <fs_mgr.h>
-
-#include "utils.h"
+#include <fs_mgr/roots.h>
 
 namespace android {
 namespace vintf {
 
 namespace details {
 using android::base::StartsWith;
-using FstabMgr = std::unique_ptr<struct fstab, decltype(&fs_mgr_free_fstab)>;
 
 static const char* const kMountImageRootDir = "/mnt";
 static const char* const kSystemImageRootDir = "/mnt/system";
 
-static status_t mountAt(const FstabMgr& fstab, const char* path, const char* mountPoint) {
-    mkdir(mountPoint, 0755);  // in case it doesn't already exist
-
-    fstab_rec* rec = fs_mgr_get_entry_for_mount_point(fstab.get(), path);
-    if (rec == nullptr) {
-        LOG(WARNING) << "No mount point for " << path;
-        return NAME_NOT_FOUND;
-    }
-    int result = mount(rec->blk_device, mountPoint, rec->fs_type, rec->flags, rec->fs_options);
-    if (result != 0) {
-        PLOG(WARNING) << "Can't mount " << path;
-    }
-    return result == 0 ? OK : -errno;
-}
-
-static FstabMgr defaultFstabMgr() {
-    return FstabMgr{fs_mgr_read_fstab_default(), &fs_mgr_free_fstab};
-}
-
 class RecoveryPartitionMounter {
    public:
-    RecoveryPartitionMounter() : fstab_(defaultFstabMgr()) {}
+    RecoveryPartitionMounter() {}
     ~RecoveryPartitionMounter() {
         for (const auto& pair : mounted_) {
-            umount(pair.second.c_str());
+            if (umount(pair.second.c_str()) != 0) {
+                PLOG(ERROR) << "Cannot unmount " << pair.first << " at " << pair.second;
+            }
         }
         mounted_.clear();
     }
 
     status_t mount(const std::string& path) {
         if (path == "/system") {
-            if (!fstab_) return UNKNOWN_ERROR;
-            if (fs_mgr_get_entry_for_mount_point(fstab_.get(), "/system") == nullptr) {
-                return mount("/", kSystemImageRootDir);
-            } else {
-                return mount("/system", kSystemImageRootDir);
-            }
+            return mount(android::fs_mgr::GetSystemRoot(), kSystemImageRootDir);
         }
         return mount(path, kMountImageRootDir + path);
     }
 
    private:
-    FstabMgr fstab_;
     std::map<std::string, std::string> mounted_;
 
     status_t mount(const std::string& path, const std::string& mountPoint) {
@@ -87,12 +61,16 @@ class RecoveryPartitionMounter {
             return OK;
         }
 
-        if (!fstab_) return UNKNOWN_ERROR;
-        status_t status = mountAt(fstab_, path.c_str(), mountPoint.c_str());
-        if (status == OK) {
-            mounted_.emplace(path, mountPoint);
+        Fstab fstab;
+        if (!ReadDefaultFstab(&fstab)) {
+            return errno ? -errno : UNKNOWN_ERROR;
         }
-        return status;
+        if (!android::fs_mgr::EnsurePathMounted(&fstab, path, mountPoint)) {
+            return errno ? -errno : UNKNOWN_ERROR;
+        }
+
+        mounted_.emplace(path, mountPoint);
+        return OK;
     }
 };
 
@@ -158,15 +136,13 @@ class RecoveryFileSystem : public FileSystem {
 } // namespace details
 
 // static
-int32_t VintfObjectRecovery::CheckCompatibility(
-        const std::vector<std::string> &xmls, std::string *error) {
-    auto propertyFetcher = std::make_unique<details::PropertyFetcherImpl>();
-    auto fileSystem = std::make_unique<details::RecoveryFileSystem>();
-    auto vintfObject = std::make_unique<VintfObject>(
-        std::move(fileSystem), nullptr /* runtime info factory */, std::move(propertyFetcher));
+int32_t VintfObjectRecovery::CheckCompatibility(const std::vector<std::string>& xmls,
+                                                std::string* error) {
+    auto vintfObject = VintfObject::Builder()
+                           .setFileSystem(std::make_unique<details::RecoveryFileSystem>())
+                           .build();
     return vintfObject->checkCompatibility(xmls, error);
 }
-
 
 } // namespace vintf
 } // namespace android
