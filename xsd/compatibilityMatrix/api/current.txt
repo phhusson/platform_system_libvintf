@@ -1,9 +1,10 @@
+// Signature format: 2.0
 package compatibility.matrix {
 
   public class Avb {
     ctor public Avb();
-    method public java.lang.String getVbmetaversion();
-    method public void setVbmetaversion(java.lang.String);
+    method public String getVbmetaversion();
+    method public void setVbmetaversion(String);
   }
 
   public class Compatibilitymatrix {
@@ -11,66 +12,66 @@ package compatibility.matrix {
     method public compatibility.matrix.Avb getAvb();
     method public java.util.List<compatibility.matrix.Hal> getHal();
     method public java.util.List<compatibility.matrix.Kernel> getKernel();
-    method public java.lang.String getLevel();
+    method public String getLevel();
     method public compatibility.matrix.Sepolicy getSepolicy();
     method public compatibility.matrix.Systemsdk getSystemsdk();
-    method public java.lang.String getType();
+    method public String getType();
     method public compatibility.matrix.Vendorndk getVendorndk();
-    method public java.lang.String getVersion();
+    method public String getVersion();
     method public compatibility.matrix.Vndk getVndk();
     method public java.util.List<compatibility.matrix.Xmlfile> getXmlfile();
     method public void setAvb(compatibility.matrix.Avb);
-    method public void setLevel(java.lang.String);
+    method public void setLevel(String);
     method public void setSepolicy(compatibility.matrix.Sepolicy);
     method public void setSystemsdk(compatibility.matrix.Systemsdk);
-    method public void setType(java.lang.String);
+    method public void setType(String);
     method public void setVendorndk(compatibility.matrix.Vendorndk);
-    method public void setVersion(java.lang.String);
+    method public void setVersion(String);
     method public void setVndk(compatibility.matrix.Vndk);
   }
 
   public class Config {
     ctor public Config();
-    method public java.lang.String getKey();
+    method public String getKey();
     method public compatibility.matrix.Config.Value getValue();
-    method public void setKey(java.lang.String);
+    method public void setKey(String);
     method public void setValue(compatibility.matrix.Config.Value);
   }
 
   public static class Config.Value {
     ctor public Config.Value();
-    method public java.lang.String getType();
-    method public void setType(java.lang.String);
+    method public String getType();
+    method public void setType(String);
   }
 
   public class Hal {
     ctor public Hal();
-    method public java.lang.String getFormat();
+    method public String getFormat();
     method public java.util.List<java.lang.String> getFqname();
-    method public java.lang.String getName();
-    method public java.lang.String getOptional();
+    method public String getName();
+    method public String getOptional();
     method public java.util.List<java.lang.String> getVersion();
     method public java.util.List<compatibility.matrix.Interface> get_interface();
-    method public void setFormat(java.lang.String);
-    method public void setName(java.lang.String);
-    method public void setOptional(java.lang.String);
+    method public void setFormat(String);
+    method public void setName(String);
+    method public void setOptional(String);
   }
 
   public class Interface {
     ctor public Interface();
     method public java.util.List<java.lang.String> getInstance();
-    method public java.lang.String getName();
+    method public String getName();
     method public java.util.List<java.lang.String> getRegexinstance();
-    method public void setName(java.lang.String);
+    method public void setName(String);
   }
 
   public class Kernel {
     ctor public Kernel();
     method public compatibility.matrix.Kernel.Conditions getConditions();
     method public java.util.List<compatibility.matrix.Config> getConfig();
-    method public java.lang.String getVersion();
+    method public String getVersion();
     method public void setConditions(compatibility.matrix.Kernel.Conditions);
-    method public void setVersion(java.lang.String);
+    method public void setVersion(String);
   }
 
   public static class Kernel.Conditions {
@@ -80,9 +81,9 @@ package compatibility.matrix {
 
   public class Sepolicy {
     ctor public Sepolicy();
-    method public java.lang.String getKernelsepolicyversion();
+    method public String getKernelsepolicyversion();
     method public java.util.List<java.lang.String> getSepolicyversion();
-    method public void setKernelsepolicyversion(java.lang.String);
+    method public void setKernelsepolicyversion(String);
   }
 
   public class Systemsdk {
@@ -93,36 +94,36 @@ package compatibility.matrix {
   public class Vendorndk {
     ctor public Vendorndk();
     method public java.util.List<java.lang.String> getLibrary();
-    method public java.lang.String getVersion();
-    method public void setVersion(java.lang.String);
+    method public String getVersion();
+    method public void setVersion(String);
   }
 
   public class Vndk {
     ctor public Vndk();
     method public java.util.List<java.lang.String> getLibrary();
-    method public java.lang.String getVersion();
-    method public void setVersion(java.lang.String);
+    method public String getVersion();
+    method public void setVersion(String);
   }
 
   public class XmlParser {
     ctor public XmlParser();
     method public static compatibility.matrix.Compatibilitymatrix read(java.io.InputStream) throws javax.xml.datatype.DatatypeConfigurationException, java.io.IOException, org.xmlpull.v1.XmlPullParserException;
-    method public static java.lang.String readText(org.xmlpull.v1.XmlPullParser) throws java.io.IOException, org.xmlpull.v1.XmlPullParserException;
+    method public static String readText(org.xmlpull.v1.XmlPullParser) throws java.io.IOException, org.xmlpull.v1.XmlPullParserException;
     method public static void skip(org.xmlpull.v1.XmlPullParser) throws java.io.IOException, org.xmlpull.v1.XmlPullParserException;
   }
 
   public class Xmlfile {
     ctor public Xmlfile();
-    method public java.lang.String getFormat();
-    method public java.lang.String getName();
-    method public java.lang.String getOptional();
-    method public java.lang.String getPath();
-    method public java.lang.String getVersion();
-    method public void setFormat(java.lang.String);
-    method public void setName(java.lang.String);
-    method public void setOptional(java.lang.String);
-    method public void setPath(java.lang.String);
-    method public void setVersion(java.lang.String);
+    method public String getFormat();
+    method public String getName();
+    method public String getOptional();
+    method public String getPath();
+    method public String getVersion();
+    method public void setFormat(String);
+    method public void setName(String);
+    method public void setOptional(String);
+    method public void setPath(String);
+    method public void setVersion(String);
   }
 
 }
