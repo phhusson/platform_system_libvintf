@@ -1,24 +1,25 @@
+// Signature format: 2.0
 package hal.manifest {
 
   public class Hal {
     ctor public Hal();
-    method public java.lang.String getFormat();
+    method public String getFormat();
     method public java.util.List<java.lang.String> getFqname();
-    method public java.lang.String getName();
-    method public java.lang.String getOptional();
+    method public String getName();
+    method public String getOptional();
     method public java.util.List<java.lang.String> getVersion();
     method public java.util.List<hal.manifest.Interface> get_interface();
-    method public void setFormat(java.lang.String);
-    method public void setName(java.lang.String);
-    method public void setOptional(java.lang.String);
+    method public void setFormat(String);
+    method public void setName(String);
+    method public void setOptional(String);
   }
 
   public class Interface {
     ctor public Interface();
     method public java.util.List<java.lang.String> getInstance();
-    method public java.lang.String getName();
+    method public String getName();
     method public java.util.List<java.lang.String> getRegexinstance();
-    method public void setName(java.lang.String);
+    method public void setName(String);
   }
 
   public class Manifest {
@@ -26,23 +27,23 @@ package hal.manifest {
     method public java.util.List<hal.manifest.Hal> getHal();
     method public hal.manifest.Sepolicy getSepolicy();
     method public hal.manifest.Systemsdk getSystemsdk();
-    method public java.lang.String getTargetlevel();
-    method public java.lang.String getType();
+    method public String getTargetlevel();
+    method public String getType();
     method public java.util.List<hal.manifest.Vendorndk> getVendorndk();
-    method public java.lang.String getVersion();
+    method public String getVersion();
     method public java.util.List<hal.manifest.Vndk> getVndk();
     method public void setSepolicy(hal.manifest.Sepolicy);
     method public void setSystemsdk(hal.manifest.Systemsdk);
-    method public void setTargetlevel(java.lang.String);
-    method public void setType(java.lang.String);
-    method public void setVersion(java.lang.String);
+    method public void setTargetlevel(String);
+    method public void setType(String);
+    method public void setVersion(String);
   }
 
   public class Sepolicy {
     ctor public Sepolicy();
-    method public java.lang.String getKernelsepolicyversion();
+    method public String getKernelsepolicyversion();
     method public java.util.List<java.lang.String> getSepolicyversion();
-    method public void setKernelsepolicyversion(java.lang.String);
+    method public void setKernelsepolicyversion(String);
   }
 
   public class Systemsdk {
@@ -53,21 +54,21 @@ package hal.manifest {
   public class Vendorndk {
     ctor public Vendorndk();
     method public java.util.List<java.lang.String> getLibrary();
-    method public java.lang.String getVersion();
-    method public void setVersion(java.lang.String);
+    method public String getVersion();
+    method public void setVersion(String);
   }
 
   public class Vndk {
     ctor public Vndk();
     method public java.util.List<java.lang.String> getLibrary();
-    method public java.lang.String getVersion();
-    method public void setVersion(java.lang.String);
+    method public String getVersion();
+    method public void setVersion(String);
   }
 
   public class XmlParser {
     ctor public XmlParser();
     method public static hal.manifest.Manifest read(java.io.InputStream) throws javax.xml.datatype.DatatypeConfigurationException, java.io.IOException, org.xmlpull.v1.XmlPullParserException;
-    method public static java.lang.String readText(org.xmlpull.v1.XmlPullParser) throws java.io.IOException, org.xmlpull.v1.XmlPullParserException;
+    method public static String readText(org.xmlpull.v1.XmlPullParser) throws java.io.IOException, org.xmlpull.v1.XmlPullParserException;
     method public static void skip(org.xmlpull.v1.XmlPullParser) throws java.io.IOException, org.xmlpull.v1.XmlPullParserException;
   }
 
