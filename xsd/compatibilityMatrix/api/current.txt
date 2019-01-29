@@ -41,7 +41,9 @@ package compatibility.matrix {
   public static class Config.Value {
     ctor public Config.Value();
     method public String getType();
+    method public String getValue();
     method public void setType(String);
+    method public void setValue(String);
   }
 
   public class Hal {
