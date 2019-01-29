@@ -305,8 +305,10 @@ class VintfObject {
 
     status_t getCombinedFrameworkMatrix(const std::shared_ptr<const HalManifest>& deviceManifest,
                                         CompatibilityMatrix* out, std::string* error = nullptr);
-    std::vector<Named<CompatibilityMatrix>> getAllFrameworkMatrixLevels(
-        std::string* error = nullptr);
+    status_t getAllFrameworkMatrixLevels(std::vector<Named<CompatibilityMatrix>>* out,
+                                         std::string* error = nullptr);
+    status_t getOneMatrix(const std::string& path, Named<CompatibilityMatrix>* out,
+                          std::string* error = nullptr);
     status_t addDirectoryManifests(const std::string& directory, HalManifest* manifests,
                                    std::string* error = nullptr);
     status_t fetchDeviceHalManifest(HalManifest* out, std::string* error = nullptr);
@@ -365,12 +367,14 @@ namespace details {
 extern const std::string kSystemVintfDir;
 extern const std::string kVendorVintfDir;
 extern const std::string kOdmVintfDir;
+extern const std::string kProductVintfDir;
 extern const std::string kOdmLegacyVintfDir;
 extern const std::string kOdmLegacyManifest;
 extern const std::string kVendorManifest;
 extern const std::string kSystemManifest;
 extern const std::string kVendorMatrix;
 extern const std::string kOdmManifest;
+extern const std::string kProductMatrix;
 extern const std::string kVendorManifestFragmentDir;
 extern const std::string kSystemManifestFragmentDir;
 extern const std::string kOdmManifestFragmentDir;
