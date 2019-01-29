@@ -25,9 +25,9 @@ namespace CheckFlags {
 // Flags for *::checkCompatibility functions.
 class Type {
    public:
-#define VINTF_CHECK_FLAGS_FIELD(name, bit)                                      \
-    constexpr Type enable##name() const { return Type(mValue | (1 << bit)); }   \
-    constexpr Type disable##name() const { return Type(mValue & ~(1 << bit)); } \
+#define VINTF_CHECK_FLAGS_FIELD(name, bit)                                                    \
+    [[nodiscard]] constexpr Type enable##name() const { return Type(mValue | (1 << bit)); }   \
+    [[nodiscard]] constexpr Type disable##name() const { return Type(mValue & ~(1 << bit)); } \
     constexpr bool is##name##Enabled() const { return mValue & (1 << bit); }
 
     VINTF_CHECK_FLAGS_FIELD(Avb, 0)
