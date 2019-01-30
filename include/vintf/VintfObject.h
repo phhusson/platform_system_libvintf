@@ -137,7 +137,7 @@ class VintfObject {
      *         < 0 if any error (mount partition fails, illformed XML, etc.)
      */
     int32_t checkCompatibility(std::string* error = nullptr,
-                               CheckFlags::Type flags = CheckFlags::ENABLE_ALL_CHECKS);
+                               CheckFlags::Type flags = CheckFlags::DEFAULT);
 
     /**
      * A std::function that abstracts a list of "provided" instance names. Given package, version
@@ -273,7 +273,7 @@ class VintfObject {
      */
     static int32_t CheckCompatibility(const std::vector<std::string>& packageInfo,
                                       std::string* error = nullptr,
-                                      CheckFlags::Type flags = CheckFlags::ENABLE_ALL_CHECKS);
+                                      CheckFlags::Type flags = CheckFlags::DEFAULT);
 
     /**
      * Check deprecation on framework matrices with a provided predicate.
@@ -320,7 +320,7 @@ class VintfObject {
     // Helper to CheckCompatibility with dependency injection.
     int32_t checkCompatibility(const std::vector<std::string>& packageInfo,
                                std::string* error = nullptr,
-                               CheckFlags::Type flags = CheckFlags::ENABLE_ALL_CHECKS);
+                               CheckFlags::Type flags = CheckFlags::DEFAULT);
 
     static bool IsHalDeprecated(const MatrixHal& oldMatrixHal,
                                 const CompatibilityMatrix& targetMatrix,
