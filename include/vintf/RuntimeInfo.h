@@ -73,7 +73,7 @@ struct RuntimeInfo {
     //   not when RuntimeInfo::checkCompatibility is called.
     // - avb-vbmetaversion matches related sysprops
     bool checkCompatibility(const CompatibilityMatrix& mat, std::string* error = nullptr,
-                            CheckFlags::Type flags = CheckFlags::ENABLE_ALL_CHECKS) const;
+                            CheckFlags::Type flags = CheckFlags::DEFAULT) const;
 
     using FetchFlags = uint32_t;
     enum FetchFlag : FetchFlags {

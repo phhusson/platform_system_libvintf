@@ -886,20 +886,20 @@ TEST_F(LibVintfTest, RuntimeInfo) {
     CompatibilityMatrix cm = testMatrix(MatrixKernel(KernelVersion{3, 18, 31}, {}));
     {
         setAvb(badAvb, {1, 0}, {2, 1});
-        EXPECT_FALSE(badAvb.checkCompatibility(cm, &error));
+        EXPECT_FALSE(badAvb.checkCompatibility(cm, &error, CheckFlags::ENABLE_ALL_CHECKS));
         EXPECT_STREQ(error.c_str(), "Vbmeta version 1.0 does not match framework matrix 2.1");
     }
     {
         setAvb(badAvb, {2, 1}, {3, 0});
-        EXPECT_FALSE(badAvb.checkCompatibility(cm, &error));
+        EXPECT_FALSE(badAvb.checkCompatibility(cm, &error, CheckFlags::ENABLE_ALL_CHECKS));
     }
     {
         setAvb(badAvb, {2, 1}, {2, 3});
-        EXPECT_TRUE(badAvb.checkCompatibility(cm, &error));
+        EXPECT_TRUE(badAvb.checkCompatibility(cm, &error, CheckFlags::ENABLE_ALL_CHECKS));
     }
     {
         setAvb(badAvb, {2, 3}, {2, 1});
-        EXPECT_TRUE(badAvb.checkCompatibility(cm, &error));
+        EXPECT_TRUE(badAvb.checkCompatibility(cm, &error, CheckFlags::ENABLE_ALL_CHECKS));
     }
 }
 
@@ -933,7 +933,7 @@ TEST_F(LibVintfTest, DisableAvb) {
     EXPECT_TRUE(gCompatibilityMatrixConverter(&cm, xml));
     RuntimeInfo ki = testRuntimeInfo();
     std::string error;
-    EXPECT_FALSE(ki.checkCompatibility(cm, &error));
+    EXPECT_FALSE(ki.checkCompatibility(cm, &error, CheckFlags::ENABLE_ALL_CHECKS));
     EXPECT_STREQ(error.c_str(), "AVB version 2.1 does not match framework matrix 1.0");
     EXPECT_TRUE(ki.checkCompatibility(cm, &error, CheckFlags::DISABLE_AVB_CHECK)) << error;
 }
