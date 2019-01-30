@@ -288,8 +288,8 @@ class AssembleVintfImpl : public AssembleVintf {
                           << "matrices with FCM version >= " << matrix.level() << "." << std::endl
                           << "2. Add them to any framework compatibility matrix with FCM "
                           << "version >= " << matrix.level() << " where applicable." << std::endl
-                          << "3. Add them to DEVICE_FRAMEWORK_COMPATIBILITY_MATRIX_FILE."
-                          << std::endl;
+                          << "3. Add them to DEVICE_FRAMEWORK_COMPATIBILITY_MATRIX_FILE "
+                          << "or DEVICE_PRODUCT_COMPATIBILITY_MATRIX_FILE." << std::endl;
 
                 return false;
             }

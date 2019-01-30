@@ -144,8 +144,15 @@ std::shared_ptr<const CompatibilityMatrix> VintfObject::getFrameworkCompatibilit
 status_t VintfObject::getCombinedFrameworkMatrix(
     const std::shared_ptr<const HalManifest>& deviceManifest, CompatibilityMatrix* out,
     std::string* error) {
-    auto matrixFragments = getAllFrameworkMatrixLevels(error);
+    std::vector<Named<CompatibilityMatrix>> matrixFragments;
+    auto matrixFragmentsStatus = getAllFrameworkMatrixLevels(&matrixFragments, error);
+    if (matrixFragmentsStatus != OK) {
+        return matrixFragmentsStatus;
+    }
     if (matrixFragments.empty()) {
+        if (error && error->empty()) {
+            *error = "Cannot get framework matrix for each FCM version for unknown error.";
+        }
         return NAME_NOT_FOUND;
     }
 
@@ -338,47 +345,66 @@ static void appendLine(std::string* error, const std::string& message) {
     }
 }
 
-std::vector<Named<CompatibilityMatrix>> VintfObject::getAllFrameworkMatrixLevels(
-    std::string* error) {
-    std::vector<std::string> fileNames;
-    std::vector<Named<CompatibilityMatrix>> results;
+status_t VintfObject::getOneMatrix(const std::string& path, Named<CompatibilityMatrix>* out,
+                                   std::string* error) {
+    std::string content;
+    status_t status = getFileSystem()->fetch(path, &content, error);
+    if (status != OK) {
+        return status;
+    }
+    if (!gCompatibilityMatrixConverter(&out->object, content, error)) {
+        if (error) {
+            error->insert(0, "Cannot parse " + path + ": ");
+        }
+        return BAD_VALUE;
+    }
+    out->name = path;
+    return OK;
+}
 
-    if (getFileSystem()->listFiles(kSystemVintfDir, &fileNames, error) != OK) {
-        return {};
+status_t VintfObject::getAllFrameworkMatrixLevels(std::vector<Named<CompatibilityMatrix>>* results,
+                                                  std::string* error) {
+    std::vector<std::string> fileNames;
+
+    status_t listStatus = getFileSystem()->listFiles(kSystemVintfDir, &fileNames, error);
+    if (listStatus != OK) {
+        return listStatus;
     }
     for (const std::string& fileName : fileNames) {
         std::string path = kSystemVintfDir + fileName;
-
-        std::string content;
-        std::string fetchError;
-        status_t status = getFileSystem()->fetch(path, &content, &fetchError);
-        if (status != OK) {
-            appendLine(error, "Framework Matrix: Ignore file " + path + ": " + fetchError);
+        Named<CompatibilityMatrix> namedMatrix;
+        std::string matrixError;
+        status_t matrixStatus = getOneMatrix(path, &namedMatrix, &matrixError);
+        if (matrixStatus != OK) {
+            // System manifests and matrices share the same dir. Client may not have enough
+            // permissions to read system manifests, or may not be able to parse it.
+            auto logLevel = matrixStatus == BAD_VALUE ? base::DEBUG : base::ERROR;
+            LOG(logLevel) << "Framework Matrix: Ignore file " << path << ": " << matrixError;
             continue;
         }
-
-        auto it = results.emplace(results.end());
-        std::string parseError;
-        if (!gCompatibilityMatrixConverter(&it->object, content, &parseError)) {
-            appendLine(error, "Framework Matrix: Ignore file " + path + ": " + parseError);
-            results.erase(it);
-            continue;
-        }
+        results->emplace_back(std::move(namedMatrix));
     }
 
-    if (results.empty()) {
-        if (error) {
-            error->insert(0, "No framework matrices under " + kSystemVintfDir +
-                                 " can be fetched or parsed.\n");
-        }
+    Named<CompatibilityMatrix> productMatrix;
+    std::string productError;
+    status_t productStatus = getOneMatrix(kProductMatrix, &productMatrix, &productError);
+    if (productStatus == OK) {
+        results->emplace_back(std::move(productMatrix));
+    } else if (productStatus == NAME_NOT_FOUND) {
+        LOG(DEBUG) << "Framework Matrix: missing " << kProductMatrix;
     } else {
-        if (error && !error->empty()) {
-            LOG(WARNING) << *error;
-            *error = "";
-        }
+        if (error) *error = std::move(productError);
+        return productStatus;
     }
 
-    return results;
+    if (results->empty()) {
+        if (error) {
+            *error =
+                "No framework matrices under " + kSystemVintfDir + " can be fetched or parsed.\n";
+        }
+        return NAME_NOT_FOUND;
+    }
+    return OK;
 }
 
 std::shared_ptr<const RuntimeInfo> VintfObject::GetRuntimeInfo(bool skipCache,
@@ -541,11 +567,13 @@ namespace details {
 const std::string kSystemVintfDir = "/system/etc/vintf/";
 const std::string kVendorVintfDir = "/vendor/etc/vintf/";
 const std::string kOdmVintfDir = "/odm/etc/vintf/";
+const std::string kProductVintfDir = "/product/etc/vintf/";
 
 const std::string kVendorManifest = kVendorVintfDir + "manifest.xml";
 const std::string kSystemManifest = kSystemVintfDir + "manifest.xml";
 const std::string kVendorMatrix = kVendorVintfDir + "compatibility_matrix.xml";
 const std::string kOdmManifest = kOdmVintfDir + "manifest.xml";
+const std::string kProductMatrix = kProductVintfDir + "compatibility_matrix.xml";
 
 const std::string kVendorManifestFragmentDir = kVendorVintfDir + "manifest/";
 const std::string kSystemManifestFragmentDir = kSystemVintfDir + "manifest/";
@@ -560,9 +588,17 @@ const std::string kOdmLegacyManifest = kOdmLegacyVintfDir + "manifest.xml";
 
 std::vector<std::string> dumpFileList() {
     return {
-        kSystemVintfDir,       kVendorVintfDir,     kOdmVintfDir,          kOdmLegacyVintfDir,
-
-        kVendorLegacyManifest, kVendorLegacyMatrix, kSystemLegacyManifest, kSystemLegacyMatrix,
+        // clang-format off
+        kSystemVintfDir,
+        kVendorVintfDir,
+        kOdmVintfDir,
+        kProductVintfDir,
+        kOdmLegacyVintfDir,
+        kVendorLegacyManifest,
+        kVendorLegacyMatrix,
+        kSystemLegacyManifest,
+        kSystemLegacyMatrix,
+        // clang-format on
     };
 }
 
@@ -658,10 +694,15 @@ int32_t VintfObject::CheckDeprecation(const ListInstances& listInstances, std::s
     return GetInstance()->checkDeprecation(listInstances, error);
 }
 int32_t VintfObject::checkDeprecation(const ListInstances& listInstances, std::string* error) {
-    auto matrixFragments = getAllFrameworkMatrixLevels(error);
+    std::vector<Named<CompatibilityMatrix>> matrixFragments;
+    auto matrixFragmentsStatus = getAllFrameworkMatrixLevels(&matrixFragments, error);
+    if (matrixFragmentsStatus != OK) {
+        return matrixFragmentsStatus;
+    }
     if (matrixFragments.empty()) {
-        if (error && error->empty())
+        if (error && error->empty()) {
             *error = "Cannot get framework matrix for each FCM version for unknown error.";
+        }
         return NAME_NOT_FOUND;
     }
     auto deviceManifest = getDeviceHalManifest();
