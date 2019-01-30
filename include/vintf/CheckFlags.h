@@ -48,6 +48,9 @@ constexpr Type DISABLE_AVB_CHECK = ENABLE_ALL_CHECKS.disableAvb();
 // Disable RuntimeInfo <-> Framework Matrix check. This implies DISABLE_AVB_CHECK.
 constexpr Type DISABLE_RUNTIME_INFO = ENABLE_ALL_CHECKS.disableRuntimeInfo();
 
+// Default flag if no flag is provided.
+constexpr Type DEFAULT = DISABLE_AVB_CHECK;
+
 // tests
 static_assert(ENABLE_ALL_CHECKS.isAvbEnabled(), "");
 static_assert(ENABLE_ALL_CHECKS.isRuntimeInfoEnabled(), "");
