@@ -413,7 +413,8 @@ bool operator==(const HalManifest &lft, const HalManifest &rgt) {
     return lft.mType == rgt.mType && lft.mLevel == rgt.mLevel && lft.mHals == rgt.mHals &&
            lft.mXmlFiles == rgt.mXmlFiles &&
            (lft.mType != SchemaType::DEVICE ||
-            (lft.device.mSepolicyVersion == rgt.device.mSepolicyVersion)) &&
+            (lft.device.mSepolicyVersion == rgt.device.mSepolicyVersion &&
+             lft.device.mKernel == rgt.device.mKernel)) &&
            (lft.mType != SchemaType::FRAMEWORK ||
             (
 #pragma clang diagnostic push
@@ -468,6 +469,10 @@ bool HalManifest::empty() const {
     HalManifest emptyManifest;
     emptyManifest.setType(type());
     return (*this) == emptyManifest;
+}
+
+const std::optional<KernelInfo>& HalManifest::kernel() const {
+    return device.mKernel;
 }
 
 } // namespace vintf

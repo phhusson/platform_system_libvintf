@@ -102,5 +102,9 @@ bool KernelInfo::matchKernelRequirements(const std::vector<MatrixKernel>& kernel
     return true;
 }
 
+bool KernelInfo::operator==(const KernelInfo& other) const {
+    return mVersion == other.mVersion && mConfigs == other.mConfigs;
+}
+
 }  // namespace vintf
 }  // namespace android
