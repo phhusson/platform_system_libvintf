@@ -48,7 +48,10 @@ class KernelInfo {
     bool matchKernelRequirements(const std::vector<MatrixKernel>& kernels,
                                  std::string* error = nullptr) const;
 
+    bool operator==(const KernelInfo& other) const;
+
    private:
+    friend class AssembleVintfImpl;
     friend class details::MockRuntimeInfo;
     friend struct KernelInfoConverter;
     friend struct LibVintfTest;
