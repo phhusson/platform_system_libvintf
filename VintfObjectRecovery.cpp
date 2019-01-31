@@ -61,8 +61,8 @@ class RecoveryPartitionMounter {
             return OK;
         }
 
-        Fstab fstab;
-        if (!ReadDefaultFstab(&fstab)) {
+        android::fs_mgr::Fstab fstab;
+        if (!android::fs_mgr::ReadDefaultFstab(&fstab)) {
             return errno ? -errno : UNKNOWN_ERROR;
         }
         if (!android::fs_mgr::EnsurePathMounted(&fstab, path, mountPoint)) {
