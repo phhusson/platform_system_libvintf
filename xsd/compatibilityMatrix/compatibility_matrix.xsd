@@ -21,14 +21,14 @@
     <xs:element name="compatibility-matrix">
         <xs:complexType>
             <xs:sequence>
-                <xs:element name="hal" type="hal" maxOccurs="unbounded"/>
-                <xs:element name="kernel" type="kernel" maxOccurs="unbounded"/>
-                <xs:element name="sepolicy" type="sepolicy"/>
-                <xs:element name="avb" type="avb"/>
-                <xs:element name="vndk" type="vndk"/>
-                <xs:element name="vendor-ndk" type="vendor-ndk"/>
-                <xs:element name="system-sdk" type="system-sdk"/>
-                <xs:element name="xmlfile" type="xmlfile" maxOccurs="unbounded"/>
+                <xs:element name="hal" type="hal" minOccurs="0" maxOccurs="unbounded"/>
+                <xs:element name="kernel" type="kernel" minOccurs="0" maxOccurs="unbounded"/>
+                <xs:element name="sepolicy" type="sepolicy" minOccurs="0"/>
+                <xs:element name="avb" type="avb" minOccurs="0"/>
+                <xs:element name="vndk" type="vndk" minOccurs="0"/>
+                <xs:element name="vendor-ndk" type="vendor-ndk" minOccurs="0"/>
+                <xs:element name="system-sdk" type="system-sdk" minOccurs="0"/>
+                <xs:element name="xmlfile" type="xmlfile" minOccurs="0" maxOccurs="unbounded"/>
             </xs:sequence>
             <xs:attribute name="version" type="xs:string" use="required"/>
             <xs:attribute name="type" type="xs:string" use="required"/>
@@ -38,9 +38,9 @@
     <xs:complexType name="hal">
         <xs:sequence>
             <xs:element name="name" type="xs:string"/>
-            <xs:element name="version" type="xs:string" maxOccurs="unbounded"/>
-            <xs:element name="interface" type="interface" maxOccurs="unbounded"/>
-            <xs:element name="fqname" type="xs:string" maxOccurs="unbounded"/>
+            <xs:element name="version" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+            <xs:element name="interface" type="interface" minOccurs="0" maxOccurs="unbounded"/>
+            <xs:element name="fqname" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
         </xs:sequence>
         <xs:attribute name="format" type="xs:string"/>
         <xs:attribute name="optional" type="xs:string"/>
@@ -48,20 +48,20 @@
     <xs:complexType name="interface">
         <xs:sequence>
             <xs:element name="name" type="xs:string"/>
-            <xs:element name="instance" type="xs:string" maxOccurs="unbounded"/>
-            <xs:element name="regex-instance" type="xs:string" maxOccurs="unbounded"/>
+            <xs:element name="instance" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+            <xs:element name="regex-instance" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
         </xs:sequence>
     </xs:complexType>
     <xs:complexType name="kernel">
         <xs:sequence>
-            <xs:element name="conditions">
+            <xs:element name="conditions" minOccurs="0">
                 <xs:complexType>
                     <xs:sequence>
-                        <xs:element name="config" type="config" maxOccurs="unbounded"/>
+                        <xs:element name="config" type="config" minOccurs="0" maxOccurs="unbounded"/>
                     </xs:sequence>
                 </xs:complexType>
             </xs:element>
-            <xs:element name="config" type="config" maxOccurs="unbounded"/>
+            <xs:element name="config" type="config" minOccurs="0" maxOccurs="unbounded"/>
         </xs:sequence>
         <xs:attribute name="version" type="xs:string"/>
     </xs:complexType>
@@ -70,7 +70,11 @@
             <xs:element name="key" type="xs:string"/>
             <xs:element name="value">
                 <xs:complexType>
-                    <xs:attribute name="type" type="xs:string"/>
+                    <xs:simpleContent>
+                        <xs:extension base="xs:string">
+                            <xs:attribute name="type" type="xs:string"/>
+                        </xs:extension>
+                    </xs:simpleContent>
                 </xs:complexType>
             </xs:element>
         </xs:sequence>
@@ -78,7 +82,7 @@
     <xs:complexType name="sepolicy">
         <xs:sequence>
             <xs:element name="kernel-sepolicy-version" type="xs:string"/>
-            <xs:element name="sepolicy-version" type="xs:string" maxOccurs="unbounded"/>
+            <xs:element name="sepolicy-version" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
         </xs:sequence>
     </xs:complexType>
     <xs:complexType name="avb">
@@ -89,18 +93,18 @@
     <xs:complexType name="vndk">
         <xs:sequence>
             <xs:element name="version" type="xs:string"/>
-            <xs:element name="library" type="xs:string" maxOccurs="unbounded"/>
+            <xs:element name="library" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
         </xs:sequence>
     </xs:complexType>
     <xs:complexType name="vendor-ndk">
         <xs:sequence>
             <xs:element name="version" type="xs:string"/>
-            <xs:element name="library" type="xs:string" maxOccurs="unbounded"/>
+            <xs:element name="library" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
         </xs:sequence>
     </xs:complexType>
     <xs:complexType name="system-sdk">
         <xs:sequence>
-            <xs:element name="version" type="xs:string" maxOccurs="unbounded"/>
+            <xs:element name="version" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
         </xs:sequence>
     </xs:complexType>
     <xs:complexType name="xmlfile">
