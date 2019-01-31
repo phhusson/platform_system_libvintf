@@ -206,13 +206,7 @@ class AssembleVintfImpl : public AssembleVintf {
     static bool parseFileForKernelConfigs(std::basic_istream<char>& stream,
                                           std::vector<KernelConfig>* out) {
         KernelConfigParser parser(true /* processComments */, true /* relaxedFormat */);
-        std::string content = read(stream);
-        status_t err = parser.process(content.c_str(), content.size());
-        if (err != OK) {
-            std::cerr << parser.error();
-            return false;
-        }
-        err = parser.finish();
+        status_t err = parser.processAndFinish(read(stream));
         if (err != OK) {
             std::cerr << parser.error();
             return false;
@@ -314,6 +308,36 @@ class AssembleVintfImpl : public AssembleVintf {
         out() << "-->" << std::endl;
     }
 
+    // Parse --kernel arguments and write to output manifest.
+    bool setDeviceManifestKernel(HalManifest* manifest) {
+        if (mKernels.empty()) {
+            return true;
+        }
+        if (mKernels.size() > 1) {
+            std::cerr << "Warning: multiple --kernel is specified when building device manifest. "
+                      << "Only the first one will be used." << std::endl;
+        }
+        auto& kernelArg = *mKernels.begin();
+        const auto& kernelVer = kernelArg.first;
+        auto& kernelConfigFiles = kernelArg.second;
+        // addKernel() guarantees that !kernelConfigFiles.empty().
+        if (kernelConfigFiles.size() > 1) {
+            std::cerr << "Warning: multiple config files are specified in --kernel when building "
+                      << "device manfiest. Only the first one will be used." << std::endl;
+        }
+
+        KernelConfigParser parser(true /* processComments */, false /* relaxedFormat */);
+        status_t err = parser.processAndFinish(read(kernelConfigFiles[0].stream()));
+        if (err != OK) {
+            std::cerr << parser.error();
+            return false;
+        }
+        manifest->device.mKernel = std::make_optional<KernelInfo>();
+        manifest->device.mKernel->mVersion = kernelVer;
+        manifest->device.mKernel->mConfigs = parser.configs();
+        return true;
+    }
+
     bool assembleHalManifest(HalManifests* halManifests) {
         std::string error;
         HalManifest* halManifest = &halManifests->front().object;
@@ -362,6 +386,10 @@ class AssembleVintfImpl : public AssembleVintf {
             (void)getFlagIfUnset("BOARD_SEPOLICY_VERS", &halManifest->device.mSepolicyVersion);
 
             if (!setDeviceFcmVersion(halManifest)) {
+                return false;
+            }
+
+            if (!setDeviceManifestKernel(halManifest)) {
                 return false;
             }
         }
