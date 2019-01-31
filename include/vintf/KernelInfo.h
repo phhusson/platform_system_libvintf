@@ -50,6 +50,7 @@ class KernelInfo {
 
    private:
     friend class details::MockRuntimeInfo;
+    friend struct KernelInfoConverter;
     friend struct LibVintfTest;
     friend struct RuntimeInfoFetcher;
     // x.y.z
