@@ -345,8 +345,9 @@ struct XmlNodeConverter : public XmlConverter<Object> {
         return true;
     }
 
-    template <typename T>
-    inline bool parseChildren(NodeType* root, const XmlNodeConverter<T>& conv, std::set<T>* s,
+    template <typename Container, typename T = typename Container::value_type,
+              typename = typename Container::key_compare>
+    inline bool parseChildren(NodeType* root, const XmlNodeConverter<T>& conv, Container* s,
                               std::string* error) const {
         std::vector<T> vec;
         if (!parseChildren(root, conv, &vec, error)) {
@@ -361,6 +362,12 @@ struct XmlNodeConverter : public XmlConverter<Object> {
             return false;
         }
         return true;
+    }
+
+    template <typename K, typename V>
+    inline bool parseChildren(NodeType* root, const XmlNodeConverter<std::pair<K, V>>& conv,
+                              std::map<K, V>* s, std::string* error) const {
+        return parseChildren<std::map<K, V>, std::pair<K, V>>(root, conv, s, error);
     }
 
     inline bool parseText(NodeType* node, std::string* s, std::string* /* error */) const {
@@ -399,13 +406,37 @@ struct XmlTextConverter : public XmlNodeConverter<Object> {
     std::string mElementName;
 };
 
+template <typename Pair>
+struct XmlPairConverter : public XmlNodeConverter<Pair> {
+    XmlPairConverter(
+        const std::string& elementName,
+        std::unique_ptr<XmlNodeConverter<typename Pair::first_type>>&& firstConverter,
+        std::unique_ptr<XmlNodeConverter<typename Pair::second_type>>&& secondConverter)
+        : mElementName(elementName),
+          mFirstConverter(std::move(firstConverter)),
+          mSecondConverter(std::move(secondConverter)) {}
+
+    virtual void mutateNode(const Pair& pair, NodeType* root, DocType* d) const override {
+        appendChild(root, mFirstConverter->serialize(pair.first, d));
+        appendChild(root, mSecondConverter->serialize(pair.second, d));
+    }
+    virtual bool buildObject(Pair* pair, NodeType* root, std::string* error) const override {
+        return this->parseChild(root, *mFirstConverter, &pair->first, error) &&
+               this->parseChild(root, *mSecondConverter, &pair->second, error);
+    }
+    virtual std::string elementName() const { return mElementName; }
+
+   private:
+    std::string mElementName;
+    std::unique_ptr<XmlNodeConverter<typename Pair::first_type>> mFirstConverter;
+    std::unique_ptr<XmlNodeConverter<typename Pair::second_type>> mSecondConverter;
+};
+
 // ---------------------- XmlNodeConverter definitions end
 
 XmlTextConverter<Version> versionConverter{"version"};
 
 XmlTextConverter<VersionRange> versionRangeConverter{"version"};
-
-XmlTextConverter<KernelConfigKey> kernelConfigKeyConverter{"key"};
 
 struct TransportArchConverter : public XmlNodeConverter<TransportArch> {
     std::string elementName() const override { return "transport"; }
@@ -455,22 +486,9 @@ struct KernelConfigTypedValueConverter : public XmlNodeConverter<KernelConfigTyp
 
 KernelConfigTypedValueConverter kernelConfigTypedValueConverter{};
 
-struct KernelConfigConverter : public XmlNodeConverter<KernelConfig> {
-    std::string elementName() const override { return "config"; }
-    void mutateNode(const KernelConfig &object, NodeType *root, DocType *d) const override {
-        appendChild(root, kernelConfigKeyConverter(object.first, d));
-        appendChild(root, kernelConfigTypedValueConverter(object.second, d));
-    }
-    bool buildObject(KernelConfig* object, NodeType* root, std::string* error) const override {
-        if (!parseChild(root, kernelConfigKeyConverter, &object->first, error) ||
-            !parseChild(root, kernelConfigTypedValueConverter, &object->second, error)) {
-            return false;
-        }
-        return true;
-    }
-};
-
-KernelConfigConverter kernelConfigConverter{};
+XmlPairConverter<KernelConfig> matrixKernelConfigConverter{
+    "config", std::make_unique<XmlTextConverter<KernelConfigKey>>("key"),
+    std::make_unique<KernelConfigTypedValueConverter>(kernelConfigTypedValueConverter)};
 
 struct HalInterfaceConverter : public XmlNodeConverter<HalInterface> {
     std::string elementName() const override { return "interface"; }
@@ -589,11 +607,11 @@ struct MatrixKernelConditionsConverter : public XmlNodeConverter<std::vector<Ker
     std::string elementName() const override { return "conditions"; }
     void mutateNode(const std::vector<KernelConfig>& conds, NodeType* root,
                     DocType* d) const override {
-        appendChildren(root, kernelConfigConverter, conds, d);
+        appendChildren(root, matrixKernelConfigConverter, conds, d);
     }
     bool buildObject(std::vector<KernelConfig>* object, NodeType* root,
                      std::string* error) const override {
-        return parseChildren(root, kernelConfigConverter, object, error);
+        return parseChildren(root, matrixKernelConfigConverter, object, error);
     }
 };
 
@@ -616,14 +634,14 @@ struct MatrixKernelConverter : public XmlNodeConverter<MatrixKernel> {
             appendChild(root, matrixKernelConditionsConverter(kernel.mConditions, d));
         }
         if (flags.isKernelConfigsEnabled()) {
-            appendChildren(root, kernelConfigConverter, kernel.mConfigs, d);
+            appendChildren(root, matrixKernelConfigConverter, kernel.mConfigs, d);
         }
     }
     bool buildObject(MatrixKernel* object, NodeType* root, std::string* error) const override {
         if (!parseAttr(root, "version", &object->mMinLts, error) ||
             !parseOptionalChild(root, matrixKernelConditionsConverter, {}, &object->mConditions,
                                 error) ||
-            !parseChildren(root, kernelConfigConverter, &object->mConfigs, error)) {
+            !parseChildren(root, matrixKernelConfigConverter, &object->mConfigs, error)) {
             return false;
         }
         return true;
@@ -857,6 +875,32 @@ struct ManifestXmlFileConverter : public XmlNodeConverter<ManifestXmlFile> {
     }
 };
 ManifestXmlFileConverter manifestXmlFileConverter{};
+
+XmlPairConverter<std::pair<std::string, std::string>> kernelConfigConverter{
+    "config", std::make_unique<XmlTextConverter<std::string>>("key"),
+    std::make_unique<XmlTextConverter<std::string>>("value")};
+
+struct KernelInfoConverter : public XmlNodeConverter<KernelInfo> {
+    std::string elementName() const override { return "kernel"; }
+    void mutateNode(const KernelInfo& o, NodeType* root, DocType* d) const override {
+        mutateNode(o, root, d, SerializeFlags::EVERYTHING);
+    }
+    void mutateNode(const KernelInfo& o, NodeType* root, DocType* d,
+                    SerializeFlags::Type flags) const override {
+        if (o.version() != KernelVersion{}) {
+            appendAttr(root, "version", o.version());
+        }
+        if (flags.isKernelConfigsEnabled()) {
+            appendChildren(root, kernelConfigConverter, o.configs(), d);
+        }
+    }
+    bool buildObject(KernelInfo* o, NodeType* root, std::string* error) const override {
+        return parseOptionalAttr(root, "version", {}, &o->mVersion, error) &&
+               parseChildren(root, kernelConfigConverter, &o->mConfigs, error);
+    }
+};
+
+KernelInfoConverter kernelInfoConverter{};
 
 struct HalManifestConverter : public XmlNodeConverter<HalManifest> {
     std::string elementName() const override { return "manifest"; }
@@ -1189,6 +1233,7 @@ XmlConverter<KernelConfigTypedValue>& gKernelConfigTypedValueConverter =
     kernelConfigTypedValueConverter;
 XmlConverter<MatrixHal>& gMatrixHalConverter = matrixHalConverter;
 XmlConverter<ManifestHal>& gManifestHalConverter = manifestHalConverter;
+XmlConverter<KernelInfo>& gKernelInfoConverter = kernelInfoConverter;
 
 } // namespace vintf
 } // namespace android
