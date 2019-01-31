@@ -317,18 +317,22 @@ bool HalManifest::checkCompatibility(const CompatibilityMatrix &mat, std::string
             return false;
         }
     } else if (mType == SchemaType::DEVICE) {
-        bool match = false;
+        bool sepolicyMatch = false;
         for (const auto &range : mat.framework.mSepolicy.sepolicyVersions()) {
             if (range.supportedBy(device.mSepolicyVersion)) {
-                match = true;
+                sepolicyMatch = true;
                 break;
             }
         }
-        if (!match) {
+        if (!sepolicyMatch) {
             if (error != nullptr) {
                 *error = "Sepolicy version " + to_string(device.mSepolicyVersion)
                         + " doesn't satisify the requirements.";
             }
+            return false;
+        }
+
+        if (!!kernel() && !kernel()->matchKernelRequirements(mat.framework.mKernels, error)) {
             return false;
         }
     }

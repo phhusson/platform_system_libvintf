@@ -548,9 +548,15 @@ int32_t VintfObject::checkCompatibility(std::string* error, CheckFlags::Type fla
         return INCOMPATIBLE;
     }
 
+    CheckFlags::Type runtimeInfoCheckFlags = flags;
+    if (!!getDeviceHalManifest()->kernel()) {
+        // Use kernel from incoming OTA package, but not on the device.
+        runtimeInfoCheckFlags = runtimeInfoCheckFlags.disableKernel();
+    }
+
     if (flags.isRuntimeInfoEnabled()) {
         if (!getRuntimeInfo()->checkCompatibility(*getFrameworkCompatibilityMatrix(), error,
-                                                  flags)) {
+                                                  runtimeInfoCheckFlags)) {
             if (error) {
                 error->insert(0,
                               "Runtime info and framework compatibility matrix are incompatible: ");
