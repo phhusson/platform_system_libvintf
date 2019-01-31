@@ -7,24 +7,49 @@ package hal.manifest {
     method public java.util.List<java.lang.String> getFqname();
     method public String getName();
     method public String getOptional();
+    method public hal.manifest.Hal.Transport getTransport();
     method public java.util.List<java.lang.String> getVersion();
     method public java.util.List<hal.manifest.Interface> get_interface();
     method public void setFormat(String);
     method public void setName(String);
     method public void setOptional(String);
+    method public void setTransport(hal.manifest.Hal.Transport);
+  }
+
+  public static class Hal.Transport {
+    ctor public Hal.Transport();
+    method public String getArch();
+    method public String getValue();
+    method public void setArch(String);
+    method public void setValue(String);
   }
 
   public class Interface {
     ctor public Interface();
     method public java.util.List<java.lang.String> getInstance();
     method public String getName();
-    method public java.util.List<java.lang.String> getRegexinstance();
     method public void setName(String);
+  }
+
+  public class Kernel {
+    ctor public Kernel();
+    method public java.util.List<hal.manifest.Kernel.Config> getConfig();
+    method public String getVersion();
+    method public void setVersion(String);
+  }
+
+  public static class Kernel.Config {
+    ctor public Kernel.Config();
+    method public String getKey();
+    method public String getValue();
+    method public void setKey(String);
+    method public void setValue(String);
   }
 
   public class Manifest {
     ctor public Manifest();
     method public java.util.List<hal.manifest.Hal> getHal();
+    method public hal.manifest.Kernel getKernel();
     method public hal.manifest.Sepolicy getSepolicy();
     method public hal.manifest.Systemsdk getSystemsdk();
     method public String getTargetlevel();
@@ -32,6 +57,7 @@ package hal.manifest {
     method public java.util.List<hal.manifest.Vendorndk> getVendorndk();
     method public String getVersion();
     method public java.util.List<hal.manifest.Vndk> getVndk();
+    method public void setKernel(hal.manifest.Kernel);
     method public void setSepolicy(hal.manifest.Sepolicy);
     method public void setSystemsdk(hal.manifest.Systemsdk);
     method public void setTargetlevel(String);
@@ -41,9 +67,8 @@ package hal.manifest {
 
   public class Sepolicy {
     ctor public Sepolicy();
-    method public String getKernelsepolicyversion();
-    method public java.util.List<java.lang.String> getSepolicyversion();
-    method public void setKernelsepolicyversion(String);
+    method public String getVersion();
+    method public void setVersion(String);
   }
 
   public class Systemsdk {
