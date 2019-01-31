@@ -183,17 +183,15 @@ public:
         info.mOsName = "Linux";
         info.mNodeName = "localhost";
         info.mOsRelease = "3.18.31-g936f9a479d0f";
-        info.mKernelVersion = {3, 18, 31};
         info.mOsVersion = "#4 SMP PREEMPT Wed Feb 1 18:10:52 PST 2017";
         info.mHardwareId = "aarch64";
         info.mKernelSepolicyVersion = 30;
-        info.mKernelConfigs = {
-            {"CONFIG_64BIT", "y"},
-            {"CONFIG_ANDROID_BINDER_DEVICES", "\"binder,hwbinder\""},
-            {"CONFIG_ARCH_MMAP_RND_BITS", "24"},
-            {"CONFIG_BUILD_ARM64_APPENDED_DTB_IMAGE_NAMES", "\"\""},
-            {"CONFIG_ILLEGAL_POINTER_VALUE", "0xdead000000000000"}
-        };
+        info.mKernel.mVersion = {3, 18, 31};
+        info.mKernel.mConfigs = {{"CONFIG_64BIT", "y"},
+                                 {"CONFIG_ANDROID_BINDER_DEVICES", "\"binder,hwbinder\""},
+                                 {"CONFIG_ARCH_MMAP_RND_BITS", "24"},
+                                 {"CONFIG_BUILD_ARM64_APPENDED_DTB_IMAGE_NAMES", "\"\""},
+                                 {"CONFIG_ILLEGAL_POINTER_VALUE", "0xdead000000000000"}};
         setAvb(info, {2, 1}, {2, 1});
         return info;
     }
