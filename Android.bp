@@ -45,6 +45,7 @@ cc_library {
         "HalInterface.cpp",
         "KernelConfigTypedValue.cpp",
         "KernelConfigParser.cpp",
+        "KernelInfo.cpp",
         "RuntimeInfo.cpp",
         "ManifestHal.cpp",
         "ManifestInstance.cpp",
