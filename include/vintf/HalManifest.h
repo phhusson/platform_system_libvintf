@@ -131,6 +131,10 @@ struct HalManifest : public HalGroup<ManifestHal>, public XmlFileGroup<ManifestX
     // Get the <kernel> tag. Assumes type() == DEVICE.
     const std::optional<KernelInfo>& kernel() const;
 
+    // Add everything from another manifest. If no errors (return true), it is guaranteed
+    // that other->empty() == true after execution.
+    [[nodiscard]] bool addAll(HalManifest* other, std::string* error = nullptr);
+
    protected:
     // Check before add()
     bool shouldAdd(const ManifestHal& toAdd) const override;

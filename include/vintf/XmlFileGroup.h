@@ -67,6 +67,7 @@ struct XmlFileGroup {
                 return false;
             }
         }
+        other->mXmlFiles.clear();
         return true;
     }
 
