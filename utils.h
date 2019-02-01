@@ -81,6 +81,25 @@ class PropertyFetcherNoOp : public PropertyFetcher {
     virtual bool getBoolProperty(const std::string& key, bool defaultValue) const override;
 };
 
+// Merge src into dst.
+// postcondition (if successful): *src == empty.
+template <typename T>
+static bool mergeField(T* dst, T* src, const T& empty = T{}) {
+    if (*dst == *src) {
+        *src = empty;
+        return true;  // no conflict
+    }
+    if (*src == empty) {
+        return true;
+    }
+    if (*dst == empty) {
+        *dst = std::move(*src);
+        *src = empty;
+        return true;
+    }
+    return false;
+}
+
 }  // namespace details
 }  // namespace vintf
 }  // namespace android

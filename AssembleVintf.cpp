@@ -358,26 +358,8 @@ class AssembleVintfImpl : public AssembleVintf {
                 }
             }
 
-            // TODO(b/78943004): add everything
-            if (!halManifest->addAllHals(&manifestToAdd, &error)) {
-                std::cerr << "File \"" << path << "\" cannot be added: conflict on HAL \"" << error
-                          << "\" with an existing HAL. See <hal> with the same name "
-                          << "in previously parsed files or previously declared in this file."
-                          << std::endl;
-                return false;
-            }
-
-            // Check that manifestToAdd is empty.
-            if (!manifestToAdd.empty()) {
-                std::cerr
-                    << "File \"" << path << "\" contains extraneous entries and attributes. "
-                    << "This is currently unsupported (b/78943004); it can only contain "
-                    << "<hal>s and attribute \"type\" and \"version\". Only the first input "
-                    << "file to assemble_vintf can contain other things. "
-                    << "Remaining entries and attributes are:" << std::endl
-                    << gHalManifestConverter(
-                           manifestToAdd,
-                           SerializeFlags::EVERYTHING.disableMetaVersion().disableSchemaType());
+            if (!halManifest->addAll(&manifestToAdd, &error)) {
+                std::cerr << "File \"" << path << "\" cannot be added: " << error << std::endl;
                 return false;
             }
         }

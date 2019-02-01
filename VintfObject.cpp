@@ -215,7 +215,12 @@ status_t VintfObject::addDirectoryManifests(const std::string& directory, HalMan
         err = fetchOneHalManifest(directory + file, &fragmentManifest, error);
         if (err != OK) return err;
 
-        manifest->addAllHals(&fragmentManifest);
+        if (!manifest->addAll(&fragmentManifest, error)) {
+            if (error) {
+                error->insert(0, "Cannot add manifest fragment " + directory + file + ":");
+            }
+            return UNKNOWN_ERROR;
+        }
     }
 
     return OK;
@@ -250,7 +255,12 @@ status_t VintfObject::fetchDeviceHalManifest(HalManifest* out, std::string* erro
 
     if (vendorStatus == OK) {
         if (odmStatus == OK) {
-            out->addAllHals(&odmManifest);
+            if (!out->addAll(&odmManifest, error)) {
+                if (error) {
+                    error->insert(0, "Cannot add ODM manifest :");
+                }
+                return UNKNOWN_ERROR;
+            }
         }
         return addDirectoryManifests(kOdmManifestFragmentDir, out, error);
     }

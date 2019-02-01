@@ -3475,6 +3475,132 @@ TEST_F(LibVintfTest, KernelInfo) {
         gKernelInfoConverter(ki, SerializeFlags::NO_TAGS.enableKernelConfigs()));
 }
 
+TEST_F(LibVintfTest, ManifestAddAllDeviceManifest) {
+    std::string xml1 = "<manifest version=\"1.0\" type=\"device\" />\n";
+    std::string xml2 =
+        "<manifest version=\"1.0\" type=\"device\" target-level=\"3\">\n"
+        "    <hal format=\"hidl\">\n"
+        "        <name>android.hardware.foo</name>\n"
+        "        <transport>hwbinder</transport>\n"
+        "        <fqname>@1.0::IFoo/default</fqname>\n"
+        "    </hal>\n"
+        "    <sepolicy>\n"
+        "        <version>25.5</version>\n"
+        "    </sepolicy>\n"
+        "    <kernel version=\"3.18.31\">\n"
+        "        <config>\n"
+        "            <key>CONFIG_64BIT</key>\n"
+        "            <value>y</value>\n"
+        "        </config>\n"
+        "    </kernel>\n"
+        "    <xmlfile>\n"
+        "        <name>media_profile</name>\n"
+        "        <version>1.0</version>\n"
+        "    </xmlfile>\n"
+        "</manifest>\n";
+
+    std::string error;
+    HalManifest manifest1;
+    ASSERT_TRUE(gHalManifestConverter(&manifest1, xml1, &error)) << error;
+    HalManifest manifest2;
+    ASSERT_TRUE(gHalManifestConverter(&manifest2, xml2, &error)) << error;
+
+    ASSERT_TRUE(manifest1.addAll(&manifest2, &error)) << error;
+
+    EXPECT_EQ(xml2, gHalManifestConverter(manifest1));
+}
+
+TEST_F(LibVintfTest, ManifestAddAllFrameworkManifest) {
+    std::string xml1 = "<manifest version=\"1.0\" type=\"framework\" />\n";
+    std::string xml2 =
+        "<manifest version=\"1.0\" type=\"framework\">\n"
+        "    <hal format=\"hidl\">\n"
+        "        <name>android.hardware.foo</name>\n"
+        "        <transport>hwbinder</transport>\n"
+        "        <fqname>@1.0::IFoo/default</fqname>\n"
+        "    </hal>\n"
+        "    <vendor-ndk>\n"
+        "        <version>P</version>\n"
+        "        <library>libbase.so</library>\n"
+        "    </vendor-ndk>\n"
+        "    <system-sdk>\n"
+        "        <version>1</version>\n"
+        "    </system-sdk>\n"
+        "    <xmlfile>\n"
+        "        <name>media_profile</name>\n"
+        "        <version>1.0</version>\n"
+        "    </xmlfile>\n"
+        "</manifest>\n";
+
+    std::string error;
+    HalManifest manifest1;
+    ASSERT_TRUE(gHalManifestConverter(&manifest1, xml1, &error)) << error;
+    HalManifest manifest2;
+    ASSERT_TRUE(gHalManifestConverter(&manifest2, xml2, &error)) << error;
+
+    ASSERT_TRUE(manifest1.addAll(&manifest2, &error)) << error;
+
+    EXPECT_EQ(xml2, gHalManifestConverter(manifest1));
+}
+
+TEST_F(LibVintfTest, ManifestAddAllConflictLevel) {
+    std::string xml1 = "<manifest version=\"1.0\" type=\"device\" target-level=\"2\" />\n";
+    std::string xml2 = "<manifest version=\"1.0\" type=\"device\" target-level=\"3\" />\n";
+
+    std::string error;
+    HalManifest manifest1;
+    ASSERT_TRUE(gHalManifestConverter(&manifest1, xml1, &error)) << error;
+    HalManifest manifest2;
+    ASSERT_TRUE(gHalManifestConverter(&manifest2, xml2, &error)) << error;
+
+    ASSERT_FALSE(manifest1.addAll(&manifest2, &error));
+    EXPECT_IN("Conflicting target-level", error);
+}
+
+TEST_F(LibVintfTest, ManifestAddAllConflictSepolicy) {
+    std::string xml1 =
+        "<manifest version=\"1.0\" type=\"device\">\n"
+        "    <sepolicy>\n"
+        "        <version>25.5</version>\n"
+        "    </sepolicy>\n"
+        "</manifest>\n";
+    std::string xml2 =
+        "<manifest version=\"1.0\" type=\"device\">\n"
+        "    <sepolicy>\n"
+        "        <version>30.0</version>\n"
+        "    </sepolicy>\n"
+        "</manifest>\n";
+
+    std::string error;
+    HalManifest manifest1;
+    ASSERT_TRUE(gHalManifestConverter(&manifest1, xml1, &error)) << error;
+    HalManifest manifest2;
+    ASSERT_TRUE(gHalManifestConverter(&manifest2, xml2, &error)) << error;
+
+    ASSERT_FALSE(manifest1.addAll(&manifest2, &error));
+    EXPECT_IN("Conflicting sepolicy version", error);
+}
+
+TEST_F(LibVintfTest, ManifestAddAllConflictKernel) {
+    std::string xml1 =
+        "<manifest version=\"1.0\" type=\"device\">\n"
+        "    <kernel version=\"3.18.0\" />\n"
+        "</manifest>\n";
+    std::string xml2 =
+        "<manifest version=\"1.0\" type=\"device\">\n"
+        "    <kernel version=\"3.18.1\" />\n"
+        "</manifest>\n";
+
+    std::string error;
+    HalManifest manifest1;
+    ASSERT_TRUE(gHalManifestConverter(&manifest1, xml1, &error)) << error;
+    HalManifest manifest2;
+    ASSERT_TRUE(gHalManifestConverter(&manifest2, xml2, &error)) << error;
+
+    ASSERT_FALSE(manifest1.addAll(&manifest2, &error));
+    EXPECT_IN("Conflicting kernel", error);
+}
+
 } // namespace vintf
 } // namespace android
 
