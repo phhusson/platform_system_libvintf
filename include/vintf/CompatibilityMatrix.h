@@ -126,6 +126,7 @@ struct CompatibilityMatrix : public HalGroup<MatrixHal>, public XmlFileGroup<Mat
     friend struct RuntimeInfo;
     friend struct CompatibilityMatrixConverter;
     friend struct LibVintfTest;
+    friend struct FrameworkCompatibilityMatrixCombineTest;
     friend class VintfObject;
     friend class AssembleVintfImpl;
     friend bool operator==(const CompatibilityMatrix &, const CompatibilityMatrix &);

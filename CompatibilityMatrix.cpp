@@ -385,6 +385,7 @@ bool CompatibilityMatrix::addAll(Named<CompatibilityMatrix>* inputMatrix, std::s
         if (error) {
             *error = "File \"" + inputMatrix->name + "\" cannot be added: " + *error + ".";
         }
+        return false;
     }
     return true;
 }

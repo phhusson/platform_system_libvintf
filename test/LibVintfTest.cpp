@@ -3601,6 +3601,143 @@ TEST_F(LibVintfTest, ManifestAddAllConflictKernel) {
     EXPECT_IN("Conflicting kernel", error);
 }
 
+struct FrameworkCompatibilityMatrixCombineTest : public LibVintfTest {
+    virtual void SetUp() override {
+        matrices = {
+            {"compatibility_matrix.1_1.xml", CompatibilityMatrix{}},
+            {"compatibility_matrix.1_2.xml", CompatibilityMatrix{}},
+        };
+    }
+    // Access to private methods.
+    std::unique_ptr<CompatibilityMatrix> combine(Level deviceLevel,
+                                                 std::vector<Named<CompatibilityMatrix>>* matrices,
+                                                 std::string* error) {
+        return CompatibilityMatrix::combine(deviceLevel, matrices, error);
+    }
+
+    std::vector<Named<CompatibilityMatrix>> matrices;
+    std::string error;
+};
+
+// Combining framework compatibility matrix with conflicting minlts fails
+TEST_F(FrameworkCompatibilityMatrixCombineTest, ConflictMinlts) {
+    ASSERT_TRUE(gCompatibilityMatrixConverter(
+        &matrices[0].object,
+        "<compatibility-matrix version=\"1.0\" type=\"framework\" level=\"1\">\n"
+        "    <kernel version=\"3.18.5\" />\n"
+        "</compatibility-matrix>\n",
+        &error))
+        << error;
+    ASSERT_TRUE(gCompatibilityMatrixConverter(
+        &matrices[1].object,
+        "<compatibility-matrix version=\"1.0\" type=\"framework\" level=\"1\">\n"
+        "    <kernel version=\"3.18.6\" />\n"
+        "</compatibility-matrix>\n",
+        &error))
+        << error;
+
+    auto combined = combine(Level{1}, &matrices, &error);
+    ASSERT_EQ(nullptr, combined) << gCompatibilityMatrixConverter(*combined);
+    EXPECT_IN("Kernel version mismatch", error);
+}
+
+// <kernel> without <conditions> always comes first
+TEST_F(FrameworkCompatibilityMatrixCombineTest, KernelNoConditions) {
+    std::string conditionedKernel =
+        "    <kernel version=\"3.18.5\">\n"
+        "        <conditions>\n"
+        "            <config>\n"
+        "                <key>CONFIG_ARM</key>\n"
+        "                <value type=\"tristate\">y</value>\n"
+        "            </config>\n"
+        "        </conditions>\n"
+        "        <config>\n"
+        "            <key>CONFIG_FOO</key>\n"
+        "            <value type=\"tristate\">y</value>\n"
+        "        </config>\n"
+        "    </kernel>\n";
+    std::string simpleKernel =
+        "    <kernel version=\"3.18.5\">\n"
+        "        <config>\n"
+        "            <key>CONFIG_BAR</key>\n"
+        "            <value type=\"tristate\">y</value>\n"
+        "        </config>\n"
+        "    </kernel>\n";
+
+    ASSERT_TRUE(gCompatibilityMatrixConverter(
+        &matrices[0].object,
+        "<compatibility-matrix version=\"1.0\" type=\"framework\" level=\"1\">\n"
+        "    <kernel version=\"3.18.5\" />\n" +
+            conditionedKernel + "</compatibility-matrix>\n",
+        &error))
+        << error;
+    ASSERT_TRUE(gCompatibilityMatrixConverter(
+        &matrices[1].object,
+        "<compatibility-matrix version=\"1.0\" type=\"framework\" level=\"1\">\n" + simpleKernel +
+            "</compatibility-matrix>\n",
+        &error))
+        << error;
+
+    auto combined = combine(Level{1}, &matrices, &error);
+    ASSERT_NE(nullptr, combined);
+    EXPECT_EQ("", error);
+    EXPECT_EQ("<compatibility-matrix version=\"1.0\" type=\"framework\" level=\"1\">\n" +
+                  simpleKernel + conditionedKernel + "</compatibility-matrix>\n",
+              gCompatibilityMatrixConverter(*combined));
+}
+
+// Combining framework compatibility matrix with conflicting sepolicy fails
+TEST_F(FrameworkCompatibilityMatrixCombineTest, ConflictSepolicy) {
+    ASSERT_TRUE(gCompatibilityMatrixConverter(
+        &matrices[0].object,
+        "<compatibility-matrix version=\"1.0\" type=\"framework\" level=\"1\">\n"
+        "    <sepolicy>\n"
+        "        <kernel-sepolicy-version>30</kernel-sepolicy-version>\n"
+        "    </sepolicy>\n"
+        "</compatibility-matrix>\n",
+        &error))
+        << error;
+    ASSERT_TRUE(gCompatibilityMatrixConverter(
+        &matrices[1].object,
+        "<compatibility-matrix version=\"1.0\" type=\"framework\" level=\"1\">\n"
+        "    <sepolicy>\n"
+        "        <kernel-sepolicy-version>29</kernel-sepolicy-version>\n"
+        "    </sepolicy>\n"
+        "</compatibility-matrix>\n",
+        &error))
+        << error;
+
+    auto combined = combine(Level{1}, &matrices, &error);
+    ASSERT_EQ(nullptr, combined) << gCompatibilityMatrixConverter(*combined);
+    EXPECT_IN("<sepolicy> is already defined", error);
+}
+
+// Combining framework compatibility matrix with conflicting avb fails
+TEST_F(FrameworkCompatibilityMatrixCombineTest, ConflictAvb) {
+    ASSERT_TRUE(gCompatibilityMatrixConverter(
+        &matrices[0].object,
+        "<compatibility-matrix version=\"1.0\" type=\"framework\" level=\"1\">\n"
+        "    <avb>\n"
+        "        <vbmeta-version>1.1</vbmeta-version>\n"
+        "    </avb>\n"
+        "</compatibility-matrix>\n",
+        &error))
+        << error;
+    ASSERT_TRUE(gCompatibilityMatrixConverter(
+        &matrices[1].object,
+        "<compatibility-matrix version=\"1.0\" type=\"framework\" level=\"1\">\n"
+        "    <avb>\n"
+        "        <vbmeta-version>1.0</vbmeta-version>\n"
+        "    </avb>\n"
+        "</compatibility-matrix>\n",
+        &error))
+        << error;
+
+    auto combined = combine(Level{1}, &matrices, &error);
+    ASSERT_EQ(nullptr, combined) << gCompatibilityMatrixConverter(*combined);
+    EXPECT_IN("<avb><vbmeta-version> is already defined", error);
+}
+
 } // namespace vintf
 } // namespace android
 
