@@ -26,6 +26,7 @@
 #include <utils/Errors.h>
 
 #include "CheckFlags.h"
+#include "KernelInfo.h"
 #include "MatrixKernel.h"
 #include "Version.h"
 
@@ -96,22 +97,14 @@ struct RuntimeInfo {
     friend struct LibVintfTest;
     friend std::string dump(const RuntimeInfo& ki, bool);
 
-    // mKernelVersion = x'.y'.z', minLts = x.y.z,
-    // match if x == x' , y == y' , and z <= z'.
-    bool matchKernelVersion(const KernelVersion& minLts) const;
-    // return true if all kernel configs in matrixConfigs matches.
-    bool matchKernelConfigs(const std::vector<KernelConfig>& matrixConfigs,
-                            std::string* error = nullptr) const;
-
     // /proc/config.gz
     // Key: CONFIG_xxx; Value: the value after = sign.
-    std::map<std::string, std::string> mKernelConfigs;
+    KernelInfo mKernel;
     std::string mOsName;
     std::string mNodeName;
     std::string mOsRelease;
     std::string mOsVersion;
     std::string mHardwareId;
-    KernelVersion mKernelVersion;
 
     std::vector<std::string> mSepolicyFilePaths;
     std::string mCpuInfo;

@@ -28,6 +28,8 @@
 namespace android {
 namespace vintf {
 
+using details::mergeField;
+
 bool CompatibilityMatrix::addKernel(MatrixKernel&& kernel, std::string* error) {
     if (mType != SchemaType::FRAMEWORK) {
         if (error) {
@@ -294,22 +296,6 @@ bool CompatibilityMatrix::addAllKernelsAsOptional(CompatibilityMatrix* other, st
     return true;
 }
 
-template <typename T>
-static bool mergeField(T* dst, T* src) {
-    static const T kEmpty{};
-    if (*dst == *src) {
-        return true;  // no conflict
-    }
-    if (*src == kEmpty) {
-        return true;
-    }
-    if (*dst == kEmpty) {
-        *dst = std::move(*src);
-        return true;
-    }
-    return false;
-}
-
 bool CompatibilityMatrix::addSepolicy(CompatibilityMatrix* other, std::string* error) {
     bool success = mergeField(&this->framework.mSepolicy, &other->framework.mSepolicy);
     if (!success && error) *error = "<sepolicy> is already defined";
@@ -399,6 +385,7 @@ bool CompatibilityMatrix::addAll(Named<CompatibilityMatrix>* inputMatrix, std::s
         if (error) {
             *error = "File \"" + inputMatrix->name + "\" cannot be added: " + *error + ".";
         }
+        return false;
     }
     return true;
 }

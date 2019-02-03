@@ -36,6 +36,7 @@ namespace vintf {
 
 using details::Instances;
 using details::InstancesOfVersion;
+using details::mergeField;
 
 // Check <version> tag for all <hal> with the same name.
 bool HalManifest::shouldAdd(const ManifestHal& hal) const {
@@ -317,18 +318,22 @@ bool HalManifest::checkCompatibility(const CompatibilityMatrix &mat, std::string
             return false;
         }
     } else if (mType == SchemaType::DEVICE) {
-        bool match = false;
+        bool sepolicyMatch = false;
         for (const auto &range : mat.framework.mSepolicy.sepolicyVersions()) {
             if (range.supportedBy(device.mSepolicyVersion)) {
-                match = true;
+                sepolicyMatch = true;
                 break;
             }
         }
-        if (!match) {
+        if (!sepolicyMatch) {
             if (error != nullptr) {
                 *error = "Sepolicy version " + to_string(device.mSepolicyVersion)
                         + " doesn't satisify the requirements.";
             }
+            return false;
+        }
+
+        if (!!kernel() && !kernel()->matchKernelRequirements(mat.framework.mKernels, error)) {
             return false;
         }
     }
@@ -413,7 +418,8 @@ bool operator==(const HalManifest &lft, const HalManifest &rgt) {
     return lft.mType == rgt.mType && lft.mLevel == rgt.mLevel && lft.mHals == rgt.mHals &&
            lft.mXmlFiles == rgt.mXmlFiles &&
            (lft.mType != SchemaType::DEVICE ||
-            (lft.device.mSepolicyVersion == rgt.device.mSepolicyVersion)) &&
+            (lft.device.mSepolicyVersion == rgt.device.mSepolicyVersion &&
+             lft.device.mKernel == rgt.device.mKernel)) &&
            (lft.mType != SchemaType::FRAMEWORK ||
             (
 #pragma clang diagnostic push
@@ -468,6 +474,92 @@ bool HalManifest::empty() const {
     HalManifest emptyManifest;
     emptyManifest.setType(type());
     return (*this) == emptyManifest;
+}
+
+const std::optional<KernelInfo>& HalManifest::kernel() const {
+    return device.mKernel;
+}
+
+bool HalManifest::addAll(HalManifest* other, std::string* error) {
+    if (other->mMetaVersion.majorVer != mMetaVersion.majorVer) {
+        if (error) {
+            *error = "Cannot merge manifest version " + to_string(mMetaVersion) + " and " +
+                     to_string(other->mMetaVersion);
+        }
+        return false;
+    }
+    mMetaVersion.minorVer = std::max(mMetaVersion.minorVer, other->mMetaVersion.minorVer);
+
+    if (type() != other->type()) {
+        if (error) {
+            *error = "Cannot add a " + to_string(other->type()) + " manifest to a " +
+                     to_string(type()) + " manifest";
+        }
+        return false;
+    }
+
+    if (!addAllHals(other, error)) {
+        return false;
+    }
+
+    if (!addAllXmlFiles(other, error)) {
+        return false;
+    }
+
+    if (!mergeField(&mLevel, &other->mLevel, Level::UNSPECIFIED)) {
+        if (error) {
+            *error = "Conflicting target-level: " + to_string(level()) + " vs. " +
+                     to_string(other->level());
+        }
+        return false;
+    }
+
+    if (type() == SchemaType::DEVICE) {
+        if (!mergeField(&device.mSepolicyVersion, &other->device.mSepolicyVersion)) {
+            if (error) {
+                *error = "Conflicting sepolicy version: " + to_string(sepolicyVersion()) + " vs. " +
+                         to_string(other->sepolicyVersion());
+            }
+            return false;
+        }
+
+        if (!mergeField(&device.mKernel, &other->device.mKernel)) {
+            // If fails, both have values.
+            if (error) {
+                *error = "Conflicting kernel: " + to_string(device.mKernel->version()) + " vs. " +
+                         to_string(other->device.mKernel->version());
+            }
+            return false;
+        }
+    } else if (type() == SchemaType::FRAMEWORK) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+        framework.mVndks.insert(framework.mVndks.end(), other->framework.mVndks.begin(),
+                                other->framework.mVndks.end());
+        other->framework.mVndks.clear();
+#pragma clang diagnostic pop
+
+        framework.mVendorNdks.insert(framework.mVendorNdks.end(),
+                                     other->framework.mVendorNdks.begin(),
+                                     other->framework.mVendorNdks.end());
+        other->framework.mVendorNdks.clear();
+
+        framework.mSystemSdk.addAll(&other->framework.mSystemSdk);
+    } else {
+        LOG(FATAL) << "unknown SchemaType: "
+                   << static_cast<std::underlying_type_t<SchemaType>>(type());
+    }
+
+    if (!other->empty()) {
+        if (error) {
+            *error =
+                "Cannot add another manifest because it contains extraneous entries that "
+                "are not recognized.";
+        }
+        return false;
+    }
+
+    return true;
 }
 
 } // namespace vintf

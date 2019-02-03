@@ -20,11 +20,13 @@
 
 #include <utils/Errors.h>
 #include <map>
+#include <optional>
 #include <string>
 #include <vector>
 
 #include "FileSystem.h"
 #include "HalGroup.h"
+#include "KernelInfo.h"
 #include "Level.h"
 #include "ManifestHal.h"
 #include "ManifestInstance.h"
@@ -126,6 +128,13 @@ struct HalManifest : public HalGroup<ManifestHal>, public XmlFileGroup<ManifestX
     bool insertInstance(const FqInstance& fqInstance, Transport transport, Arch arch, HalFormat fmt,
                         std::string* error = nullptr);
 
+    // Get the <kernel> tag. Assumes type() == DEVICE.
+    const std::optional<KernelInfo>& kernel() const;
+
+    // Add everything from another manifest. If no errors (return true), it is guaranteed
+    // that other->empty() == true after execution.
+    [[nodiscard]] bool addAll(HalManifest* other, std::string* error = nullptr);
+
    protected:
     // Check before add()
     bool shouldAdd(const ManifestHal& toAdd) const override;
@@ -172,6 +181,7 @@ struct HalManifest : public HalGroup<ManifestHal>, public XmlFileGroup<ManifestX
     // entries for device hal manifest only
     struct {
         Version mSepolicyVersion;
+        std::optional<KernelInfo> mKernel;
     } device;
 
     // entries for framework hal manifest only

@@ -327,6 +327,27 @@ const std::string vendorManifestRequire2 =
     "    </hal>\n"
     "</manifest>\n";
 
+//
+// Set of metadata for kernel requirements
+//
+
+const std::string vendorManifestKernel318 =
+    "<manifest version=\"1.0\" type=\"device\">\n"
+    "    <kernel version=\"3.18.999\" />\n"
+    "    <sepolicy>\n"
+    "        <version>25.5</version>\n"
+    "    </sepolicy>\n"
+    "</manifest>\n";
+
+const std::string systemMatrixKernel318 =
+    "<compatibility-matrix version=\"1.0\" type=\"framework\">\n"
+    "    <kernel version=\"3.18.999\"></kernel>\n"
+    "    <sepolicy>\n"
+    "        <kernel-sepolicy-version>30</kernel-sepolicy-version>\n"
+    "        <sepolicy-version>25.5</sepolicy-version>\n"
+    "    </sepolicy>\n"
+    "</compatibility-matrix>\n";
+
 class VintfObjectTestBase : public ::testing::Test {
    protected:
     MockFileSystem& fetcher() {
@@ -582,6 +603,28 @@ TEST_F(VintfObjectCompatibleTest, TestFullOta) {
     int result = checkCompatibility(packageInfo, &error);
 
     ASSERT_EQ(result, 0) << "Fail message:" << error.c_str();
+    ASSERT_STREQ(error.c_str(), "");
+}
+
+// Test that framework-only OTA fails when kernel is not compatible with incoming system.
+TEST_F(VintfObjectCompatibleTest, KernelInfoIncompatible) {
+    std::string error;
+    std::vector<std::string> packageInfo = {systemMatrixKernel318};
+
+    int result = checkCompatibility(packageInfo, &error);
+
+    ASSERT_EQ(result, INCOMPATIBLE) << "Should have failed.";
+    EXPECT_IN("Framework is incompatible with kernel version 3.18.31", error);
+}
+
+// Test that full OTA is successful when the OTA package provides a compatible kernel.
+TEST_F(VintfObjectCompatibleTest, UpdateKernel) {
+    std::string error;
+    std::vector<std::string> packageInfo = {vendorManifestKernel318, systemMatrixKernel318};
+
+    int result = checkCompatibility(packageInfo, &error);
+
+    ASSERT_EQ(result, COMPATIBLE) << "Fail message:" << error;
     ASSERT_STREQ(error.c_str(), "");
 }
 
