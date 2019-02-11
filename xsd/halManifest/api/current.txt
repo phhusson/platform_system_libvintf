@@ -51,16 +51,16 @@ package hal.manifest {
     method public java.util.List<hal.manifest.Hal> getHal();
     method public hal.manifest.Kernel getKernel();
     method public hal.manifest.Sepolicy getSepolicy();
-    method public hal.manifest.Systemsdk getSystemsdk();
-    method public String getTargetlevel();
+    method public hal.manifest.SystemSdk getSystemSdk();
+    method public String getTargetLevel();
     method public String getType();
-    method public java.util.List<hal.manifest.Vendorndk> getVendorndk();
+    method public java.util.List<hal.manifest.VendorNdk> getVendorNdk();
     method public String getVersion();
     method public java.util.List<hal.manifest.Vndk> getVndk();
     method public void setKernel(hal.manifest.Kernel);
     method public void setSepolicy(hal.manifest.Sepolicy);
-    method public void setSystemsdk(hal.manifest.Systemsdk);
-    method public void setTargetlevel(String);
+    method public void setSystemSdk(hal.manifest.SystemSdk);
+    method public void setTargetLevel(String);
     method public void setType(String);
     method public void setVersion(String);
   }
@@ -71,13 +71,13 @@ package hal.manifest {
     method public void setVersion(String);
   }
 
-  public class Systemsdk {
-    ctor public Systemsdk();
+  public class SystemSdk {
+    ctor public SystemSdk();
     method public java.util.List<java.lang.String> getVersion();
   }
 
-  public class Vendorndk {
-    ctor public Vendorndk();
+  public class VendorNdk {
+    ctor public VendorNdk();
     method public java.util.List<java.lang.String> getLibrary();
     method public String getVersion();
     method public void setVersion(String);
