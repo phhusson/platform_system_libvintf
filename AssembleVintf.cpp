@@ -510,14 +510,13 @@ class AssembleVintfImpl : public AssembleVintf {
         }
 
         if (matrices->front().object.mType == SchemaType::DEVICE) {
-            if (matrices->size() > 1) {
-                std::cerr
-                    << "assemble_vintf does not support merging device compatibilility matrices."
-                    << std::endl;
+            builtMatrix = CompatibilityMatrix::combineDeviceMatrices(matrices, &error);
+            matrix = builtMatrix.get();
+
+            if (matrix == nullptr) {
+                std::cerr << error << std::endl;
                 return false;
             }
-
-            matrix = &matrices->front().object;
 
             auto vndkVersion = base::Trim(getEnv("REQUIRED_VNDK_VERSION"));
             if (!vndkVersion.empty()) {

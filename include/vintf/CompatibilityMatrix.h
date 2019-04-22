@@ -83,6 +83,15 @@ struct CompatibilityMatrix : public HalGroup<MatrixHal>, public XmlFileGroup<Mat
     // Merge <avb><vbmeta-version> with other's <avb><vbmeta-version>. Error if there is a conflict.
     bool addAvbMetaVersion(CompatibilityMatrix* other, std::string* error);
 
+    // Merge <vndk> with other's <vndk>. Error if there is a conflict.
+    bool addVndk(CompatibilityMatrix* other, std::string* error);
+
+    // Merge <vendor-ndk> with other's <vendor-ndk>. Error if there is a conflict.
+    bool addVendorNdk(CompatibilityMatrix* other, std::string* error);
+
+    // Merge <system-sdk> with other's <system-sdk>.
+    bool addSystemSdk(CompatibilityMatrix* other, std::string* error);
+
     // Add everything in inputMatrix to "this" as optional.
     bool addAllAsOptional(Named<CompatibilityMatrix>* inputMatrix, std::string* error);
 
@@ -111,6 +120,10 @@ struct CompatibilityMatrix : public HalGroup<MatrixHal>, public XmlFileGroup<Mat
     static std::unique_ptr<CompatibilityMatrix> combine(
         Level deviceLevel, std::vector<Named<CompatibilityMatrix>>* matrices, std::string* error);
 
+    // Combine a set of device compatibility matrices.
+    static std::unique_ptr<CompatibilityMatrix> combineDeviceMatrices(
+        std::vector<Named<CompatibilityMatrix>>* matrices, std::string* error);
+
     status_t fetchAllInformation(const FileSystem* fileSystem, const std::string& path,
                                  std::string* error = nullptr);
 
@@ -127,6 +140,7 @@ struct CompatibilityMatrix : public HalGroup<MatrixHal>, public XmlFileGroup<Mat
     friend struct CompatibilityMatrixConverter;
     friend struct LibVintfTest;
     friend struct FrameworkCompatibilityMatrixCombineTest;
+    friend struct DeviceCompatibilityMatrixCombineTest;
     friend class VintfObject;
     friend class AssembleVintfImpl;
     friend bool operator==(const CompatibilityMatrix &, const CompatibilityMatrix &);
