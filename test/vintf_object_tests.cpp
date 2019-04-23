@@ -368,6 +368,8 @@ class VintfObjectTestBase : public ::testing::Test {
             .WillByDefault(Return(::android::OK));
         ON_CALL(fetcher(), listFiles(StrEq(kOdmManifestFragmentDir), _, _))
             .WillByDefault(Return(::android::OK));
+        ON_CALL(fetcher(), listFiles(StrEq(kProductManifestFragmentDir), _, _))
+            .WillByDefault(Return(::android::OK));
 
         if (!productModel.empty()) {
             ON_CALL(fetcher(),
@@ -415,6 +417,8 @@ class VintfObjectTestBase : public ::testing::Test {
             .WillByDefault(Return(::android::OK));
         // Don't fetch product matrix unless otherwise specified.
         ON_CALL(fetcher(), fetch(StrEq(kProductMatrix), _)).WillByDefault(Return(NAME_NOT_FOUND));
+        // Don't fetch product manifest unless otherwise specified.
+        ON_CALL(fetcher(), fetch(StrEq(kProductManifest), _)).WillByDefault(Return(NAME_NOT_FOUND));
     }
 
     void setFakeProperties() {
@@ -452,6 +456,7 @@ class VintfObjectTestBase : public ::testing::Test {
 
     void expectSystemManifest(size_t times = 1) {
         EXPECT_CALL(fetcher(), fetch(StrEq(kSystemManifest), _)).Times(times);
+        EXPECT_CALL(fetcher(), fetch(StrEq(kProductManifest), _)).Times(times);
     }
 
     void expectVendorMatrix(size_t times = 1) {
@@ -1425,6 +1430,138 @@ TEST_F(VintfObjectPartialUpdateTest, VendorOnlyCompatible) {
     std::string error;
     EXPECT_TRUE(checkCompatibility({vendorManifestRequire2}, &error)) << error;
 }
+
+const std::string systemEtcManifest =
+    "<manifest version=\"1.0\" type=\"framework\">\n"
+    "    <hal format=\"hidl\">\n"
+    "        <name>android.hardware.foo</name>\n"
+    "        <transport>hwbinder</transport>\n"
+    "        <fqname>@1.0::ISystemEtc/default</fqname>\n"
+    "    </hal>\n"
+    "</manifest>\n";
+
+const std::string systemEtcManifestFrag =
+    "<manifest version=\"1.0\" type=\"framework\">\n"
+    "    <hal format=\"hidl\">\n"
+    "        <name>android.hardware.foo</name>\n"
+    "        <transport>hwbinder</transport>\n"
+    "        <fqname>@1.0::ISystemEtcFragment/default</fqname>\n"
+    "    </hal>\n"
+    "</manifest>\n";
+
+const std::string productEtcManifest =
+    "<manifest version=\"1.0\" type=\"framework\">\n"
+    "    <hal format=\"hidl\">\n"
+    "        <name>android.hardware.foo</name>\n"
+    "        <transport>hwbinder</transport>\n"
+    "        <fqname>@1.0::IProductEtc/default</fqname>\n"
+    "    </hal>\n"
+    "</manifest>\n";
+
+const std::string productEtcManifestFrag =
+    "<manifest version=\"1.0\" type=\"framework\">\n"
+    "    <hal format=\"hidl\">\n"
+    "        <name>android.hardware.foo</name>\n"
+    "        <transport>hwbinder</transport>\n"
+    "        <fqname>@1.0::IProductEtcFragment/default</fqname>\n"
+    "    </hal>\n"
+    "</manifest>\n";
+
+using FrameworkManifestTestParam =
+    std::tuple<bool /* Existence of /system/etc/vintf/manifest.xml */,
+               bool /* Existence of /system/etc/vintf/manifest/fragment.xml */,
+               bool /* Existence of /product/etc/vintf/manifest.xml */,
+               bool /* Existence of /product/etc/vintf/manifest/fragment.xml */>;
+class FrameworkManifestTest : public VintfObjectTestBase,
+                              public ::testing::WithParamInterface<FrameworkManifestTestParam> {
+   protected:
+    virtual void SetUp() {
+        VintfObjectTestBase::SetUp();
+        setFakeProperties();
+    }
+
+    // Set the existence of /system/etc/vintf/manifest.xml
+    void expectSystemManifest(bool exists) {
+        if (exists) {
+            expectFetchRepeatedly(kSystemManifest, systemEtcManifest);
+        } else {
+            expectFileNotExist(StrEq(kSystemManifest));
+        }
+        expectFileNotExist(StrEq(kSystemLegacyManifest));
+    }
+    // Set the existence of /system/etc/vintf/manifest/fragment.xml
+    void expectSystemManifestFragment(bool exists) {
+        if (exists) {
+            EXPECT_CALL(fetcher(), listFiles(StrEq(kSystemManifestFragmentDir), _, _))
+                .Times(AnyNumber())
+                .WillRepeatedly(Invoke([](const auto&, auto* out, auto*) {
+                    *out = {"fragment.xml"};
+                    return ::android::OK;
+                }));
+            expectFetchRepeatedly(kSystemManifestFragmentDir + "fragment.xml",
+                                  systemEtcManifestFrag);
+        } else {
+            EXPECT_CALL(fetcher(), listFiles(StrEq(kSystemManifestFragmentDir), _, _))
+                .Times(AnyNumber())
+                .WillRepeatedly(Return(::android::OK));
+            expectFileNotExist(kSystemManifestFragmentDir + "fragment.xml");
+        }
+    }
+    // Set the existence of /product/etc/vintf/manifest.xml
+    void expectProductManifest(bool exists) {
+        if (exists) {
+            expectFetchRepeatedly(kProductManifest, productEtcManifest);
+        } else {
+            expectFileNotExist(kProductManifest);
+        }
+    }
+    // Set the existence of /product/etc/vintf/manifest/fragment.xml
+    void expectProductManifestFragment(bool exists) {
+        if (exists) {
+            EXPECT_CALL(fetcher(), listFiles(StrEq(kProductManifestFragmentDir), _, _))
+                .Times(AnyNumber())
+                .WillRepeatedly(Invoke([](const auto&, auto* out, auto*) {
+                    *out = {"fragment.xml"};
+                    return ::android::OK;
+                }));
+            expectFetchRepeatedly(kProductManifestFragmentDir + "fragment.xml",
+                                  productEtcManifestFrag);
+        } else {
+            EXPECT_CALL(fetcher(), listFiles(StrEq(kProductManifestFragmentDir), _, _))
+                .Times(AnyNumber())
+                .WillRepeatedly(Return(::android::OK));
+            expectFileNotExist(kProductManifestFragmentDir + "fragment.xml");
+        }
+    }
+
+    void expectContainsInterface(const std::string& interface, bool contains = true) {
+        auto manifest = vintfObject->getFrameworkHalManifest();
+        ASSERT_NE(nullptr, manifest);
+        EXPECT_NE(manifest->getInstances("android.hardware.foo", {1, 0}, interface).empty(),
+                  contains)
+            << interface << " is missing.";
+    }
+};
+
+TEST_P(FrameworkManifestTest, Existence) {
+    expectSystemManifest(std::get<0>(GetParam()));
+    expectSystemManifestFragment(std::get<1>(GetParam()));
+    expectProductManifest(std::get<2>(GetParam()));
+    expectProductManifestFragment(std::get<3>(GetParam()));
+
+    if (!std::get<0>(GetParam())) {
+        EXPECT_EQ(nullptr, vintfObject->getFrameworkHalManifest())
+            << "getFrameworkHalManifest must return nullptr if " << kSystemManifest
+            << " does not exist";
+    } else {
+        expectContainsInterface("ISystemEtc", std::get<0>(GetParam()));
+        expectContainsInterface("ISystemEtcFragment", std::get<1>(GetParam()));
+        expectContainsInterface("IProductEtc", std::get<2>(GetParam()));
+        expectContainsInterface("IProductEtcFragment", std::get<3>(GetParam()));
+    }
+}
+INSTANTIATE_TEST_SUITE_P(, FrameworkManifestTest,
+                         ::testing::Combine(Bool(), Bool(), Bool(), Bool()));
 
 }  // namespace testing
 }  // namespace vintf
