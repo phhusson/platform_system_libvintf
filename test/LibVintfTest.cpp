@@ -3738,6 +3738,78 @@ TEST_F(FrameworkCompatibilityMatrixCombineTest, ConflictAvb) {
     EXPECT_IN("<avb><vbmeta-version> is already defined", error);
 }
 
+struct DeviceCompatibilityMatrixCombineTest : public LibVintfTest {
+    virtual void SetUp() override {
+        matrices = {
+            {"compatibility_matrix.1.xml", CompatibilityMatrix{}},
+            {"compatibility_matrix.2.xml", CompatibilityMatrix{}},
+        };
+    }
+    // Access to private methods.
+    std::unique_ptr<CompatibilityMatrix> combine(std::vector<Named<CompatibilityMatrix>>* matrices,
+                                                 std::string* error) {
+        return CompatibilityMatrix::combineDeviceMatrices(matrices, error);
+    }
+
+    std::vector<Named<CompatibilityMatrix>> matrices;
+    std::string error;
+};
+
+TEST_F(DeviceCompatibilityMatrixCombineTest, Success) {
+    std::string head{"<compatibility-matrix version=\"1.0\" type=\"device\">\n"};
+    std::string tail{"</compatibility-matrix>\n"};
+    std::string halFoo{
+        "    <hal format=\"hidl\" optional=\"false\">\n"
+        "        <name>android.hardware.foo</name>\n"
+        "        <version>1.0</version>\n"
+        "        <interface>\n"
+        "            <name>IFoo</name>\n"
+        "            <instance>default</instance>\n"
+        "        </interface>\n"
+        "    </hal>\n"};
+    std::string halBar{
+        "    <hal format=\"hidl\" optional=\"false\">\n"
+        "        <name>android.hardware.bar</name>\n"
+        "        <version>1.0</version>\n"
+        "        <interface>\n"
+        "            <name>IBar</name>\n"
+        "            <instance>default</instance>\n"
+        "        </interface>\n"
+        "    </hal>\n"};
+    ASSERT_TRUE(gCompatibilityMatrixConverter(&matrices[0].object, head + halFoo + tail, &error))
+        << error;
+    ASSERT_TRUE(gCompatibilityMatrixConverter(&matrices[1].object, head + halBar + tail, &error))
+        << error;
+
+    auto combined = combine(&matrices, &error);
+    ASSERT_NE(nullptr, combined) << error;
+    EXPECT_EQ("", error);
+    auto combinedXml = gCompatibilityMatrixConverter(*combined);
+    EXPECT_IN(halFoo, combinedXml);
+    EXPECT_IN(halBar, combinedXml);
+}
+
+TEST_F(DeviceCompatibilityMatrixCombineTest, ConflictVendorNdk) {
+    std::string vendorNdkP{
+        "<compatibility-matrix version=\"1.0\" type=\"device\">\n"
+        "    <vendor-ndk>\n"
+        "        <version>P</version>\n"
+        "    </vendor-ndk>\n"
+        "</compatibility-matrix>\n"};
+    std::string vendorNdkQ{
+        "<compatibility-matrix version=\"1.0\" type=\"device\">\n"
+        "    <vendor-ndk>\n"
+        "        <version>Q</version>\n"
+        "    </vendor-ndk>\n"
+        "</compatibility-matrix>\n"};
+    ASSERT_TRUE(gCompatibilityMatrixConverter(&matrices[0].object, vendorNdkP, &error)) << error;
+    ASSERT_TRUE(gCompatibilityMatrixConverter(&matrices[1].object, vendorNdkQ, &error)) << error;
+
+    auto combined = combine(&matrices, &error);
+    ASSERT_EQ(nullptr, combined) << gCompatibilityMatrixConverter(*combined);
+    EXPECT_IN("<vendor-ndk> is already defined", error);
+}
+
 } // namespace vintf
 } // namespace android
 

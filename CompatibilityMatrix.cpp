@@ -308,6 +308,26 @@ bool CompatibilityMatrix::addAvbMetaVersion(CompatibilityMatrix* other, std::str
     return success;
 }
 
+bool CompatibilityMatrix::addVndk(CompatibilityMatrix* other, std::string* error) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    bool success = mergeField(&this->device.mVndk, &other->device.mVndk);
+#pragma clang diagnostic pop
+    if (!success && error) *error = "<vndk> is already defined";
+    return success;
+}
+
+bool CompatibilityMatrix::addVendorNdk(CompatibilityMatrix* other, std::string* error) {
+    bool success = mergeField(&this->device.mVendorNdk, &other->device.mVendorNdk);
+    if (!success && error) *error = "<vendor-ndk> is already defined";
+    return success;
+}
+
+bool CompatibilityMatrix::addSystemSdk(CompatibilityMatrix* other, std::string* /* error */) {
+    this->device.mSystemSdk.addAll(&other->device.mSystemSdk);
+    return true;
+}
+
 bool operator==(const CompatibilityMatrix &lft, const CompatibilityMatrix &rgt) {
     return lft.mType == rgt.mType && lft.mLevel == rgt.mLevel && lft.mHals == rgt.mHals &&
            lft.mXmlFiles == rgt.mXmlFiles &&
@@ -378,10 +398,31 @@ std::unique_ptr<CompatibilityMatrix> CompatibilityMatrix::combine(
     return baseMatrix;
 }
 
+std::unique_ptr<CompatibilityMatrix> CompatibilityMatrix::combineDeviceMatrices(
+    std::vector<Named<CompatibilityMatrix>>* matrices, std::string* error) {
+    auto baseMatrix = std::make_unique<CompatibilityMatrix>();
+    baseMatrix->mType = SchemaType::DEVICE;
+
+    std::vector<std::string> parsedFiles;
+    for (auto& e : *matrices) {
+        bool success = baseMatrix->addAll(&e, error);
+        if (!success) {
+            if (error) {
+                *error = "Conflict when merging \"" + e.name + "\": " + *error + "\n" +
+                         "Previous files:\n" + base::Join(parsedFiles, "\n");
+            }
+            return nullptr;
+        }
+        parsedFiles.push_back(e.name);
+    }
+    return baseMatrix;
+}
+
 bool CompatibilityMatrix::addAll(Named<CompatibilityMatrix>* inputMatrix, std::string* error) {
     if (!addAllHals(&inputMatrix->object, error) || !addAllXmlFiles(&inputMatrix->object, error) ||
         !addAllKernels(&inputMatrix->object, error) || !addSepolicy(&inputMatrix->object, error) ||
-        !addAvbMetaVersion(&inputMatrix->object, error)) {
+        !addAvbMetaVersion(&inputMatrix->object, error) || !addVndk(&inputMatrix->object, error) ||
+        !addVendorNdk(&inputMatrix->object, error) || !addSystemSdk(&inputMatrix->object, error)) {
         if (error) {
             *error = "File \"" + inputMatrix->name + "\" cannot be added: " + *error + ".";
         }

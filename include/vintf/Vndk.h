@@ -58,17 +58,18 @@ private:
     std::set<std::string> mLibraries;
 };
 
-[[deprecated]]
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
 inline bool operator==(const VndkVersionRange &lft, const VndkVersionRange &rgt) {
     return lft.sdk == rgt.sdk && lft.vndk == rgt.vndk &&
            lft.patchMin == rgt.patchMin && lft.patchMax == rgt.patchMax;
 }
 
-[[deprecated]]
 inline bool operator==(const Vndk &lft, const Vndk &rgt) {
     return lft.mVersionRange == rgt.mVersionRange &&
            lft.mLibraries == rgt.mLibraries;
 }
+#pragma clang diagnostic pop
 
 } // namespace vintf
 } // namespace android
