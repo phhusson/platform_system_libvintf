@@ -50,7 +50,7 @@
             <xs:element name="fqname" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
         </xs:sequence>
         <xs:attribute name="format" type="xs:string"/>
-        <xs:attribute name="optional" type="xs:string"/>
+        <xs:attribute name="override" type="xs:string"/>
     </xs:complexType>
     <xs:complexType name="interface">
         <xs:sequence>
